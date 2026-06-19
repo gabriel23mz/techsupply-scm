@@ -1,0 +1,62 @@
+# =========================
+# DEPENDENCIAS
+# =========================
+node_modules/
+
+# =========================
+# VARIABLES DE ENTORNO
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# LOGS
+# =========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# BUILD / OUTPUT
+# =========================
+dist/
+build/
+out/
+
+# =========================
+# COVERAGE (tests)
+# =========================
+coverage/
+
+# =========================
+# CACHE
+# =========================
+.cache/
+.eslintcache
+.prettiercache
+
+# =========================
+# SYSTEM FILES
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / EDITOR
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# TEMP FILES
+# =========================
+tmp/
+temp/
+
+# =========================
+# OPTIONAL (MONOREPO / FRONTEND)
+# =========================
+frontend/node_modules/
