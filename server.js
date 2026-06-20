@@ -7,6 +7,7 @@ import './src/models/index.js';
 
 import ubicacionRoutes from './src/routes/ubicacion.routes.js';
 import clienteRoutes from './src/routes/cliente.routes.js';
+import rutaRoutes from './src/routes/ruta.routes.js';
 
 import notFound from './src/middlewares/notFound.js';
 import errorHandler from './src/middlewares/errorHandler.js';
@@ -19,6 +20,7 @@ app.use(express.json());
 
 app.use('/api/ubicaciones', ubicacionRoutes);
 app.use('/api/clientes', clienteRoutes);
+app.use('/api/rutas', rutaRoutes);
 
 
 app.use(notFound);
