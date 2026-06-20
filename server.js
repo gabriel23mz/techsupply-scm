@@ -6,6 +6,7 @@ import sequelize from './src/config/database.js';
 import './src/models/index.js';
 
 import ubicacionRoutes from './src/routes/ubicacion.routes.js';
+import clienteRoutes from './src/routes/cliente.routes.js';
 
 import notFound from './src/middlewares/notFound.js';
 import errorHandler from './src/middlewares/errorHandler.js';
@@ -17,6 +18,7 @@ const app = express();
 app.use(express.json());
 
 app.use('/api/ubicaciones', ubicacionRoutes);
+app.use('/api/clientes', clienteRoutes);
 
 
 app.use(notFound);
