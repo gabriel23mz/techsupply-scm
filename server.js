@@ -1,13 +1,28 @@
 import express from 'express';
 import dotenv from 'dotenv';
+
 import sequelize from './src/config/database.js';
+
 import './src/models/index.js';
+
+import ubicacionRoutes from './src/routes/ubicacion.routes.js';
+
+import notFound from './src/middlewares/notFound.js';
+import errorHandler from './src/middlewares/errorHandler.js';
 
 dotenv.config();
 
 const app = express();
 
 app.use(express.json());
+
+app.use('/api/ubicaciones', ubicacionRoutes);
+
+
+app.use(notFound);
+
+app.use(errorHandler);
+
 
 const PORT = process.env.PORT || 3000;
 
@@ -17,7 +32,7 @@ async function startServer() {
 
     console.log('✅ Conexión a MySQL exitosa');
 
-    await sequelize.sync({ force: true });
+    await sequelize.sync({ alter: false });
 
     console.log('✅ Tablas sincronizadas correctamente');
 
