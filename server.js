@@ -9,6 +9,7 @@ import ubicacionRoutes from './src/routes/ubicacion.routes.js';
 import clienteRoutes from './src/routes/cliente.routes.js';
 import rutaRoutes from './src/routes/ruta.routes.js';
 import usuarioRoutes from './src/routes/usuario.routes.js';
+import categoriaRoutes from './src/routes/categoria.routes.js';
 
 
 import notFound from './src/middlewares/notFound.js';
@@ -24,6 +25,7 @@ app.use('/api/ubicaciones', ubicacionRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/rutas', rutaRoutes);
 app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/categorias', categoriaRoutes);
 
 
 app.use(notFound);
