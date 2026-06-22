@@ -176,17 +176,11 @@ export const actualizar = async (req, res) => {
     }
 
     if (datos.estado !== undefined) {
-      if (
-        !ESTADOS_VALIDOS.includes(
-          datos.estado,
-        )
-      ) {
-        return errorResponse(
-          res,
-          'Estado inválido',
-          400,
-        );
-      }
+      return errorResponse(
+        res,
+        'Utilice los endpoints de flujo para modificar estados',
+        400,
+      );
     }
 
     if (datos.total !== undefined) {
@@ -242,5 +236,66 @@ export const eliminar = async (req, res) => {
     );
   } catch (error) {
     return errorResponse(res, error.message);
+  }
+};
+
+export const preparar = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pedido =
+      await pedidoService.preparar(id);
+
+    if (!pedido) {
+      return errorResponse(
+        res,
+        'Pedido no encontrado',
+        404,
+      );
+    }
+
+    return successResponse(
+      res,
+      pedido,
+      'Pedido preparado correctamente',
+    );
+  } catch (error) {
+    return errorResponse(
+      res,
+      error.message,
+      400,
+    );
+  }
+};
+
+export const cancelar = async (
+  req,
+  res,
+) => {
+  try {
+    const { id } = req.params;
+
+    const pedido =
+      await pedidoService.cancelar(id);
+
+    if (!pedido) {
+      return errorResponse(
+        res,
+        'Pedido no encontrado',
+        404,
+      );
+    }
+
+    return successResponse(
+      res,
+      pedido,
+      'Pedido cancelado correctamente',
+    );
+  } catch (error) {
+    return errorResponse(
+      res,
+      error.message,
+      400,
+    );
   }
 };

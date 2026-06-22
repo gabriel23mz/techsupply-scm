@@ -57,3 +57,14 @@ export const eliminar = async (id) => {
 
   return true;
 };
+
+export const existePorNombre = async (
+  nombre,
+) => {
+  return await Ubicacion.findOne({
+    where: {
+      nombre,
+      estado: true,
+    },
+  });
+};

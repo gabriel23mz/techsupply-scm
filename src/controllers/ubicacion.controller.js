@@ -5,6 +5,19 @@ import {
   errorResponse,
 } from '../utils/apiResponse.js';
 
+const capitalizarTexto = (texto) => {
+  return texto
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(
+      (palabra) =>
+        palabra.charAt(0).toUpperCase() +
+        palabra.slice(1),
+    )
+    .join(' ');
+};
+
 export const obtenerTodas = async (req, res) => {
   try {
     const ubicaciones = await ubicacionService.obtenerTodas();
@@ -55,8 +68,19 @@ export const crear = async (req, res) => {
       );
     }
 
+    const nombreCapitalizado = capitalizarTexto(nombre);
+
+    const existe = await ubicacionService.existePorNombre(nombreCapitalizado);
+
+    if (existe) {
+      return errorResponse(
+        res,
+        'Ya existe una ubicación con ese nombre',
+        400,
+      );
+    }
     const nuevaUbicacion = await ubicacionService.crear({
-      nombre,
+      nombreCapitalizado,
       estado,
     });
 
@@ -76,20 +100,43 @@ export const actualizar = async (req, res) => {
     const { id } = req.params;
 
     if (
-      req.body.nombre !== undefined &&
-      !req.body.nombre.trim()
+      req.body.nombre !== undefined
     ) {
-      return errorResponse(
-        res,
-        'El nombre no puede estar vacío',
-        400,
-      );
+      if (!req.body.nombre.trim()) {
+        return errorResponse(
+          res,
+          'El nombre no puede estar vacío',
+          400,
+        );
+      }
+
+      req.body.nombre =
+        capitalizarTexto(
+          req.body.nombre,
+        );
+
+      const existe =
+        await ubicacionService.existePorNombre(
+          req.body.nombre,
+        );
+
+      if (
+        existe &&
+        existe.id !== Number(id)
+      ) {
+        return errorResponse(
+          res,
+          'Ya existe una ubicación con ese nombre',
+          400,
+        );
+      }
     }
 
-    const ubicacion = await ubicacionService.actualizar(
-      id,
-      req.body,
-    );
+    const ubicacion =
+      await ubicacionService.actualizar(
+        id,
+        req.body,
+      );
 
     if (!ubicacion) {
       return errorResponse(

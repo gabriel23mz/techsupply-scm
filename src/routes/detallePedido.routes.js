@@ -6,9 +6,7 @@ import {
   crear,
   actualizar,
   eliminar,
-  preparar,
-  cancelar,
-} from '../controllers/pedido.controller.js';
+} from '../controllers/detallePedido.controller.js';
 
 const router = Router();
 
@@ -21,9 +19,5 @@ router.post('/', crear);
 router.put('/:id', actualizar);
 
 router.delete('/:id', eliminar);
-
-router.patch('/:id/preparar', preparar);
-
-router.patch('/:id/cancelar', cancelar);
 
 export default router;

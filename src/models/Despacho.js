@@ -13,7 +13,6 @@ const Despacho = sequelize.define(
     pedido_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      unique: true,
     },
 
     ruta_id: {

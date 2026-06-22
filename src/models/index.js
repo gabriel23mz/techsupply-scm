@@ -140,7 +140,7 @@ Despacho.belongsTo(Ruta, {
 // Pedido -> Despacho
 // Relación 1 : 1
 //
-Pedido.hasOne(Despacho, {
+Pedido.hasMany(Despacho, {
   foreignKey: 'pedido_id',
 });
 
