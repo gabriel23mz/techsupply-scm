@@ -7,6 +7,7 @@ import {
   actualizar,
   eliminar,
   preparar,
+  finalizarPreparacion,
   cancelar,
 } from '../controllers/pedido.controller.js';
 
@@ -23,6 +24,8 @@ router.put('/:id', actualizar);
 router.delete('/:id', eliminar);
 
 router.patch('/:id/preparar', preparar);
+
+router.patch('/:id/finalizar-preparacion', finalizarPreparacion);
 
 router.patch('/:id/cancelar', cancelar);
 

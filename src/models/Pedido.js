@@ -29,6 +29,7 @@ const Pedido = sequelize.define(
       type: DataTypes.ENUM(
         'PENDIENTE',
         'PREPARANDO',
+        'LISTO_PARA_DESPACHO',
         'DESPACHADO',
         'ENTREGADO',
         'CANCELADO',

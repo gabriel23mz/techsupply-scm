@@ -115,6 +115,10 @@ export const actualizar = async (
     detalle.pedido_id,
   );
 
+  if (!pedido) {
+    throw new Error('Pedido no encontrado');
+  }
+
   if (
     pedido.estado !== 'PENDIENTE' &&
     pedido.estado !== 'PREPARANDO'
@@ -127,6 +131,10 @@ export const actualizar = async (
   const producto = await Producto.findByPk(
     detalle.producto_id,
   );
+
+  if (!producto) {
+    throw new Error('Producto no encontrado');
+  }
 
   const cantidadNueva = Number(
     datos.cantidad,
@@ -163,14 +171,14 @@ export const actualizar = async (
     });
   }
 
+  const precioUnitario =
+    Number(detalle.precio_unitario);
+
   const subtotal =
-    Number(producto.precio_venta) *
-    cantidadNueva;
+    precioUnitario * cantidadNueva;
 
   await detalle.update({
     cantidad: cantidadNueva,
-    precio_unitario:
-      producto.precio_venta,
     subtotal,
   });
 
@@ -193,6 +201,10 @@ export const eliminar = async (id) => {
     detalle.pedido_id,
   );
 
+  if (!pedido) {
+    throw new Error('Pedido no encontrado');
+  }
+
   if (
     pedido.estado !== 'PENDIENTE' &&
     pedido.estado !== 'PREPARANDO'
@@ -205,6 +217,10 @@ export const eliminar = async (id) => {
   const producto = await Producto.findByPk(
     detalle.producto_id,
   );
+
+  if (!producto) {
+    throw new Error('Producto no encontrado');
+  }
 
   await producto.update({
     stock_actual:

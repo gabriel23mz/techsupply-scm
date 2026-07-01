@@ -58,7 +58,7 @@ export const obtenerPorId = async (req, res) => {
 
 export const crear = async (req, res) => {
   try {
-    const { nombre, estado } = req.body;
+    const { nombre } = req.body;
 
     if (!nombre?.trim()) {
       return errorResponse(
@@ -80,8 +80,8 @@ export const crear = async (req, res) => {
       );
     }
     const nuevaUbicacion = await ubicacionService.crear({
-      nombreCapitalizado,
-      estado,
+      nombre: nombreCapitalizado,
+      estado: true,
     });
 
     return successResponse(

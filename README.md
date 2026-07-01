@@ -4,125 +4,173 @@ Sistema de gestión de cadena de suministro (Supply Chain Management) desarrolla
 
 ## Descripción
 
-TechSupply SCM es una plataforma orientada a la gestión de operaciones logísticas y de abastecimiento de una distribuidora tecnológica. El sistema se encuentra dividido en dos módulos principales:
+TechSupply SCM es una plataforma orientada a la gestión de operaciones logísticas y comerciales de una distribuidora tecnológica. El proyecto está dividido en dos módulos principales que comparten una misma base de datos:
 
-* **Inbound (Grupo 1):** Gestión de compras e inventario.
+* **Inbound (Grupo 1):** Gestión de proveedores, compras e ingresos de inventario.
 * **Outbound (Grupo 2):** Gestión de clientes, pedidos, despachos y optimización de rutas.
 
-Ambos módulos comparten una misma base de datos y mantienen una coordinación sobre las entidades comunes del sistema. Sin embargo, cada equipo desarrolla de forma independiente la lógica de negocio y funcionalidades correspondientes a su módulo.
+El presente repositorio corresponde al desarrollo del módulo **Outbound**, cuya arquitectura fue diseñada siguiendo principios de desacoplamiento y responsabilidad única para facilitar su mantenimiento y futura integración con componentes de Inteligencia Artificial.
 
 ---
 
-## Tecnologías Utilizadas
+# Tecnologías Utilizadas
 
-### Backend
+## Backend
 
 * Node.js
 * Express.js
 * Sequelize ORM
 * MySQL
 
-### Inteligencia Artificial
+## Inteligencia Artificial
 
 * Python
-* Algoritmo A* para optimización de rutas
+* Algoritmo A* (en proceso de integración)
 
-### Automatización
+## Automatización
 
-* n8n
+* n8n (integración preparada)
 
-### Frontend (Próximamente)
+## Frontend
 
-* React
+* React (pendiente de desarrollo)
 
 ---
 
-## Arquitectura General
+# Arquitectura del Backend
+
+La lógica del sistema se encuentra organizada en capas, separando controladores, servicios y persistencia.
 
 ```text
-Frontend (React)
-        │
-        ▼
-Backend (Node.js + Express)
-        │
-        ▼
-MySQL Database
-        │
-        ├── Módulo Inbound
-        │     ├── Proveedores
-        │     ├── Órdenes de Compra
-        │     ├── Ingresos de Inventario
-        │     └── Control de Stock
-        │
-        └── Módulo Outbound
-              ├── Clientes
-              ├── Pedidos
-              ├── Despachos
-              ├── Rutas
-              └── Optimización A*
+Cliente HTTP
+      │
+      ▼
+Controllers
+      │
+      ▼
+Servicios de Negocio
+      │
+      ▼
+Servicios Especializados
+      │
+      ├───────────────┐
+      ▼               ▼
+Persistencia      Integraciones
+      │               │
+      ▼               ▼
+  Sequelize       Python / n8n
+      │
+      ▼
+    MySQL
 ```
+
+El módulo de logística implementa una arquitectura basada en un servicio orquestador (`logistica.service.js`) que coordina la creación y administración de los despachos, manteniendo desacopladas las responsabilidades de persistencia, cálculo de rutas y automatizaciones.
 
 ---
 
-## Modelo de Datos
+# Arquitectura del Módulo de Logística
 
-Actualmente el proyecto cuenta con un esquema completo de base de datos implementado mediante Sequelize.
+```text
+POST /despachos
+        │
+        ▼
+Controller
+        │
+        ▼
+logistica.service.js
+        │
+        ├───────────────┐
+        ▼               ▼
+python.service.js   despacho.service.js
+        │               │
+        └───────┬───────┘
+                ▼
+          n8n.service.js
+                │
+                ▼
+            Response
+```
 
-### Catálogos
+Esta arquitectura permite integrar el algoritmo A* y futuras automatizaciones sin modificar el flujo principal del sistema.
+
+---
+
+# Modelo de Datos
+
+El proyecto implementa mediante Sequelize las principales entidades del módulo Outbound.
+
+## Catálogos
 
 * Usuario
 * Categoría
 * Producto
 * Ubicación
 
-### Módulo Outbound (Grupo 2)
+## Gestión Comercial
 
 * Cliente
 * Pedido
 * DetallePedido
+
+## Gestión Logística
+
 * Ruta
 * Despacho
 
-### Módulo Inbound (Grupo 1)
-
-* Proveedor
-* OrdenCompra
-* DetalleOrdenCompra
-* IngresoInventario
-* DetalleIngreso
+Las relaciones entre entidades se encuentran completamente implementadas y sincronizadas con la base de datos MySQL.
 
 ---
 
-## Estado Actual del Proyecto
+# Estado Actual del Proyecto
 
-### Completado
+## Implementado
 
-* Estructura inicial del proyecto
-* Configuración de Express
-* Configuración de Sequelize
-* Conexión con MySQL
-* Diseño y modelado de la base de datos
-* Implementación de todos los modelos
-* Relaciones entre entidades
-* Sincronización y validación del esquema
+* Configuración completa del backend con Express y Sequelize.
+* Conexión con MySQL.
+* Modelado de la base de datos.
+* Implementación de todos los modelos del módulo Outbound.
+* Relaciones entre entidades.
+* CRUD completo para:
 
-### En Desarrollo
-
-* CRUD de Ubicaciones
-* CRUD de Clientes
-* CRUD de Rutas
-* CRUD de Pedidos
-* CRUD de Despachos
-
-### Próximamente
-
-* Integración del algoritmo A*
-* Automatizaciones mediante n8n
-* Desarrollo del frontend en React
+  * Usuarios
+  * Categorías
+  * Productos
+  * Ubicaciones
+  * Clientes
+  * Rutas
+  * Pedidos
+  * Detalles de Pedido
+  * Despachos
+* Validaciones de negocio.
+* Gestión automática del stock.
+* Cálculo automático del total de pedidos.
+* Gestión del ciclo de vida de los pedidos.
+* Gestión del ciclo de vida de los despachos.
+* Refactorización del módulo de despachos mediante una arquitectura desacoplada basada en servicios especializados.
+* Servicio orquestador de logística.
+* Adaptador para integración con Python.
+* Adaptador para integración con n8n.
+* Endpoint para consultar pedidos disponibles para despacho.
+* Pruebas funcionales realizadas mediante Thunder Client.
 
 ---
 
-## Instalación
+## En Desarrollo
+
+* Implementación del algoritmo A* en Python.
+* Integración completa entre Node.js y Python.
+
+---
+
+## Pendiente
+
+* Automatizaciones mediante n8n.
+* Desarrollo del frontend en React.
+* Mejoras y ampliaciones funcionales del sistema.
+
+---
+
+# Instalación
 
 Clonar el repositorio:
 
@@ -146,7 +194,7 @@ DB_USER=
 DB_PASSWORD=
 ```
 
-Ejecutar el proyecto:
+Ejecutar el servidor:
 
 ```bash
 npm run dev
@@ -154,18 +202,30 @@ npm run dev
 
 ---
 
-## Equipo de Desarrollo
+# Próximos Objetivos
 
-Proyecto académico desarrollado para la asignatura de Inteligencia Artificial.
+Las siguientes etapas del proyecto contemplan:
 
-Universidad: ESPAM MFL
-
-Carrera: Computación
-
-Año: 2026
+1. Implementar el algoritmo A* para optimización de rutas.
+2. Integrar el módulo Python con el backend.
+3. Incorporar automatizaciones mediante n8n.
+4. Desarrollar la interfaz web en React.
+5. Implementar mejoras evolutivas sobre los módulos existentes.
 
 ---
 
-## Licencia
+# Equipo de Desarrollo
+
+Proyecto académico desarrollado para la asignatura de Inteligencia Artificial.
+
+**Universidad:** ESPAM MFL
+
+**Carrera:** Computación
+
+**Año:** 2026
+
+---
+
+# Licencia
 
 Proyecto desarrollado con fines educativos y académicos.

@@ -15,11 +15,6 @@ const Despacho = sequelize.define(
       allowNull: false,
     },
 
-    ruta_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-
     fecha_salida: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -39,6 +34,21 @@ const Despacho = sequelize.define(
       ),
       allowNull: false,
       defaultValue: 'PENDIENTE',
+    },
+
+    ruta_json: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
+    distancia_total: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+
+    tiempo_estimado: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   },
   {

@@ -1,22 +1,14 @@
 import * as pedidoService from '../services/pedido.service.js';
 
+import * as usuarioService from '../services/usuario.service.js';
+
+import * as clienteService from '../services/cliente.service.js';
+
 import {
   successResponse,
   errorResponse,
 } from '../utils/apiResponse.js';
 
-const ESTADOS_CREACION = [
-  'PENDIENTE',
-  'PREPARANDO',
-];
-
-const ESTADOS_VALIDOS = [
-  'PENDIENTE',
-  'PREPARANDO',
-  'DESPACHADO',
-  'ENTREGADO',
-  'CANCELADO',
-];
 
 export const obtenerTodos = async (req, res) => {
   try {
@@ -60,17 +52,14 @@ export const obtenerPorId = async (req, res) => {
 
 export const crear = async (req, res) => {
   try {
-    let {
+    const {
       cliente_id,
       usuario_id,
       fecha,
-      estado,
     } = req.body;
 
     const cliente =
-      await pedidoService.existeCliente(
-        cliente_id,
-      );
+      await clienteService.obtenerPorId(cliente_id);
 
     if (!cliente) {
       return errorResponse(
@@ -81,9 +70,7 @@ export const crear = async (req, res) => {
     }
 
     const usuario =
-      await pedidoService.existeUsuario(
-        usuario_id,
-      );
+      await usuarioService.obtenerPorId(usuario_id);
 
     if (!usuario) {
       return errorResponse(
@@ -93,22 +80,12 @@ export const crear = async (req, res) => {
       );
     }
 
-    estado = estado || 'PENDIENTE';
-
-    if (!ESTADOS_CREACION.includes(estado)) {
-      return errorResponse(
-        res,
-        'No se puede crear un pedido con ese estado',
-        400,
-      );
-    }
-
     const pedido =
       await pedidoService.crear({
         cliente_id,
         usuario_id,
         fecha: fecha || new Date(),
-        estado,
+        estado: 'PENDIENTE',
         total: 0,
       });
 
@@ -147,9 +124,7 @@ export const actualizar = async (req, res) => {
 
     if (datos.cliente_id !== undefined) {
       const cliente =
-        await pedidoService.existeCliente(
-          datos.cliente_id,
-        );
+        await clienteService.obtenerPorId(datos.cliente_id);
 
       if (!cliente) {
         return errorResponse(
@@ -162,9 +137,7 @@ export const actualizar = async (req, res) => {
 
     if (datos.usuario_id !== undefined) {
       const usuario =
-        await pedidoService.existeUsuario(
-          datos.usuario_id,
-        );
+        await usuarioService.obtenerPorId(datos.usuario_id);
 
       if (!usuario) {
         return errorResponse(
@@ -184,18 +157,11 @@ export const actualizar = async (req, res) => {
     }
 
     if (datos.total !== undefined) {
-      datos.total = Number(datos.total);
-
-      if (
-        isNaN(datos.total) ||
-        datos.total < 0
-      ) {
-        return errorResponse(
-          res,
-          'El total debe ser mayor o igual a cero',
-          400,
-        );
-      }
+      return errorResponse(
+        res,
+        'El total es calculado automáticamente por el sistema',
+        400,
+      );
     }
 
     const pedido =
@@ -218,16 +184,7 @@ export const eliminar = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const eliminado =
-      await pedidoService.eliminar(id);
-
-    if (!eliminado) {
-      return errorResponse(
-        res,
-        'Pedido no encontrado',
-        404,
-      );
-    }
+    await pedidoService.eliminar(id);
 
     return successResponse(
       res,
@@ -235,7 +192,7 @@ export const eliminar = async (req, res) => {
       'Pedido eliminado correctamente',
     );
   } catch (error) {
-    return errorResponse(res, error.message);
+    return errorResponse(res, error.message, 400);
   }
 };
 
@@ -258,6 +215,38 @@ export const preparar = async (req, res) => {
       res,
       pedido,
       'Pedido preparado correctamente',
+    );
+  } catch (error) {
+    return errorResponse(
+      res,
+      error.message,
+      400,
+    );
+  }
+};
+
+export const finalizarPreparacion = async (
+  req,
+  res,
+) => {
+  try {
+    const { id } = req.params;
+
+    const pedido =
+      await pedidoService.finalizarPreparacion(id);
+
+    if (!pedido) {
+      return errorResponse(
+        res,
+        'Pedido no encontrado',
+        404,
+      );
+    }
+
+    return successResponse(
+      res,
+      pedido,
+      'Pedido listo para despacho',
     );
   } catch (error) {
     return errorResponse(

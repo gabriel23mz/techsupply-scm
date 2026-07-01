@@ -13,6 +13,7 @@ import categoriaRoutes from './src/routes/categoria.routes.js';
 import productoRoutes from './src/routes/producto.routes.js';
 import pedidoRoutes from './src/routes/pedido.routes.js';
 import detallePedidoRoutes from './src/routes/detallePedido.routes.js';
+import despachoRoutes from './src/routes/despacho.routes.js';
 
 
 import notFound from './src/middlewares/notFound.js';
@@ -32,6 +33,7 @@ app.use('/api/categorias', categoriaRoutes);
 app.use('/api/productos', productoRoutes);
 app.use('/api/pedidos', pedidoRoutes);
 app.use('/api/detalles-pedido', detallePedidoRoutes);
+app.use('/api/despachos', despachoRoutes);
 
 
 app.use(notFound);

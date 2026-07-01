@@ -126,19 +126,7 @@ DetallePedido.belongsTo(Producto, {
 });
 
 //
-// Ruta -> Despacho
-//
-Ruta.hasMany(Despacho, {
-  foreignKey: 'ruta_id',
-});
-
-Despacho.belongsTo(Ruta, {
-  foreignKey: 'ruta_id',
-});
-
-//
 // Pedido -> Despacho
-// Relación 1 : 1
 //
 Pedido.hasMany(Despacho, {
   foreignKey: 'pedido_id',

@@ -4,52 +4,65 @@ import Usuario from '../models/Usuario.js';
 import DetallePedido from '../models/DetallePedido.js';
 import Producto from '../models/Producto.js';
 
-export const obtenerTodos = async () => {
-  return await Pedido.findAll({
+
+const pedidoRelations = [
+  {
+    model: Cliente,
+    attributes: [
+      'id',
+      'nombre',
+      'ubicacion_id',
+    ],
+  },
+  {
+    model: Usuario,
+    attributes: [
+      'id',
+      'nombre',
+      'apellido',
+      'correo',
+      'rol',
+    ],
+  },
+];
+
+const pedidoRelationsDetalle = [
+  ...pedidoRelations,
+  {
+    model: DetallePedido,
     include: [
       {
-        model: Cliente,
-        attributes: ['id', 'nombre'],
-      },
-      {
-        model: Usuario,
+        model: Producto,
         attributes: [
           'id',
           'nombre',
-          'apellido',
-          'correo',
-          'rol',
+          'precio_venta',
         ],
       },
     ],
+  },
+];
+
+
+export const obtenerTodos = async () => {
+  return await Pedido.findAll({
+    include: pedidoRelations,
     order: [['id', 'ASC']],
   });
 };
 
+
 export const obtenerPorId = async (id) => {
   return await Pedido.findByPk(id, {
-    include: [
-      {
-        model: Cliente,
-        attributes: ['id', 'nombre'],
-      },
-      {
-        model: Usuario,
-        attributes: [
-          'id',
-          'nombre',
-          'apellido',
-          'correo',
-          'rol',
-        ],
-      },
-    ],
+    include: pedidoRelationsDetalle,
   });
 };
+
 
 export const crear = async (datos) => {
   return await Pedido.create(datos);
 };
+
 
 export const actualizar = async (id, datos) => {
   const pedido = await Pedido.findByPk(id);
@@ -58,10 +71,20 @@ export const actualizar = async (id, datos) => {
     return null;
   }
 
+  if (
+    pedido.estado !== 'PENDIENTE' &&
+    pedido.estado !== 'PREPARANDO'
+  ) {
+    throw new Error(
+      'Solo se pueden modificar pedidos pendientes o en preparación',
+    );
+  }
+
   await pedido.update(datos);
 
   return await obtenerPorId(id);
 };
+
 
 export const eliminar = async (id) => {
   const pedido = await Pedido.findByPk(id);
@@ -70,12 +93,11 @@ export const eliminar = async (id) => {
     return null;
   }
 
-  await pedido.update({
-    estado: 'CANCELADO',
-  });
-
-  return true;
+  throw new Error(
+    'La eliminación de pedidos no está permitida. Utilice el endpoint de cancelación.',
+  );
 };
+
 
 export const preparar = async (id) => {
   const pedido = await Pedido.findByPk(id);
@@ -97,6 +119,41 @@ export const preparar = async (id) => {
   return await obtenerPorId(id);
 };
 
+
+export const finalizarPreparacion = async (id) => {
+  const pedido = await Pedido.findByPk(id);
+
+  if (!pedido) {
+    return null;
+  }
+
+  if (pedido.estado !== 'PREPARANDO') {
+    throw new Error(
+      'Solo los pedidos en PREPARANDO pueden finalizar la preparación',
+    );
+  }
+
+  const detalles =
+    await DetallePedido.findAll({
+      where: {
+        pedido_id: id,
+      },
+    });
+
+  if (detalles.length === 0) {
+    throw new Error(
+      'El pedido debe tener al menos un producto antes de quedar listo para despacho',
+    );
+  }
+
+  await pedido.update({
+    estado: 'LISTO_PARA_DESPACHO',
+  });
+
+  return await obtenerPorId(id);
+};
+
+
 export const cancelar = async (id) => {
   const pedido = await Pedido.findByPk(id);
 
@@ -106,10 +163,11 @@ export const cancelar = async (id) => {
 
   if (
     pedido.estado !== 'PENDIENTE' &&
-    pedido.estado !== 'PREPARANDO'
+    pedido.estado !== 'PREPARANDO' &&
+    pedido.estado !== 'LISTO_PARA_DESPACHO'
   ) {
     throw new Error(
-      'Solo se pueden cancelar pedidos pendientes o en preparación',
+      'Solo se pueden cancelar pedidos pendientes, en preparación o listos para despacho',
     );
   }
 
@@ -130,7 +188,7 @@ export const cancelar = async (id) => {
       await producto.update({
         stock_actual:
           producto.stock_actual +
-          detalle.cantidad,
+          Number(detalle.cantidad),
       });
     }
   }
@@ -142,20 +200,68 @@ export const cancelar = async (id) => {
   return await obtenerPorId(id);
 };
 
-export const existeCliente = async (clienteId) => {
-  return await Cliente.findOne({
-    where: {
-      id: clienteId,
-      estado: true,
-    },
-  });
+
+export const pedidoTieneDetalles = async (pedidoId) => {
+  const cantidad =
+    await DetallePedido.count({
+      where: {
+        pedido_id: pedidoId,
+      },
+    });
+
+  return cantidad > 0;
 };
 
-export const existeUsuario = async (usuarioId) => {
-  return await Usuario.findOne({
+export const sincronizarEstadoConDespacho = async (
+  pedidoId,
+  evento,
+) => {
+  const pedido = await Pedido.findByPk(
+    pedidoId,
+  );
+
+  if (!pedido) {
+    return null;
+  }
+
+  let nuevoEstado;
+
+  switch (evento) {
+  case 'DESPACHO_CREADO':
+    nuevoEstado = 'DESPACHADO';
+    break;
+
+  case 'DESPACHO_ENTREGADO':
+    nuevoEstado = 'ENTREGADO';
+    break;
+
+  case 'DESPACHO_CANCELADO':
+    nuevoEstado =
+        'LISTO_PARA_DESPACHO';
+    break;
+
+  default:
+    throw new Error(
+      'Evento de despacho no válido',
+    );
+  }
+
+  await pedido.update({
+    estado: nuevoEstado,
+  });
+
+  return await obtenerPorId(
+    pedidoId,
+  );
+};
+
+
+export const obtenerPedidosDisponibles = async () => {
+  return await Pedido.findAll({
     where: {
-      id: usuarioId,
-      estado: true,
+      estado: 'LISTO_PARA_DESPACHO',
     },
+    include: pedidoRelations,
+    order: [['id', 'ASC']],
   });
 };

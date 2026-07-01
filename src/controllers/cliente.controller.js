@@ -1,5 +1,7 @@
 import * as clienteService from '../services/cliente.service.js';
 
+import { BODEGA_CENTRAL_ID } from '../constants/logistica.js';
+
 import {
   successResponse,
   errorResponse,
@@ -130,6 +132,14 @@ export const crear = async (req, res) => {
       );
     }
 
+    if (ubicacion_id === BODEGA_CENTRAL_ID) {
+      return errorResponse(
+        res,
+        'La ubicación seleccionada es de uso interno',
+        400,
+      );
+    }
+
     const ubicacion =
       await clienteService.existeUbicacion(
         ubicacion_id,
@@ -246,6 +256,14 @@ export const actualizar = async (req, res) => {
           400,
         );
       }
+    }
+
+    if (datos.ubicacion_id === BODEGA_CENTRAL_ID) {
+      return errorResponse(
+        res,
+        'La ubicación seleccionada es de uso interno',
+        400,
+      );
     }
 
     if (datos.ubicacion_id !== undefined) {
