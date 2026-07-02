@@ -4,20 +4,43 @@
  * ---------------------------------------------------------
  *
  * Responsabilidad:
- * Actuar como adaptador entre Node.js y el
- * algoritmo A* implementado en Python.
+ * Actuar como adaptador entre Node.js y el servicio de
+ * cálculo de rutas implementado en Python.
  *
- * Este servicio NO conoce:
+ * Este servicio encapsula completamente la comunicación
+ * HTTP con FastAPI, permitiendo que el resto del sistema
+ * desconozca los detalles de integración.
+ *
+ * No conoce:
  *
  * - Sequelize
+ * - Express
  * - Pedidos
  * - Clientes
  * - Despachos
- * - Express
+ * - Algoritmo A*
  *
- * Únicamente envía información a Python y
- * devuelve el resultado del cálculo.
+ * Únicamente envía el contrato de entrada al servicio
+ * Python y devuelve el contrato de salida.
  */
+
+import axios from 'axios';
+
+/**
+ * ---------------------------------------------------------
+ * Cliente HTTP
+ * ---------------------------------------------------------
+ *
+ * Instancia reutilizable para comunicarse con el servicio
+ * de cálculo de rutas.
+ */
+const pythonApi = axios.create({
+  baseURL:
+    process.env.PYTHON_API ??
+    'http://127.0.0.1:8000',
+
+  timeout: 5000,
+});
 
 /**
  * ---------------------------------------------------------
@@ -40,49 +63,72 @@
  *    tiempo_estimado
  * }
  */
-export const calcularRuta = async ({
-  origenId,
-  destinoId,
-  rutas,
-}) => {
+export const calcularRuta = async (
+  payload,
+) => {
+  try {
+    //-------------------------------------------------------
+    // Invocar servicio Python
+    //-------------------------------------------------------
 
-  //
-  // =======================================================
-  // TODO (Mock):
-  //
-  // Durante el desarrollo del MVP esta función devuelve
-  // una respuesta simulada para permitir probar todo el
-  // flujo logístico sin depender todavía del algoritmo A*.
-  //
-  // Cuando se implemente Python únicamente se deberá
-  // reemplazarse el contenido de esta función por la
-  // comunicación real (HTTP, FastAPI, Flask, etc.).
-  //
-  // NO será necesario modificar ningún otro archivo
-  // del proyecto.
-  // =======================================================
-  //
+    const { data } =
+      await pythonApi.post(
+        '/api/rutas/calcular',
+        payload,
+      );
 
-  console.log(
-    'Python Service (Mock)',
-  );
+    //-------------------------------------------------------
+    // Validar respuesta
+    //-------------------------------------------------------
 
-  console.log({
-    origenId,
-    destinoId,
-    rutas,
-  });
+    if (
+      !data ||
+      !Array.isArray(data.ruta) ||
+      typeof data.distancia_total !==
+        'number' ||
+      typeof data.tiempo_estimado !==
+        'number'
+    ) {
+      throw new Error(
+        'El servicio de cálculo de rutas devolvió una respuesta inválida.',
+      );
+    }
 
-  return {
-    ruta: [
-      origenId,
-      destinoId,
-    ],
+    //-------------------------------------------------------
+    // Devolver resultado
+    //-------------------------------------------------------
 
-    distancia_total: 0,
+    return data;
+  } catch (error) {
+    //-------------------------------------------------------
+    // Timeout o servicio no disponible
+    //-------------------------------------------------------
 
-    tiempo_estimado: 0,
-  };
+    if (
+      error.code === 'ECONNREFUSED' ||
+      error.code === 'ECONNABORTED'
+    ) {
+      throw new Error(
+        `No fue posible comunicarse con el servicio de cálculo de rutas: ${error.message}`,
+        { cause: error },
+      );
+    }
+
+    //-------------------------------------------------------
+    // Error HTTP devuelto por Python
+    //-------------------------------------------------------
+
+    if (error.response) {
+      throw new Error(
+        `El servicio de cálculo de rutas devolvió un error: ${error.message}`,
+        { cause: error },
+      );
+    }
+
+    //-------------------------------------------------------
+    // Error de validación u otro error interno
+    //-------------------------------------------------------
+
+    throw error;
+  }
 };
-
-

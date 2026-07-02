@@ -25,7 +25,8 @@ El presente repositorio corresponde al desarrollo del módulo **Outbound**, cuya
 ## Inteligencia Artificial
 
 * Python
-* Algoritmo A* (en proceso de integración)
+* FastAPI
+* Algoritmo A*
 
 ## Automatización
 
@@ -91,7 +92,7 @@ python.service.js   despacho.service.js
             Response
 ```
 
-Esta arquitectura permite integrar el algoritmo A* y futuras automatizaciones sin modificar el flujo principal del sistema.
+Esta arquitectura desacopla completamente la lógica de negocio del cálculo de rutas y las automatizaciones. El servicio `logistica.service.js` actúa como orquestador, mientras que `python.service.js` encapsula la comunicación con el servicio FastAPI encargado de ejecutar el algoritmo A*. Gracias a esta separación, futuras mejoras en el algoritmo o nuevas integraciones podrán incorporarse sin afectar el resto del backend.
 
 ---
 
@@ -127,7 +128,7 @@ Las relaciones entre entidades se encuentran completamente implementadas y sincr
 
 * Configuración completa del backend con Express y Sequelize.
 * Conexión con MySQL.
-* Modelado de la base de datos.
+* Modelado completo de la base de datos.
 * Implementación de todos los modelos del módulo Outbound.
 * Relaciones entre entidades.
 * CRUD completo para:
@@ -141,6 +142,7 @@ Las relaciones entre entidades se encuentran completamente implementadas y sincr
   * Pedidos
   * Detalles de Pedido
   * Despachos
+
 * Validaciones de negocio.
 * Gestión automática del stock.
 * Cálculo automático del total de pedidos.
@@ -148,7 +150,9 @@ Las relaciones entre entidades se encuentran completamente implementadas y sincr
 * Gestión del ciclo de vida de los despachos.
 * Refactorización del módulo de despachos mediante una arquitectura desacoplada basada en servicios especializados.
 * Servicio orquestador de logística.
-* Adaptador para integración con Python.
+* Integración completa entre Node.js y Python mediante FastAPI.
+* Implementación del algoritmo A* para cálculo de rutas óptimas.
+* Arquitectura desacoplada para el módulo de Inteligencia Artificial.
 * Adaptador para integración con n8n.
 * Endpoint para consultar pedidos disponibles para despacho.
 * Pruebas funcionales realizadas mediante Thunder Client.
@@ -157,15 +161,17 @@ Las relaciones entre entidades se encuentran completamente implementadas y sincr
 
 ## En Desarrollo
 
-* Implementación del algoritmo A* en Python.
-* Integración completa entre Node.js y Python.
+* Desarrollo del frontend del módulo Outbound.
+* Diseño de la interfaz para la gestión de pedidos y despachos.
+* Diseño del flujo de interacción entre los procesos comerciales y logísticos.
 
 ---
 
 ## Pendiente
 
-* Automatizaciones mediante n8n.
-* Desarrollo del frontend en React.
+* Implementación del panel de gestión de pedidos.
+* Implementación del panel de gestión de despachos.
+* Integración de automatizaciones mediante n8n.
 * Mejoras y ampliaciones funcionales del sistema.
 
 ---
@@ -178,10 +184,24 @@ Clonar el repositorio:
 git clone <url-del-repositorio>
 ```
 
-Instalar dependencias:
+Instalar las dependencias del backend:
 
 ```bash
 npm install
+```
+
+Crear el entorno virtual del servicio de Inteligencia Artificial:
+
+```bash
+cd python
+
+python -m venv .venv
+
+.\.venv\Scripts\activate
+
+pip install -r requirements.txt
+
+deactivate
 ```
 
 Configurar las variables de entorno:
@@ -192,13 +212,22 @@ DB_PORT=
 DB_NAME=
 DB_USER=
 DB_PASSWORD=
+
+PYTHON_API=http://127.0.0.1:8000
 ```
 
-Ejecutar el servidor:
+Iniciar el proyecto:
 
 ```bash
 npm run dev
 ```
+
+El comando anterior inicia automáticamente:
+
+- Backend Express.
+- Servicio FastAPI del algoritmo A*.
+
+Gracias al uso de `concurrently`, ambos servicios se ejecutan de forma simultánea durante el desarrollo.
 
 ---
 
@@ -206,11 +235,12 @@ npm run dev
 
 Las siguientes etapas del proyecto contemplan:
 
-1. Implementar el algoritmo A* para optimización de rutas.
-2. Integrar el módulo Python con el backend.
-3. Incorporar automatizaciones mediante n8n.
-4. Desarrollar la interfaz web en React.
-5. Implementar mejoras evolutivas sobre los módulos existentes.
+1. Diseñar e implementar el frontend del módulo Outbound.
+2. Construir la interfaz para la gestión de pedidos.
+3. Construir la interfaz para la gestión de despachos.
+4. Incorporar automatizaciones mediante n8n.
+5. Continuar con mejoras evolutivas del sistema.
+
 
 ---
 
@@ -229,3 +259,6 @@ Proyecto académico desarrollado para la asignatura de Inteligencia Artificial.
 # Licencia
 
 Proyecto desarrollado con fines educativos y académicos.
+
+
+

@@ -2,6 +2,7 @@
 # DEPENDENCIAS
 # =========================
 node_modules/
+python/.venv/
 
 # =========================
 # VARIABLES DE ENTORNO

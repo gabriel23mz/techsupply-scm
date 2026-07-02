@@ -1,0 +1,6 @@
+# =========================
+# DEPENDENCIAS
+# Entorno virtual
+# =========================
+python/.venv/
+
