@@ -1,0 +1,14 @@
+@import "./shared/styles/index.css";
+
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color: #212529;
+  background-color: #f8f9fa;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
