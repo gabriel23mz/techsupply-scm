@@ -1,6 +1,22 @@
-# =========================
-# DEPENDENCIAS
 # Entorno virtual
-# =========================
-python/.venv/
+.venv/
+venv/
 
+# Caché y bytecode de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Herramientas y sistema operativo
+.pytest_cache/
+.mypy_cache/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

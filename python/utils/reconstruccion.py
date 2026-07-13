@@ -29,4 +29,3 @@ def reconstruir_camino(
     camino.reverse()
 
     return camino
-

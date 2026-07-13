@@ -5,6 +5,10 @@ import {
   errorResponse,
 } from '../utils/apiResponse.js';
 
+/* -------------------------------------------------------------------------- */
+/* Utilidades                                                                  */
+/* -------------------------------------------------------------------------- */
+
 const capitalizarTexto = (texto) => {
   return texto
     .toLowerCase()
@@ -18,9 +22,54 @@ const capitalizarTexto = (texto) => {
     .join(' ');
 };
 
+const normalizarCoordenadas = (body) => {
+  const {
+    latitud,
+    longitud,
+  } = body;
+
+  const tieneLatitud =
+    latitud !== undefined &&
+    latitud !== null &&
+    latitud !== '';
+
+  const tieneLongitud =
+    longitud !== undefined &&
+    longitud !== null &&
+    longitud !== '';
+
+  if (tieneLatitud !== tieneLongitud) {
+    throw new Error(
+      'La ubicación debe registrar latitud y longitud juntas',
+    );
+  }
+
+  if (tieneLatitud) {
+    const lat = Number(latitud);
+    const lng = Number(longitud);
+
+    if (Number.isNaN(lat) || Number.isNaN(lng)) {
+      throw new Error(
+        'Las coordenadas deben ser numéricas',
+      );
+    }
+
+    body.latitud = lat;
+    body.longitud = lng;
+  } else {
+    body.latitud = null;
+    body.longitud = null;
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/* GET                                                                         */
+/* -------------------------------------------------------------------------- */
+
 export const obtenerTodas = async (req, res) => {
   try {
-    const ubicaciones = await ubicacionService.obtenerTodas();
+    const ubicaciones =
+      await ubicacionService.obtenerTodas();
 
     return successResponse(
       res,
@@ -28,7 +77,10 @@ export const obtenerTodas = async (req, res) => {
       'Ubicaciones obtenidas correctamente',
     );
   } catch (error) {
-    return errorResponse(res, error.message);
+    return errorResponse(
+      res,
+      error.message,
+    );
   }
 };
 
@@ -36,7 +88,8 @@ export const obtenerPorId = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const ubicacion = await ubicacionService.obtenerPorId(id);
+    const ubicacion =
+      await ubicacionService.obtenerPorId(id);
 
     if (!ubicacion) {
       return errorResponse(
@@ -52,13 +105,22 @@ export const obtenerPorId = async (req, res) => {
       'Ubicación encontrada',
     );
   } catch (error) {
-    return errorResponse(res, error.message);
+    return errorResponse(
+      res,
+      error.message,
+    );
   }
 };
 
+/* -------------------------------------------------------------------------- */
+/* POST                                                                        */
+/* -------------------------------------------------------------------------- */
+
 export const crear = async (req, res) => {
   try {
-    const { nombre } = req.body;
+    const {
+      nombre,
+    } = req.body;
 
     if (!nombre?.trim()) {
       return errorResponse(
@@ -68,9 +130,13 @@ export const crear = async (req, res) => {
       );
     }
 
-    const nombreCapitalizado = capitalizarTexto(nombre);
+    const nombreCapitalizado =
+      capitalizarTexto(nombre);
 
-    const existe = await ubicacionService.existePorNombre(nombreCapitalizado);
+    const existe =
+      await ubicacionService.existePorNombre(
+        nombreCapitalizado,
+      );
 
     if (existe) {
       return errorResponse(
@@ -79,10 +145,16 @@ export const crear = async (req, res) => {
         400,
       );
     }
-    const nuevaUbicacion = await ubicacionService.crear({
-      nombre: nombreCapitalizado,
-      estado: true,
-    });
+
+    normalizarCoordenadas(req.body);
+
+    const nuevaUbicacion =
+      await ubicacionService.crear({
+        nombre: nombreCapitalizado,
+        latitud: req.body.latitud,
+        longitud: req.body.longitud,
+        estado: true,
+      });
 
     return successResponse(
       res,
@@ -91,9 +163,16 @@ export const crear = async (req, res) => {
       201,
     );
   } catch (error) {
-    return errorResponse(res, error.message);
+    return errorResponse(
+      res,
+      error.message,
+    );
   }
 };
+
+/* -------------------------------------------------------------------------- */
+/* PUT                                                                         */
+/* -------------------------------------------------------------------------- */
 
 export const actualizar = async (req, res) => {
   try {
@@ -132,6 +211,8 @@ export const actualizar = async (req, res) => {
       }
     }
 
+    normalizarCoordenadas(req.body);
+
     const ubicacion =
       await ubicacionService.actualizar(
         id,
@@ -152,15 +233,23 @@ export const actualizar = async (req, res) => {
       'Ubicación actualizada correctamente',
     );
   } catch (error) {
-    return errorResponse(res, error.message);
+    return errorResponse(
+      res,
+      error.message,
+    );
   }
 };
+
+/* -------------------------------------------------------------------------- */
+/* DELETE                                                                      */
+/* -------------------------------------------------------------------------- */
 
 export const eliminar = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const eliminado = await ubicacionService.eliminar(id);
+    const eliminado =
+      await ubicacionService.eliminar(id);
 
     if (!eliminado) {
       return errorResponse(
@@ -176,6 +265,9 @@ export const eliminar = async (req, res) => {
       'Ubicación eliminada correctamente',
     );
   } catch (error) {
-    return errorResponse(res, error.message);
+    return errorResponse(
+      res,
+      error.message,
+    );
   }
 };

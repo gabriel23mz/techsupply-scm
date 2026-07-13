@@ -94,4 +94,3 @@ def calcular_ruta(
     # No existe una ruta entre origen y destino
     return [], 0.0
 
-

@@ -111,3 +111,31 @@ export const despachoCancelado = async (
 
   console.log(despacho);
 };
+
+
+
+/**
+ * ---------------------------------------------------------
+ * Nuevos Eventos de Jornada
+ * ---------------------------------------------------------
+ */
+export const jornadaCreada = async (jornada, despachos) => {
+  console.log('n8n -> jornadaCreada');
+  console.log({ jornada, despachos });
+};
+
+export const jornadaIniciada = async (jornada) => {
+  console.log('n8n -> jornadaIniciada');
+  console.log(jornada);
+};
+
+export const despachoNoEntregado = async (despacho) => {
+  console.log('n8n -> despachoNoEntregado');
+  console.log(despacho);
+};
+
+export const jornadaFinalizada = async (jornada) => {
+  console.log('n8n -> jornadaFinalizada');
+  console.log(jornada);
+};
+

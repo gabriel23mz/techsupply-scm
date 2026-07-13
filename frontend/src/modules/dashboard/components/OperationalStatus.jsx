@@ -1,36 +1,94 @@
-const steps = [
-  { label: 'Pedidos registrados', detail: '124 unid.', icon: 'bi-clipboard-check', active: true },
-  { label: 'Preparación', detail: '32 en picking', icon: 'bi-box-seam', active: true },
-  { label: 'Listos despacho', detail: '45 paquetes', icon: 'bi-box2-heart', active: true },
-  { label: 'Despacho activo', detail: '12 rutas', icon: 'bi-truck', active: false },
-  { label: 'Entregado', detail: '89 finales', icon: 'bi-check-circle', active: false },
+const FLOW = [
+  {
+    key: 'PENDIENTE',
+    label: 'Pendientes',
+    icon: 'bi-receipt',
+  },
+  {
+    key: 'PREPARANDO',
+    label: 'Preparando',
+    icon: 'bi-box-seam',
+  },
+  {
+    key: 'LISTO_PARA_DESPACHO',
+    label: 'Listos',
+    icon: 'bi-box2-check',
+  },
+  {
+    key: 'EN_TRANSITO',
+    label: 'En tránsito',
+    icon: 'bi-truck',
+  },
+  {
+    key: 'ENTREGADO',
+    label: 'Entregados',
+    icon: 'bi-check-circle',
+  },
 ];
 
-function OperationalStatus() {
+function OperationalStatus({
+  counts,
+}) {
+  const total = FLOW.reduce(
+    (sum, step) =>
+      sum +
+      Number(
+        counts[step.key] ?? 0,
+      ),
+    0,
+  );
+
   return (
-    <section className="dashboard-card operational-status">
-      <div className="section-header">
-        <h4>Estado operativo en tiempo real</h4>
-        <span>Filtro: Hoy</span>
-      </div>
+    <section className="dashboard-panel dashboard-operational">
+      <header className="dashboard-section-header">
+        <div>
+          <span>
+            Flujo operativo
+          </span>
 
-      <div className="status-flow">
-        <div className="status-line" />
-        <div className="status-line-active" />
+          <h4>
+            Estado actual de la operación
+          </h4>
+        </div>
 
-        {steps.map((step) => (
-          <div className="status-step" key={step.label}>
-            <div className={step.active ? 'status-icon active' : 'status-icon'}>
-              <i className={`bi ${step.icon}`} />
-            </div>
-            <strong>{step.label}</strong>
-            <small>{step.detail}</small>
-          </div>
-        ))}
+        <strong>
+          {total} registros
+        </strong>
+      </header>
+
+      <div className="dashboard-operation-grid">
+        {FLOW.map(
+          (step, index) => (
+            <article
+              key={step.key}
+              className="dashboard-operation-step"
+            >
+              <div
+                className={`dashboard-operation-icon step-${index + 1}`}
+              >
+                <i className={`bi ${step.icon}`} />
+              </div>
+
+              <div>
+                <strong>
+                  {counts[step.key] ?? 0}
+                </strong>
+
+                <span>
+                  {step.label}
+                </span>
+              </div>
+
+              {index <
+                FLOW.length - 1 && (
+                <i className="bi bi-chevron-right dashboard-operation-arrow" />
+              )}
+            </article>
+          ),
+        )}
       </div>
     </section>
   );
 }
 
 export default OperationalStatus;
-

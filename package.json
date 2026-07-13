@@ -5,9 +5,21 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "concurrently -n NODE,PYTHON -c green,cyan \"npm:dev:node\" \"npm:dev:python\"",
+    "dev": "concurrently -n NODE,PYTHON,FRONTEND -c green,cyan,magenta \"npm:dev:node\" \"npm:dev:python\" \"npm:dev:frontend\"",
     "dev:node": "nodemon server.js",
     "dev:python": "cd python && .venv\\Scripts\\python.exe -m uvicorn app:app --reload",
+    "dev:frontend": "npm --prefix frontend run dev",
+
+    "db:migrate": "sequelize-cli db:migrate",
+    "db:migrate:status": "sequelize-cli db:migrate:status",
+    "db:migrate:undo": "sequelize-cli db:migrate:undo",
+    "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all",
+    "db:seed": "sequelize-cli db:seed:all",
+    "db:seed:undo": "sequelize-cli db:seed:undo:all",
+
+    "db:demo:clear": "node database/scripts/reset-demo.cjs",
+    "db:demo:reset": "node database/scripts/reset-demo.cjs && npm run db:seed",
+
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -21,6 +33,8 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mysql2": "^3.22.5",
+    "pg": "^8.22.0",
+    "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
@@ -30,6 +44,7 @@
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.6.0",
     "nodemon": "^3.1.14",
-    "prettier": "^3.8.4"
+    "prettier": "^3.8.4",
+    "sequelize-cli": "^6.6.5"
   }
 }

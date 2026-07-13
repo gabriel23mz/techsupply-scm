@@ -15,6 +15,74 @@ import { BODEGA_CENTRAL_ID } from '../constants/logistica.js';
 //
 
 
+
+export const generarPlanJornada = async ({
+  pedidos,
+  camiones,
+  bodega,
+  rutas,
+}) => {
+  const payloadPython = {
+    bodega: {
+      id: bodega.id,
+      nombre: bodega.nombre,
+      latitud: Number(bodega.latitud),
+      longitud: Number(bodega.longitud),
+    },
+
+    camiones: camiones.map((camion) => ({
+      id: camion.id,
+      codigo: camion.codigo,
+      placa: camion.placa,
+      capacidad: camion.capacidad,
+    })),
+
+    pedidos: pedidos.map((pedido) => ({
+      pedido_id: pedido.id,
+      cliente_id: pedido.cliente_id,
+      cliente: pedido.Cliente.nombre,
+      destino_id: pedido.Cliente.Ubicacion.id,
+      ubicacion: pedido.Cliente.Ubicacion.nombre,
+      latitud: Number(pedido.Cliente.Ubicacion.latitud),
+      longitud: Number(pedido.Cliente.Ubicacion.longitud),
+      fecha_entrega: pedido.fecha_entrega,
+    })),
+
+    grafo: rutas.map((ruta) => ({
+      origen: ruta.origen_id,
+      destino: ruta.destino_id,
+      distancia: Number(ruta.distancia_km),
+    })),
+
+    velocidad_kmh: 40,
+  };
+
+  return await pythonService.generarJornadaMetaheuristica(payloadPython);
+};
+
+export const notificarJornadaCreada = async (jornada, despachos) => {
+  await n8nService.jornadaCreada(jornada, despachos).catch(console.error);
+};
+
+export const notificarJornadaIniciada = async (jornada) => {
+  await n8nService.jornadaIniciada(jornada).catch(console.error);
+};
+
+export const notificarDespachoEntregado = async (despacho) => {
+  await n8nService.despachoEntregado(despacho).catch(console.error);
+};
+
+export const notificarDespachoNoEntregado = async (despacho) => {
+  await n8nService.despachoNoEntregado(despacho).catch(console.error);
+};
+
+export const notificarJornadaFinalizada = async (jornada) => {
+  await n8nService.jornadaFinalizada(jornada).catch(console.error);
+};
+
+
+
+
 /**
  * ---------------------------------------------------------
  * Obtener Pedidos Disponibles

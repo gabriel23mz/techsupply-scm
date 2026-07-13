@@ -16,6 +16,36 @@ const Ubicacion = sequelize.define(
       unique: true,
     },
 
+    latitud: {
+      type: DataTypes.DECIMAL(10, 8),
+      allowNull: true,
+      validate: {
+        min: {
+          args: [-90],
+          msg: 'La latitud no puede ser menor a -90',
+        },
+        max: {
+          args: [90],
+          msg: 'La latitud no puede ser mayor a 90',
+        },
+      },
+    },
+
+    longitud: {
+      type: DataTypes.DECIMAL(11, 8),
+      allowNull: true,
+      validate: {
+        min: {
+          args: [-180],
+          msg: 'La longitud no puede ser menor a -180',
+        },
+        max: {
+          args: [180],
+          msg: 'La longitud no puede ser mayor a 180',
+        },
+      },
+    },
+
     estado: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -25,6 +55,24 @@ const Ubicacion = sequelize.define(
   {
     tableName: 'ubicaciones',
     timestamps: false,
+
+    validate: {
+      coordenadasCompletas() {
+        const tieneLatitud =
+        this.latitud !== null &&
+        this.latitud !== undefined;
+
+        const tieneLongitud =
+        this.longitud !== null &&
+        this.longitud !== undefined;
+
+        if (tieneLatitud !== tieneLongitud) {
+          throw new Error(
+            'La ubicación debe registrar latitud y longitud juntas',
+          );
+        }
+      },
+    },
   },
 );
 

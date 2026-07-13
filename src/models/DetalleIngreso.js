@@ -28,11 +28,22 @@ const DetalleIngreso = sequelize.define(
     cantidad: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      validate: {
+        isInt: true,
+        min: 1,
+      },
     },
   },
   {
     tableName: 'detalle_ingreso',
     timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ['ingreso_inventario_id', 'producto_id'],
+        name: 'detalle_ingreso_ingreso_producto_unique',
+      },
+    ],
   },
 );
 

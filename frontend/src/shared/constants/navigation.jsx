@@ -6,6 +6,12 @@ import RutasPage from '../../modules/rutas/pages/RutasPage';
 import CentroLogisticoPage from '../../modules/logistica/pages/CentroLogisticoPage';
 import DespachosPage from '../../modules/despachos/pages/DespachosPage';
 
+import NuevoPedidoPage from '../../modules/pedidos/pages/NuevoPedidoPage';
+import PedidoWorkspacePage from '../../modules/pedidos/pages/PedidoWorkspacePage';
+
+import JornadaDetallePage from '../../modules/logistica/pages/JornadaDetallePage';
+
+
 export const navigation = [
   {
     path: '/',
@@ -38,7 +44,7 @@ export const navigation = [
   {
     path: '/rutas',
     label: 'Rutas',
-    description: 'Configuración de rutas logísticas',
+    description: 'Gestión, configuración y control de rutas logísticas',
     icon: 'bi-signpost-split',
     element: <RutasPage />,
   },
@@ -56,5 +62,29 @@ export const navigation = [
     icon: 'bi-truck',
     element: <DespachosPage />,
   },
+  {
+    path: '/pedidos/nuevo',
+    label: 'Nuevo Pedido',
+    description: 'Registro inicial del pedido antes de agregar productos.',
+    icon: 'bi-plus-circle',
+    element: <NuevoPedidoPage />,
+    hidden: true,
+  },
+  {
+    path: '/pedidos/:id/workspace',
+    label: 'Workspace de Detalles',
+    description: 'Gestión de productos asociados al pedido.',
+    icon: 'bi-layout-text-window-reverse',
+    element: <PedidoWorkspacePage />,
+    hidden: true,
+  },
+  {
+    path: '/centro-logistico/jornadas/:id',
+    label: 'Detalle de Jornada',
+    description: 'Seguimiento operativo de la jornada y sus entregas.',
+    icon: 'bi-calendar2-event-fill',
+    element: <JornadaDetallePage />,
+    hidden: true,
+  }
 ];
 

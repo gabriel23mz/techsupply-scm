@@ -20,9 +20,15 @@ const Proveedor = sequelize.define(
     },
 
     ruc: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(13),
       allowNull: false,
       unique: true,
+      validate: {
+        len: {
+          args: [13, 13],
+          msg: 'El RUC debe tener 13 caracteres',
+        },
+      },
     },
 
     telefono: {
@@ -31,8 +37,14 @@ const Proveedor = sequelize.define(
     },
 
     correo: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(150),
       allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: {
+          msg: 'El correo del proveedor no es válido',
+        },
+      },
     },
 
     direccion: {

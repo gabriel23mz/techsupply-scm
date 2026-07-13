@@ -1,0 +1,16 @@
+# Variables de Entorno
+
+```env
+DB_HOST=
+DB_PORT=
+DB_NAME=
+DB_USER=
+DB_PASSWORD=
+
+SUPABASE_URL=
+SUPABASE_KEY=
+
+PYTHON_API=http://127.0.0.1:8000
+
+AUTH_SECRET=
+```

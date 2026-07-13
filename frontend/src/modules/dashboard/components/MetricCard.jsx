@@ -1,18 +1,46 @@
-function MetricCard({ title, value, description, icon, variant = 'primary' }) {
-  return (
-    <article className="metric-card">
-      <div>
-        <span className="metric-title">{title}</span>
-        <strong className="metric-value">{value}</strong>
-        <p className={`metric-description ${variant}`}>{description}</p>
-      </div>
+function MetricCard({
+  title,
+  value,
+  description,
+  icon,
+  variant = 'primary',
+  onClick,
+}) {
+  const Component = onClick
+    ? 'button'
+    : 'article';
 
-      <div className={`metric-icon ${variant}`}>
+  return (
+    <Component
+      type={
+        onClick
+          ? 'button'
+          : undefined
+      }
+      className={`dashboard-metric-card ${
+        onClick
+          ? 'clickable'
+          : ''
+      }`}
+      onClick={onClick}
+    >
+      <div
+        className={`dashboard-metric-icon ${variant}`}
+      >
         <i className={`bi ${icon}`} />
       </div>
-    </article>
+
+      <div>
+        <span>{title}</span>
+        <strong>{value}</strong>
+        <small>{description}</small>
+      </div>
+
+      {onClick && (
+        <i className="bi bi-arrow-up-right dashboard-metric-link" />
+      )}
+    </Component>
   );
 }
 
 export default MetricCard;
-

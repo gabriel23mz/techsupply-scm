@@ -34,11 +34,17 @@ const Producto = sequelize.define(
     precio_compra: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
+      validate: {
+        min: 0,
+      },
     },
 
     precio_venta: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
+      validate: {
+        min: 0,
+      },
     },
 
 
@@ -46,12 +52,30 @@ const Producto = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+      validate: {
+        isInt: true,
+        min: 0,
+      },
     },
 
     stock_minimo: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 5,
+      validate: {
+        isInt: true,
+        min: 0,
+      },
+    },
+
+    stock_maximo: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 100,
+      validate: {
+        isInt: true,
+        min: 1,
+      },
     },
 
     estado: {
@@ -65,6 +89,30 @@ const Producto = sequelize.define(
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
+
+    validate: {
+      validarLimitesStock() {
+        if (
+          Number(this.stock_minimo) >
+        Number(this.stock_maximo)
+        ) {
+          throw new Error(
+            'El stock mínimo no puede superar al stock máximo',
+          );
+        }
+      },
+
+      validarPrecioVenta() {
+        if (
+          Number(this.precio_venta) <
+        Number(this.precio_compra)
+        ) {
+          throw new Error(
+            'El precio de venta no puede ser menor al precio de compra',
+          );
+        }
+      },
+    },
   },
 );
 

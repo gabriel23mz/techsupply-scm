@@ -1,32 +1,29 @@
 """
-Punto de entrada del servicio de cálculo de rutas.
+Servicio de optimización logística de TechSupply SCM Outbound.
 
-Este módulo expone una API HTTP utilizando FastAPI para permitir que
-el backend Node.js solicite el cálculo de rutas óptimas mediante el
-algoritmo A*.
+La API expone dos capacidades independientes:
 
-Responsabilidades:
-    - Recibir el contrato de entrada enviado por Node.js.
-    - Construir el grafo en memoria.
-    - Ejecutar el algoritmo A*.
-    - Calcular el tiempo estimado de recorrido.
-    - Devolver el resultado en formato JSON.
+1. Cálculo de una ruta individual mediante A* con heurística nula.
+2. Generación de múltiples jornadas de reparto mediante una
+   metaheurística de colonia de hormigas para un problema CVRP.
 
-Este módulo no implementa lógica de negocio ni acceso a bases de datos.
-Toda la información necesaria es proporcionada por Node.js.
+El servicio recibe toda la información desde el backend Node.js,
+construye el grafo en memoria y devuelve resultados en formato JSON.
+No accede directamente a la base de datos ni persiste información.
 """
 
 from fastapi import FastAPI
 
 from algoritmo.astar import calcular_ruta
 from algoritmo.grafo import construir_grafo
-from modelos.contratos import SolicitudRuta
+from modelos.contratos import SolicitudRuta, SolicitudJornada
+from algoritmo.metaheuristica_jornada import generar_jornada
 from utils.tiempo import calcular_tiempo_estimado
 
 
 app = FastAPI(
     title="TechSupply Outbound - Route Service",
-    version="1.0.0",
+    version="2.0.0",
 )
 
 
@@ -77,3 +74,19 @@ def calcular(datos: SolicitudRuta) -> dict:
             distancia,
         ),
     }
+
+
+@app.post("/api/jornadas/generar")
+def generar(datos: SolicitudJornada) -> dict:
+    rutas = [
+        ruta.model_dump()
+        for ruta in datos.grafo
+    ]
+
+    grafo = construir_grafo(rutas)
+
+    payload = datos.model_dump()
+
+    return generar_jornada(payload, grafo)
+    
+

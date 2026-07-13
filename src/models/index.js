@@ -17,6 +17,10 @@ import DetalleOrdenCompra from './DetalleOrdenCompra.js';
 import IngresoInventario from './IngresoInventario.js';
 import DetalleIngreso from './DetalleIngreso.js';
 
+import Camion from './Camion.js';
+import JornadaReparto from './JornadaReparto.js';
+
+
 //
 // ======================================================
 // CATÁLOGOS
@@ -232,6 +236,33 @@ DetalleIngreso.belongsTo(Producto, {
 });
 
 //
+// Camion -> JornadaReparto
+//
+Camion.hasMany(JornadaReparto, {
+  foreignKey: 'camion_id',
+  as: 'jornadas',
+});
+
+JornadaReparto.belongsTo(Camion, {
+  foreignKey: 'camion_id',
+  as: 'camion',
+});
+
+//
+// JornadaReparto -> Despacho
+//
+JornadaReparto.hasMany(Despacho, {
+  foreignKey: 'jornada_reparto_id',
+  as: 'despachos',
+});
+
+Despacho.belongsTo(JornadaReparto, {
+  foreignKey: 'jornada_reparto_id',
+  as: 'jornada',
+});
+
+
+//
 // ======================================================
 // EXPORTACIÓN
 // ======================================================
@@ -256,6 +287,9 @@ const db = {
   DetalleOrdenCompra,
   IngresoInventario,
   DetalleIngreso,
+
+  Camion,
+  JornadaReparto,
 };
 
 export default db;

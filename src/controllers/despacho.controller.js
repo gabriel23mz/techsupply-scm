@@ -197,3 +197,45 @@ export const cancelar = async (
 
   }
 };
+
+
+export const entregarDespacho = async (req, res) => {
+  try {
+    const resultado = await despachoService.entregarDespacho(req.params.id);
+
+    await logisticaService.notificarDespachoEntregado(resultado);
+
+    return successResponse(
+      res,
+      resultado,
+      'Despacho entregado correctamente',
+    );
+  } catch (error) {
+    return errorResponse(
+      res,
+      error.message || 'Error al entregar el despacho',
+      400,
+    );
+  }
+};
+
+export const marcarNoEntregado = async (req, res) => {
+  try {
+    const resultado = await despachoService.marcarNoEntregado(req.params.id);
+
+    await logisticaService.notificarDespachoNoEntregado(resultado);
+    
+    return successResponse(
+      res,
+      resultado,
+      'Despacho marcado como no entregado correctamente',
+    );
+  } catch (error) {
+    return errorResponse(
+      res,
+      error.message || 'Error al marcar el despacho como no entregado',
+      400,
+    );
+  }
+};
+

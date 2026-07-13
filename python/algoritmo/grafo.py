@@ -23,7 +23,7 @@ def construir_grafo(rutas: list[dict[str, Any]]) -> Grafo:
     for ruta in rutas:
         origen = ruta["origen"]
         destino = ruta["destino"]
-        distancia = ruta["distancia"]
+        distancia = ruta.get("distancia", ruta.get("distancia_km"))
 
         # Garantizar que ambos nodos existan en el grafo.
         grafo.setdefault(origen, [])

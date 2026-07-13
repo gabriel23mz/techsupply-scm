@@ -39,7 +39,16 @@ const pythonApi = axios.create({
     process.env.PYTHON_API ??
     'http://127.0.0.1:8000',
 
-  timeout: 5000,
+  /*
+   * La planificación logística puede tardar varios
+   * segundos debido a:
+   * - ACO-CVRP
+   * - A*
+   * - consultas a OSRM
+   * - persistencia de múltiples jornadas
+  */
+
+  timeout: 90000,
 });
 
 /**
@@ -132,3 +141,24 @@ export const calcularRuta = async (
     throw error;
   }
 };
+
+
+export const generarJornadaMetaheuristica = async (payload) => {
+  const { data } = await pythonApi.post(
+    '/api/jornadas/generar',
+    payload,
+  );
+
+  if (
+    !data ||
+    !Array.isArray(data.jornadas) ||
+    !Array.isArray(data.pedidos_no_asignados)
+  ) {
+    throw new Error(
+      'Python devolvió una planificación multivehículo inválida',
+    );
+  }
+
+  return data;
+};
+

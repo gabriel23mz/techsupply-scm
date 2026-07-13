@@ -1,178 +1,211 @@
 # TechSupply SCM - Backend
 
-Sistema de gestión de cadena de suministro (Supply Chain Management) desarrollado como proyecto académico para la asignatura de Inteligencia Artificial.
+Backend del módulo **Outbound** de **TechSupply SCM**, desarrollado como proyecto académico para la asignatura de Inteligencia Artificial.
 
-## Descripción
-
-TechSupply SCM es una plataforma orientada a la gestión de operaciones logísticas y comerciales de una distribuidora tecnológica. El proyecto está dividido en dos módulos principales que comparten una misma base de datos:
-
-* **Inbound (Grupo 1):** Gestión de proveedores, compras e ingresos de inventario.
-* **Outbound (Grupo 2):** Gestión de clientes, pedidos, despachos y optimización de rutas.
-
-El presente repositorio corresponde al desarrollo del módulo **Outbound**, cuya arquitectura fue diseñada siguiendo principios de desacoplamiento y responsabilidad única para facilitar su mantenimiento y futura integración con componentes de Inteligencia Artificial.
+El sistema implementa la lógica de negocio para la gestión completa de la logística de salida de una distribuidora de productos tecnológicos, integrando procesos comerciales, planificación logística, optimización mediante Inteligencia Artificial y seguimiento operativo.
 
 ---
 
-# Tecnologías Utilizadas
+# Descripción
+
+TechSupply SCM se divide en dos módulos que comparten una misma base de datos:
+
+- **Inbound (Grupo 1):** Gestión de proveedores, órdenes de compra e ingresos de inventario.
+- **Outbound (Grupo 2):** Gestión de clientes, pedidos, rutas, jornadas de reparto, despachos y distribución.
+
+Este repositorio corresponde al desarrollo del módulo **Outbound**.
+
+Actualmente el backend implementa completamente el flujo operativo principal del sistema y se encuentra integrado con el frontend desarrollado en React.
+
+---
+
+# Tecnologías
 
 ## Backend
 
-* Node.js
-* Express.js
-* Sequelize ORM
-* MySQL
+- Node.js
+- Express.js
+- Sequelize ORM
+- PostgreSQL
+- Supabase
 
 ## Inteligencia Artificial
 
-* Python
-* FastAPI
-* Algoritmo A*
-
-## Automatización
-
-* n8n (integración preparada)
+- Python
+- FastAPI
+- Metaheurística de Colonia de Hormigas (CVRP)
+- Algoritmo A*
+- OSRM
 
 ## Frontend
 
-* React (pendiente de desarrollo)
+- React
+- Vite
+
+## Automatización
+
+- n8n (arquitectura preparada)
 
 ---
 
-# Arquitectura del Backend
-
-La lógica del sistema se encuentra organizada en capas, separando controladores, servicios y persistencia.
+# Arquitectura General
 
 ```text
 Cliente HTTP
-      │
-      ▼
-Controllers
-      │
-      ▼
-Servicios de Negocio
-      │
-      ▼
-Servicios Especializados
-      │
-      ├───────────────┐
-      ▼               ▼
-Persistencia      Integraciones
-      │               │
-      ▼               ▼
-  Sequelize       Python / n8n
-      │
-      ▼
-    MySQL
+        │
+        ▼
+ Controllers
+        │
+        ▼
+ Servicios de negocio
+        │
+        ├──────────────────────────┐
+        ▼                          ▼
+ Persistencia                Servicios externos
+        │                          │
+        ▼                          ▼
+ PostgreSQL                 Python / n8n / OSRM
+        │
+        ▼
+     Supabase
 ```
 
-El módulo de logística implementa una arquitectura basada en un servicio orquestador (`logistica.service.js`) que coordina la creación y administración de los despachos, manteniendo desacopladas las responsabilidades de persistencia, cálculo de rutas y automatizaciones.
+La arquitectura se encuentra desacoplada mediante controladores, servicios y modelos, permitiendo que cada responsabilidad permanezca aislada y facilite futuras ampliaciones.
 
 ---
 
-# Arquitectura del Módulo de Logística
+# Arquitectura del módulo logístico
+
+Actualmente la operación logística gira alrededor de la entidad **Jornada de Reparto**, la cual representa una planificación completa realizada para un camión.
 
 ```text
-POST /despachos
-        │
-        ▼
-Controller
-        │
-        ▼
-logistica.service.js
-        │
-        ├───────────────┐
-        ▼               ▼
-python.service.js   despacho.service.js
-        │               │
-        └───────┬───────┘
-                ▼
-          n8n.service.js
+Pedidos LISTOS PARA DESPACHO
                 │
                 ▼
-            Response
+      JornadaRepartoService
+                │
+                ▼
+     Python Metaheurística
+                │
+                ▼
+      Jornada de reparto
+                │
+        ┌───────┴────────┐
+        ▼                ▼
+   Despachos        Ruta General
+        │
+        ▼
+ Automatizaciones (n8n)
 ```
 
-Esta arquitectura desacopla completamente la lógica de negocio del cálculo de rutas y las automatizaciones. El servicio `logistica.service.js` actúa como orquestador, mientras que `python.service.js` encapsula la comunicación con el servicio FastAPI encargado de ejecutar el algoritmo A*. Gracias a esta separación, futuras mejoras en el algoritmo o nuevas integraciones podrán incorporarse sin afectar el resto del backend.
+Cada jornada agrupa múltiples despachos, mantiene el recorrido completo, la posición actual del vehículo y el estado operativo de la distribución.
 
 ---
 
 # Modelo de Datos
 
-El proyecto implementa mediante Sequelize las principales entidades del módulo Outbound.
-
 ## Catálogos
 
-* Usuario
-* Categoría
-* Producto
-* Ubicación
+- Usuarios
+- Categorías
+- Productos
+- Ubicaciones
+- Rutas
+- Camiones
 
 ## Gestión Comercial
 
-* Cliente
-* Pedido
-* DetallePedido
+- Clientes
+- Pedidos
+- Detalles de Pedido
 
 ## Gestión Logística
 
-* Ruta
-* Despacho
+- Jornadas de Reparto
+- Despachos
 
-Las relaciones entre entidades se encuentran completamente implementadas y sincronizadas con la base de datos MySQL.
+Todas las entidades se encuentran modeladas mediante Sequelize y sincronizadas con PostgreSQL utilizando Supabase.
 
 ---
 
-# Estado Actual del Proyecto
+# Funcionalidades implementadas
+
+## Gestión Comercial
+
+- CRUD de clientes.
+- CRUD de ubicaciones.
+- CRUD de rutas.
+- CRUD de categorías.
+- CRUD de productos.
+- CRUD de usuarios.
+- Gestión completa de pedidos.
+- Gestión de detalles de pedido.
+- Control automático de inventario.
+- Validaciones de negocio.
+
+---
+
+## Gestión Logística
+
+- Generación automática de jornadas.
+- Asignación automática de camiones.
+- Creación automática de despachos.
+- Persistencia de rutas.
+- Estados operativos.
+- Seguimiento de jornadas.
+- Gestión de entregas.
+- Pedidos no entregados.
+- Cancelación de despachos.
+- Consulta histórica.
+
+---
+
+## Inteligencia Artificial
+
+- Comunicación Node ↔ Python mediante FastAPI.
+- Metaheurística de Colonia de Hormigas para planificación logística.
+- Algoritmo A* disponible para cálculo de caminos.
+- Integración con OSRM para cálculo de geometrías y distancias reales.
+
+---
+
+## Seguridad
+
+- Autenticación local.
+- Hash de contraseñas mediante bcrypt.
+- Login.
+- Protección básica de rutas.
+- Tokens de sesión.
+
+---
+
+# Estado actual del proyecto
 
 ## Implementado
 
-* Configuración completa del backend con Express y Sequelize.
-* Conexión con MySQL.
-* Modelado completo de la base de datos.
-* Implementación de todos los modelos del módulo Outbound.
-* Relaciones entre entidades.
-* CRUD completo para:
-
-  * Usuarios
-  * Categorías
-  * Productos
-  * Ubicaciones
-  * Clientes
-  * Rutas
-  * Pedidos
-  * Detalles de Pedido
-  * Despachos
-
-* Validaciones de negocio.
-* Gestión automática del stock.
-* Cálculo automático del total de pedidos.
-* Gestión del ciclo de vida de los pedidos.
-* Gestión del ciclo de vida de los despachos.
-* Refactorización del módulo de despachos mediante una arquitectura desacoplada basada en servicios especializados.
-* Servicio orquestador de logística.
-* Integración completa entre Node.js y Python mediante FastAPI.
-* Implementación del algoritmo A* para cálculo de rutas óptimas.
-* Arquitectura desacoplada para el módulo de Inteligencia Artificial.
-* Adaptador para integración con n8n.
-* Endpoint para consultar pedidos disponibles para despacho.
-* Pruebas funcionales realizadas mediante Thunder Client.
+- Backend completamente funcional.
+- Frontend completamente integrado.
+- PostgreSQL mediante Supabase.
+- Arquitectura modular.
+- Gestión comercial completa.
+- Gestión logística completa.
+- Dashboard conectado.
+- Sistema de autenticación.
+- Integración Node ↔ Python.
+- Integración con mapas.
+- Servicios preparados para automatización mediante n8n.
 
 ---
 
-## En Desarrollo
+## En desarrollo
 
-* Desarrollo del frontend del módulo Outbound.
-* Diseño de la interfaz para la gestión de pedidos y despachos.
-* Diseño del flujo de interacción entre los procesos comerciales y logísticos.
+Las siguientes funcionalidades ya poseen la arquitectura preparada, pero aún requieren implementación completa:
 
----
-
-## Pendiente
-
-* Implementación del panel de gestión de pedidos.
-* Implementación del panel de gestión de despachos.
-* Integración de automatizaciones mediante n8n.
-* Mejoras y ampliaciones funcionales del sistema.
+- Automatizaciones mediante n8n.
+- Notificaciones automáticas a clientes.
+- Roles y permisos.
+- Auditoría de operaciones.
+- Mejoras de rendimiento.
 
 ---
 
@@ -184,13 +217,13 @@ Clonar el repositorio:
 git clone <url-del-repositorio>
 ```
 
-Instalar las dependencias del backend:
+Instalar dependencias:
 
 ```bash
 npm install
 ```
 
-Crear el entorno virtual del servicio de Inteligencia Artificial:
+Configurar el servicio Python:
 
 ```bash
 cd python
@@ -204,7 +237,7 @@ pip install -r requirements.txt
 deactivate
 ```
 
-Configurar las variables de entorno:
+Crear el archivo `.env`:
 
 ```env
 DB_HOST=
@@ -213,7 +246,12 @@ DB_NAME=
 DB_USER=
 DB_PASSWORD=
 
+SUPABASE_URL=
+SUPABASE_KEY=
+
 PYTHON_API=http://127.0.0.1:8000
+
+AUTH_SECRET=
 ```
 
 Iniciar el proyecto:
@@ -222,25 +260,26 @@ Iniciar el proyecto:
 npm run dev
 ```
 
-El comando anterior inicia automáticamente:
+El comando ejecuta simultáneamente:
 
 - Backend Express.
-- Servicio FastAPI del algoritmo A*.
-
-Gracias al uso de `concurrently`, ambos servicios se ejecutan de forma simultánea durante el desarrollo.
+- Servicio Python (FastAPI).
 
 ---
 
-# Próximos Objetivos
+# Estado del proyecto
 
-Las siguientes etapas del proyecto contemplan:
+**Versión actual:** MVP Funcional (Versión Base Estable)
 
-1. Diseñar e implementar el frontend del módulo Outbound.
-2. Construir la interfaz para la gestión de pedidos.
-3. Construir la interfaz para la gestión de despachos.
-4. Incorporar automatizaciones mediante n8n.
-5. Continuar con mejoras evolutivas del sistema.
+El sistema implementa completamente el flujo principal del módulo Outbound.
 
+Las siguientes iteraciones estarán enfocadas principalmente en:
+
+- refactorización del backend;
+- optimización del código;
+- automatización mediante n8n;
+- control de acceso por roles;
+- pruebas integrales del sistema.
 
 ---
 
@@ -259,6 +298,3 @@ Proyecto académico desarrollado para la asignatura de Inteligencia Artificial.
 # Licencia
 
 Proyecto desarrollado con fines educativos y académicos.
-
-
-

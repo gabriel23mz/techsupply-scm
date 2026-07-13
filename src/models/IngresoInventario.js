@@ -30,7 +30,7 @@ const IngresoInventario = sequelize.define(
     },
 
     observacion: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(500),
       allowNull: true,
     },
   },

@@ -25,11 +25,36 @@ const Despacho = sequelize.define(
       allowNull: true,
     },
 
+    jornada_reparto_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    orden_entrega: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      validate: {
+        isInt: {
+          msg: 'El orden de entrega debe ser un número entero',
+        },
+        min: {
+          args: [1],
+          msg: 'El orden de entrega debe ser mayor a cero',
+        },
+      },
+    },
+
+    fecha_estimada_entrega: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+
     estado: {
       type: DataTypes.ENUM(
         'PENDIENTE',
         'EN_TRANSITO',
         'ENTREGADO',
+        'NO_ENTREGADO',
         'CANCELADO',
       ),
       allowNull: false,
@@ -37,18 +62,33 @@ const Despacho = sequelize.define(
     },
 
     ruta_json: {
-      type: DataTypes.TEXT,
+      type: DataTypes.JSONB,
       allowNull: true,
     },
 
     distancia_total: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
+      validate: {
+        min: {
+          args: [0],
+          msg: 'La distancia total no puede ser negativa',
+        },
+      },
     },
 
     tiempo_estimado: {
       type: DataTypes.INTEGER,
       allowNull: true,
+      validate: {
+        isInt: {
+          msg: 'El tiempo estimado debe ser un número entero',
+        },
+        min: {
+          args: [0],
+          msg: 'El tiempo estimado no puede ser negativo',
+        },
+      },
     },
   },
   {

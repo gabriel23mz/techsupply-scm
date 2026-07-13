@@ -1,0 +1,921 @@
+.locations-page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.locations-banner {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border: 1px solid rgba(30, 58, 138, 0.14);
+  border-radius: 13px;
+  background: linear-gradient(
+    90deg,
+    rgba(30, 58, 138, 0.07),
+    rgba(14, 165, 233, 0.035)
+  );
+  padding: 12px 15px;
+}
+
+.locations-banner__icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(30, 58, 138, 0.11);
+  color: var(--color-primary);
+  font-size: 18px;
+}
+
+.locations-banner > div:nth-child(2) {
+  min-width: 0;
+  flex: 1;
+}
+
+.locations-banner strong,
+.locations-banner span {
+  display: block;
+}
+
+.locations-banner strong {
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.locations-banner span {
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.locations-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.locations-metric-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 90px;
+  border: 1px solid var(--color-border);
+  border-radius: 13px;
+  background: var(--color-surface);
+  padding: 14px 16px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.035);
+}
+
+.locations-metric-icon {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  font-size: 18px;
+}
+
+.locations-metric-icon.primary {
+  background: rgba(30, 58, 138, 0.1);
+  color: var(--color-primary);
+}
+
+.locations-metric-icon.success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.locations-metric-icon.info {
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--color-info);
+}
+
+.locations-metric-icon.warning {
+  background: rgba(245, 158, 11, 0.13);
+  color: #b45309;
+}
+
+.locations-metric-card span,
+.locations-metric-card strong,
+.locations-metric-card small {
+  display: block;
+}
+
+.locations-metric-card span {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.locations-metric-card strong {
+  margin-top: 2px;
+  color: var(--color-text);
+  font-size: 20px;
+}
+
+.locations-metric-card small {
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: 10px;
+}
+
+.locations-workspace {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.locations-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 18px;
+}
+
+.locations-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  padding: 15px 14px;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.locations-tabs button.active {
+  border-bottom-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.locations-tabs b {
+  min-width: 23px;
+  height: 21px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-background);
+  padding: 0 6px;
+  font-size: 10px;
+}
+
+.locations-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 210px auto;
+  gap: 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+  padding: 15px 18px;
+}
+
+.locations-search {
+  position: relative;
+}
+
+.locations-search > i {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  z-index: 2;
+  color: var(--color-text-secondary);
+  transform: translateY(-50%);
+}
+
+.locations-search input {
+  padding-left: 36px;
+}
+
+.locations-table-wrapper {
+  overflow-x: auto;
+}
+
+.locations-table thead th {
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-background);
+  padding: 13px 18px;
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.locations-table tbody td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 14px 18px;
+  color: var(--color-text);
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.locations-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.locations-name-cell > span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(30, 58, 138, 0.1);
+  color: var(--color-primary);
+}
+
+.locations-name-cell strong,
+.locations-name-cell small {
+  display: block;
+}
+
+.locations-name-cell small {
+  margin-top: 2px;
+  color: var(--color-text-secondary);
+  font-size: 9px;
+}
+
+.locations-status,
+.locations-coordinate-status {
+  display: inline-flex;
+  border-radius: 7px;
+  padding: 5px 9px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.locations-status.active,
+.locations-coordinate-status.ready {
+  background: rgba(34, 197, 94, 0.12);
+  color: #15803d;
+}
+
+.locations-status.inactive,
+.locations-coordinate-status.missing {
+  background: rgba(107, 114, 128, 0.14);
+  color: #64748b;
+}
+
+.locations-table-actions {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+}
+
+.locations-table-actions button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  color: var(--color-primary);
+}
+
+.locations-table-actions button.danger {
+  color: var(--color-error);
+}
+
+.locations-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-background);
+  padding: 13px 18px;
+}
+
+.locations-pagination > div {
+  display: flex;
+  gap: 5px;
+}
+
+.locations-pagination button {
+  min-width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.locations-pagination button.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.locations-loading,
+.locations-empty,
+.locations-map-empty {
+  min-height: 380px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  padding: 40px;
+  text-align: center;
+}
+
+.locations-map-workspace {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 14px;
+  background: var(--color-background);
+  padding: 14px;
+}
+
+.locations-map-list,
+.locations-general-map-card {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: 13px;
+  background: var(--color-surface);
+}
+
+.locations-map-list {
+  height: 590px;
+  display: flex;
+  flex-direction: column;
+}
+
+.locations-map-list > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  padding: 13px 14px;
+}
+
+.locations-map-list__content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 9px;
+}
+
+.locations-map-search {
+  position: relative;
+  padding: 10px;
+}
+
+.locations-map-search i {
+  position: absolute;
+  top: 50%;
+  left: 22px;
+  z-index: 2;
+  transform: translateY(-50%);
+}
+
+.locations-map-search input {
+  padding-left: 34px;
+}
+
+.locations-map-list-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  padding: 11px;
+  text-align: left;
+}
+
+.locations-map-list-item.selected {
+  border-color: rgba(30, 58, 138, 0.4);
+  background: rgba(30, 58, 138, 0.06);
+}
+
+.locations-general-map-container {
+  position: relative;
+  height: 590px;
+}
+
+.locations-general-leaflet,
+.locations-form-leaflet,
+.locations-detail-leaflet {
+  width: 100%;
+  height: 100%;
+}
+
+.locations-general-map-actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 500;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.locations-general-map-actions button {
+  width: 39px;
+  height: 39px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--color-primary);
+}
+
+.locations-map-div-icon {
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.locations-general-marker,
+.locations-form-marker,
+.locations-detail-marker {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #fff;
+  border-radius: 50% 50% 50% 4px;
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.28);
+  transform: rotate(-45deg);
+}
+
+.locations-general-marker i,
+.locations-form-marker i,
+.locations-detail-marker i {
+  transform: rotate(45deg);
+}
+
+.locations-general-marker.selected {
+  box-shadow:
+    0 0 0 7px rgba(30, 58, 138, 0.16),
+    0 6px 16px rgba(15, 23, 42, 0.28);
+}
+
+.locations-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.58);
+  padding: 20px;
+  backdrop-filter: blur(3px);
+}
+
+.locations-form-modal,
+.locations-detail-modal {
+  width: min(940px, 100%);
+  max-height: 92vh;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--color-surface);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
+}
+
+.locations-detail-modal {
+  width: min(650px, 100%);
+}
+
+.locations-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+  padding: 15px 18px;
+}
+
+.locations-modal-header button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-background);
+}
+
+.locations-form-layout {
+  display: grid;
+  grid-template-columns: 380px minmax(0, 1fr);
+  min-height: 520px;
+}
+
+.locations-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+  border-right: 1px solid var(--color-border);
+  padding: 20px;
+}
+
+.locations-coordinate-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.locations-form-note {
+  display: flex;
+  gap: 10px;
+  border: 1px solid rgba(30, 58, 138, 0.14);
+  border-radius: 11px;
+  background: rgba(30, 58, 138, 0.05);
+  padding: 12px;
+}
+
+.locations-form-note p {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.locations-form-map {
+  position: relative;
+  min-height: 520px;
+}
+
+.locations-form-leaflet {
+  height: 520px;
+}
+
+.locations-map-help {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 500;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 8px 10px;
+  font-size: 10px;
+}
+
+.locations-detail-body {
+  padding: 18px;
+}
+
+.locations-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 9px;
+}
+
+.locations-detail-grid article {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 11px;
+}
+
+.locations-detail-map {
+  height: 330px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.locations-detail-no-map {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+}
+
+.locations-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-background);
+  padding: 14px 18px;
+}
+
+@media (max-width: 1100px) {
+  .locations-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .locations-map-workspace,
+  .locations-form-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .locations-form-fields {
+    border-right: 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+}
+
+@media (max-width: 700px) {
+  .locations-metrics,
+  .locations-toolbar,
+  .locations-coordinate-grid,
+  .locations-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .locations-banner {
+    align-items: flex-start;
+  }
+
+  .locations-modal-overlay {
+    padding: 10px;
+  }
+
+  .locations-form-modal,
+  .locations-detail-modal {
+    max-height: 96vh;
+    overflow-y: auto;
+  }
+
+  .locations-form-map,
+  .locations-form-leaflet {
+    height: 400px;
+    min-height: 400px;
+  }
+
+  .locations-modal-footer {
+    flex-direction: column-reverse;
+  }
+
+  .locations-modal-footer .btn {
+    width: 100%;
+  }
+}
+
+
+/* ==========================================================================
+   Ajustes de legibilidad del mapa general
+   ========================================================================== */
+
+.locations-map-list > header {
+  gap: 12px;
+}
+
+.locations-map-list > header > div {
+  min-width: 0;
+}
+
+.locations-map-list > header span {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.locations-map-list > header h4 {
+  margin: 3px 0 0;
+  color: var(--color-text);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.locations-map-refresh-button {
+  width: 36px !important;
+  height: 36px !important;
+  flex-shrink: 0;
+  display: grid !important;
+  place-items: center;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 9px !important;
+  background: var(--color-surface) !important;
+  color: var(--color-primary) !important;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.06);
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.locations-map-refresh-button:hover {
+  border-color: rgba(30, 58, 138, 0.28) !important;
+  background: rgba(30, 58, 138, 0.06) !important;
+  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.09);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   Modal de ubicación: estructura estable
+   ========================================================================== */
+
+.locations-form-modal {
+  width: min(960px, calc(100vw - 40px));
+  height: min(820px, calc(100vh - 64px));
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.locations-form-modal__form {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.locations-modal-header {
+  flex-shrink: 0;
+  padding: 14px 18px;
+}
+
+.locations-modal-header p {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+}
+
+.locations-form-layout {
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: 360px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.locations-form-fields {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.locations-form-section {
+  display: grid;
+  gap: 12px;
+}
+
+.locations-form-section__heading span,
+.locations-form-section__heading strong {
+  display: block;
+}
+
+.locations-form-section__heading span {
+  color: var(--color-primary);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.locations-form-section__heading strong {
+  margin-top: 2px;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.locations-form-map {
+  min-height: 0;
+  height: 100%;
+}
+
+.locations-form-leaflet {
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+}
+
+.locations-modal-footer {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* ==========================================================================
+   Controles y ayuda del mapa del modal
+   ========================================================================== */
+
+.locations-form-map-controls {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.locations-form-map-controls button {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.48);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.97);
+  color: var(--color-primary);
+  box-shadow:
+    0 5px 14px rgba(15, 23, 42, 0.14),
+    0 1px 3px rgba(15, 23, 42, 0.08);
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.locations-form-map-controls button:hover {
+  background: #fff;
+  box-shadow:
+    0 8px 18px rgba(15, 23, 42, 0.18),
+    0 2px 5px rgba(15, 23, 42, 0.1);
+  transform: translateY(-1px);
+}
+
+.locations-map-instruction {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 500;
+  width: min(300px, calc(100% - 40px));
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(30, 58, 138, 0.16);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  padding: 18px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.locations-map-instruction > div {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(30, 58, 138, 0.1);
+  color: var(--color-primary);
+  font-size: 19px;
+}
+
+.locations-map-instruction strong,
+.locations-map-instruction span {
+  display: block;
+}
+
+.locations-map-instruction strong {
+  margin-top: 10px;
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.locations-map-instruction span {
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+  .locations-form-modal {
+    height: min(900px, calc(100vh - 32px));
+  }
+
+  .locations-form-layout {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .locations-form-fields {
+    overflow: visible;
+  }
+
+  .locations-form-map {
+    min-height: 430px;
+  }
+
+  .locations-form-leaflet {
+    height: 430px;
+  }
+}
+
+@media (max-width: 700px) {
+  .locations-form-modal {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 20px);
+  }
+
+  .locations-modal-header {
+    align-items: flex-start;
+  }
+
+  .locations-modal-footer {
+    position: sticky;
+    bottom: 0;
+  }
+}

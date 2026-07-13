@@ -11,8 +11,9 @@ const Categoria = sequelize.define(
     },
 
     nombre: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(100),
       allowNull: false,
+      unique: true,
     },
 
     descripcion: {

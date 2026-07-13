@@ -25,6 +25,11 @@ const Pedido = sequelize.define(
       allowNull: false,
     },
 
+    fecha_entrega: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+
     estado: {
       type: DataTypes.ENUM(
         'PENDIENTE',
@@ -33,6 +38,7 @@ const Pedido = sequelize.define(
         'DESPACHADO',
         'ENTREGADO',
         'CANCELADO',
+        'REPROGRAMADO',
       ),
       allowNull: false,
       defaultValue: 'PENDIENTE',
@@ -42,6 +48,12 @@ const Pedido = sequelize.define(
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       defaultValue: 0,
+      validate: {
+        min: {
+          args: [0],
+          msg: 'El total del pedido no puede ser negativo',
+        },
+      },
     },
   },
   {
@@ -49,6 +61,20 @@ const Pedido = sequelize.define(
     timestamps: true,
     createdAt: 'created_at',
     updatedAt: 'updated_at',
+    indexes: [
+      {
+        fields: ['estado'],
+        name: 'pedidos_estado_idx',
+      },
+      {
+        fields: ['fecha_entrega'],
+        name: 'pedidos_fecha_entrega_idx',
+      },
+      {
+        fields: ['cliente_id'],
+        name: 'pedidos_cliente_idx',
+      },
+    ],
   },
 );
 

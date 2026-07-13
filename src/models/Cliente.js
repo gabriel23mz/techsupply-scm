@@ -16,19 +16,37 @@ const Cliente = sequelize.define(
     },
 
     identificacion: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(13),
       allowNull: false,
       unique: true,
+      validate: {
+        len: {
+          args: [10, 13],
+          msg: 'La identificación debe tener entre 10 y 13 caracteres',
+        },
+      },
     },
 
     telefono: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(10),
       allowNull: false,
+      validate: {
+        len: {
+          args: [10, 10],
+          msg: 'El teléfono debe tener 10 caracteres',
+        },
+      },
     },
 
     correo: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(150),
       allowNull: false,
+      unique: true,
+      validate: {
+        isEmail: {
+          msg: 'El correo del cliente no es válido',
+        },
+      },
     },
 
     direccion: {

@@ -1,24 +1,61 @@
-import { Route, Routes } from 'react-router-dom';
+import {
+  Navigate,
+  Route,
+  Routes,
+} from 'react-router-dom';
 
-import { navigation } from '../shared/constants/navigation.jsx';
+import LoginPage from '../modules/auth/pages/LoginPage';
+
+import {
+  navigation,
+} from '../shared/constants/navigation.jsx';
+
 import MainLayout from '../shared/layouts/MainLayout';
+
+import ProtectedRoute from './ProtectedRoute';
 
 function Router() {
   return (
-    <MainLayout>
-      <Routes>
-        {navigation.map((route) => (
-          <Route
-            key={route.path}
-            path={route.path}
-            element={route.element}
-          />
-        ))}
-      </Routes>
-    </MainLayout>
+    <Routes>
+      <Route
+        path="/login"
+        element={<LoginPage />}
+      />
+
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <MainLayout>
+              <Routes>
+                {navigation.map(
+                  (route) => (
+                    <Route
+                      key={route.path}
+                      path={route.path}
+                      element={
+                        route.element
+                      }
+                    />
+                  ),
+                )}
+
+                <Route
+                  path="*"
+                  element={
+                    <Navigate
+                      to="/"
+                      replace
+                    />
+                  }
+                />
+              </Routes>
+            </MainLayout>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 }
 
 export default Router;
-
-

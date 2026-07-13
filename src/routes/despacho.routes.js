@@ -31,7 +31,11 @@ router.patch(
 
 router.patch(
   '/:id/entregar',
-  despachoController.entregar,
+  despachoController.entregarDespacho,
+);
+
+router.patch('/:id/no-entregado',
+  despachoController.marcarNoEntregado,
 );
 
 router.patch(
@@ -39,4 +43,6 @@ router.patch(
   despachoController.cancelar,
 );
 
+
 export default router;
+

@@ -21,13 +21,18 @@ const Usuario = sequelize.define(
     },
 
     correo: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(150),
       allowNull: false,
       unique: true,
+      validate: {
+        isEmail: {
+          msg: 'El correo del usuario no es válido',
+        },
+      },
     },
 
     password_hash: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(255),
       allowNull: false,
     },
 
