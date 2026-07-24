@@ -45,34 +45,72 @@
 - Doble clic o reintento HTTP podria repetir operaciones sensibles.
 - Avanzar jornada no usa transaccion.
 
-## Pruebas faltantes
+## Linea base automatizada de pruebas
 
-No se detectaron suites reales. El script `test` del `package.json` es placeholder.
+Existe una primera red de seguridad automatizada para Fase 1:
 
-Casos prioritarios:
+| Suite | Herramienta | Alcance actual |
+| ----- | ----------- | -------------- |
+| Backend | `node:test` | Rutas, aliases Sequelize, CRUDs operativos, autenticacion, contratos Node-Python, n8n stub y flujos logisticos criticos |
+| Python | `unittest` | Grafo, A*, ACO-CVRP, contratos Pydantic y endpoints FastAPI invocados de forma directa |
+| Frontend | `node:test` | Smoke test de infraestructura y rutas principales consumidas por la navegacion |
 
-- Pedido sin detalles no puede quedar listo.
-- Stock insuficiente al crear detalle.
-- Modificacion de detalle reintegra o descuenta correctamente.
-- Cancelacion de pedido reintegra stock.
-- Jornada sin pedidos disponibles.
-- Jornada sin camiones disponibles.
-- Python no disponible.
-- Python devuelve jornada sin entregas.
-- Pedido duplicado en respuesta Python.
-- Entrega fuera de orden.
-- No entrega reprograma pedido.
-- Finalizar jornada con despachos pendientes debe fallar.
-- Recalcular jornada con despachos no pendientes debe fallar.
+Comandos:
+
+```bash
+npm test
+npm run test:backend
+npm run test:python
+npm run test:frontend
+```
+
+Resultado de linea base:
+
+- Backend: 17 pruebas aprobadas.
+- Python: 15 pruebas aprobadas.
+- Frontend: 1 prueba aprobada.
+- Fallos omitidos intencionalmente: ninguno.
+- Servicios reales utilizados: ninguno.
+
+## Riesgos confirmados por pruebas
+
+- `detallePedido.service.js` descuenta stock antes de crear el detalle. Si falla la creacion del detalle, el stock ya fue modificado.
+- `despacho.service.js` marca despacho como `ENTREGADO` antes de actualizar el pedido. Si falla la actualizacion del pedido, puede quedar un cambio parcial.
+- A* falla con `KeyError` cuando el nodo de origen no existe en el grafo.
+- El grafo y A* aceptan distancias negativas y cero.
+- Los contratos Pydantic aceptan coordenadas fuera de rango.
+- n8n sigue siendo stub local con salida por consola.
+
+## Cobertura por modulo
+
+| Modulo | Nivel | Cobertura actual | Pendiente |
+| ------ | ----- | ---------------- | --------- |
+| Autenticacion | A | Login valido, credenciales invalidas, token y exclusion de `password_hash` | Pruebas HTTP completas de `/api/auth/me` |
+| Usuarios | B | Listado sin `password_hash`, eliminacion logica | Validaciones completas de controlador |
+| Clientes | B | Listado activo e include de ubicacion | Duplicados, relaciones y errores HTTP |
+| Categorias | B | CRUD de servicio, duplicado indirecto y eliminacion logica | Relaciones con productos |
+| Productos | B | Listado activo e include de categoria | Stock/precio y controlador |
+| Ubicaciones | B | Listado activo | Rangos de coordenadas en backend |
+| Rutas | B | Listado activo, aliases `origen` y `destino` | Duplicados y distancias invalidas |
+| Pedidos | A | Transicion de preparacion y rechazo sin detalles | Matriz completa de estados HTTP |
+| Detalles de pedido | A | Creacion, stock y riesgo no atomico | Actualizacion/eliminacion con fallos parciales |
+| Camiones | A | Resumen, capacidad y jornada vigente | Restricciones con jornadas activas |
+| Despachos | A | Entrega secuencial y riesgo no atomico | No entrega, cancelacion y finalizacion de jornada |
+| Jornadas de reparto | A | Rechazo sin pedidos/camiones, inicio y avance bloqueado | Persistencia completa con respuesta Python simulada |
+| Node-Python | A | Ruta valida, respuesta invalida e indisponibilidad simulada | Planificacion multivehiculo invalida en servicio de jornada |
+| n8n | C | Stub local sin webhook real | Cliente real con timeout, reintentos e idempotencia |
+| Dashboard | C | No hay endpoints backend propios detectados | Caracterizar si se agrega controlador dedicado |
+| Frontend | C | Smoke test de rutas principales | Renderizado React y flujos de usuario |
+| Modelos inbound | C | Inventariados por asociaciones, sin rutas activas outbound | No requieren CRUD artificial en esta fase |
 
 ## Automatizaciones recomendadas
 
 | Automatizacion | Beneficio | Prioridad |
 | -------------- | --------- | --------- |
 | Lint backend y frontend | Detectar errores de estilo/imports | Alta |
-| Tests de servicios backend | Proteger reglas de negocio | Alta |
-| Tests de contratos Node-Python | Evitar divergencias JSON | Alta |
-| Tests Python de grafo y ACO-CVRP | Validar casos limite | Alta |
+| Ampliar tests de servicios backend | Proteger reglas de negocio restantes | Alta |
+| Ampliar tests de contratos Node-Python | Evitar divergencias JSON de jornadas | Alta |
+| Ampliar tests Python de grafo y ACO-CVRP | Validar mas casos limite | Alta |
 | Detector de secretos | Evitar filtraciones | Alta |
 | Validacion de variables de entorno | Mejorar onboarding | Media |
 | CI basico | Ejecutar verificaciones antes de integrar | Media |
@@ -112,17 +150,17 @@ Antes de activar webhooks reales:
 
 ### Fase 1 - Estabilizacion minima
 
-- Proteger rutas backend.
-- Agregar transacciones a detalle/stock/total y despacho/pedido.
-- Corregir payload de `jornadaCreada`.
-- Actualizar variables de entorno de ejemplo.
+- Crear linea base automatizada de pruebas.
+- Caracterizar rutas, servicios, contratos y riesgos principales.
+- Simular servicios externos.
+- Documentar comandos y limitaciones.
 
 ### Fase 2 - Pruebas y contratos
 
-- Crear tests de reglas de pedidos.
-- Crear tests de jornadas.
-- Crear tests Node-Python.
-- Crear fixtures de rutas, bodega, camiones y pedidos.
+- Completar matriz HTTP por endpoint.
+- Agregar pruebas de controladores restantes.
+- Agregar pruebas de no entrega, cancelacion, finalizacion y recalculo.
+- Incorporar base de datos efimera solo si existe entorno aislado.
 
 ### Fase 3 - Automatizacion
 
@@ -136,6 +174,13 @@ Antes de activar webhooks reales:
 - Implementar n8n real con reintentos e idempotencia.
 - Centralizar OSRM si el proyecto crece.
 - Agregar observabilidad basica de eventos logisticos.
+
+### Fase 5 - Correcciones funcionales
+
+- Proteger rutas backend.
+- Agregar transacciones a detalle/stock/total y despacho/pedido.
+- Corregir payload de `jornadaCreada`.
+- Actualizar variables de entorno de ejemplo.
 
 ## Mejoras que pertenecen al MVP
 
@@ -163,4 +208,3 @@ Antes de activar webhooks reales:
 - Redux sin necesidad funcional.
 - Migracion completa a TypeScript.
 - Aplicacion movil.
-

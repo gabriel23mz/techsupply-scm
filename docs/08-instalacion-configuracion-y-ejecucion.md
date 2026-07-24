@@ -149,6 +149,56 @@ Este levanta Node, Python y frontend en paralelo. Debe usarse cuando dependencia
 - Rutas: debe haber rutas activas suficientes para conectar bodega y destinos.
 - Camiones: debe haber camiones `EN_BODEGA` con capacidad positiva.
 
+## Pruebas automatizadas
+
+La linea base de pruebas usa herramientas ya disponibles o nativas:
+
+- Backend: `node:test` y `node:assert/strict`.
+- Python: `unittest` de la libreria estandar.
+- Frontend: smoke test con `node:test`, sin levantar Vite ni navegador.
+
+Scripts disponibles:
+
+```bash
+npm test
+npm run test:backend
+npm run test:python
+npm run test:frontend
+```
+
+Estructura:
+
+```text
+tests/
+  backend/
+    fixtures/
+    helpers/
+    *.test.js
+  frontend/
+    *.test.js
+python/
+  tests/
+    test_*.py
+```
+
+Las pruebas backend fijan una `DATABASE_URL` ficticia dentro del proceso de test cuando hace falta importar modelos Sequelize. No ejecutan `sequelize.authenticate()`, no abren conexion a Supabase y no dependen del servicio Python real.
+
+Componentes simulados o aislados:
+
+- Modelos Sequelize mediante dobles de metodos (`findAll`, `findOne`, `findByPk`, `create`, `update`, `destroy`).
+- Servicio Python desde Node mediante mock del cliente Axios.
+- OSRM en Python mediante `unittest.mock.patch`.
+- n8n como stub local, sin webhooks reales.
+- Frontend mediante lectura estatica de configuracion y rutas principales.
+
+Limitaciones:
+
+- La suite no usa una base PostgreSQL efimera en esta fase.
+- No hay pruebas E2E con navegador.
+- No se prueba frontend con renderizado React.
+- Algunos riesgos se caracterizan con mocks para demostrar efectos parciales actuales sin corregirlos todavia.
+- Las pruebas de Node importan modulos que cargan `dotenv`; esto no implica conexion a la base ni envio de datos.
+
 ## Problemas frecuentes
 
 | Problema | Causa probable |
@@ -158,4 +208,4 @@ Este levanta Node, Python y frontend en paralelo. Debe usarse cuando dependencia
 | Generar jornada falla | Python apagado, sin rutas activas, sin camiones o sin bodega valida |
 | Mapa sin geometria real | OSRM no disponible o coordenadas invalidas |
 | Login funciona pero API queda abierta | Limitacion actual: backend no protege rutas operativas |
-
+| `npm run test:python` falla | Falta `python/.venv` o sus dependencias |
