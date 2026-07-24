@@ -1,6 +1,8 @@
 from heapq import heappush, heappop
+import math
 
 from algoritmo.heuristica import heuristica
+from errores import LogisticaError
 from modelos.tipos import Grafo, NodoId
 from utils.reconstruccion import reconstruir_camino
 
@@ -22,6 +24,35 @@ def calcular_ruta(
         Una tupla con la ruta óptima y la distancia total.
     """
 
+    if not grafo:
+      raise LogisticaError(
+        "DISCONNECTED_GRAPH",
+        "El grafo no contiene rutas disponibles",
+      )
+
+    if origen == destino:
+      if origen not in grafo:
+        raise LogisticaError(
+          "NODE_NOT_FOUND",
+          "El nodo de origen no existe en el grafo",
+          {"origen": origen},
+        )
+
+      return [origen], 0.0
+
+    if origen not in grafo:
+      raise LogisticaError(
+        "NODE_NOT_FOUND",
+        "El nodo de origen no existe en el grafo",
+        {"origen": origen},
+      )
+
+    if destino not in grafo:
+      raise LogisticaError(
+        "NODE_NOT_FOUND",
+        "El nodo de destino no existe en el grafo",
+        {"destino": destino},
+      )
 
     # Cola de prioridad (open set)
     open_set: list[tuple[float, NodoId]] = []
@@ -65,7 +96,29 @@ def calcular_ruta(
             return ruta, g_score[destino]
 
         # Explorar vecinos
-        for vecino, distancia in grafo[actual]:
+        for vecino, distancia in grafo.get(actual, []):
+
+            if vecino not in grafo:
+                raise LogisticaError(
+                    "NODE_NOT_FOUND",
+                    "Una arista apunta a un nodo inexistente",
+                    {"nodo": vecino},
+                )
+
+            if (
+                not isinstance(distancia, (int, float)) or
+                not math.isfinite(float(distancia)) or
+                float(distancia) <= 0
+            ):
+                raise LogisticaError(
+                    "INVALID_DISTANCE",
+                    "El grafo contiene una distancia invalida",
+                    {
+                        "origen": actual,
+                        "destino": vecino,
+                        "distancia": distancia,
+                    },
+                )
 
             # Si el vecino ya fue procesado, lo ignoramos
             if vecino in closed_set:

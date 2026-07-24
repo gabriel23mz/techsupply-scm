@@ -1,4 +1,5 @@
 import math
+import random
 import unittest
 from unittest.mock import patch
 
@@ -6,9 +7,14 @@ from algoritmo.astar import calcular_ruta
 from algoritmo.colonia_hormigas_cvrp import (
     ant_colony_cvrp,
     agrupar_pedidos_por_destino,
+    seleccionar_elemento_ponderado,
 )
 from algoritmo.grafo import construir_grafo
-from algoritmo.metaheuristica_jornada import generar_jornada
+from algoritmo.metaheuristica_jornada import (
+    construir_matriz_distancias,
+    generar_jornada,
+)
+from errores import LogisticaError
 
 
 def pedido(pedido_id, destino_id=2, ubicacion="Cliente Norte"):
@@ -56,24 +62,49 @@ class GrafoYAStarTests(unittest.TestCase):
 
         self.assertEqual(calcular_ruta(grafo, 1, 4), ([], 0.0))
 
-    def test_origen_inexistente_expone_keyerror_actual(self):
+    def test_origen_inexistente_devuelve_error_controlado(self):
         grafo = construir_grafo([
             {"origen": 1, "destino": 2, "distancia": 4},
         ])
 
-        with self.assertRaises(KeyError):
+        with self.assertRaisesRegex(
+            LogisticaError,
+            "origen no existe",
+        ):
             calcular_ruta(grafo, 99, 2)
 
-    def test_distancia_cero_y_negativa_se_aceptan_actualmente(self):
-        grafo_cero = construir_grafo([
-            {"origen": 1, "destino": 2, "distancia": 0},
+    def test_destino_inexistente_devuelve_error_controlado(self):
+        grafo = construir_grafo([
+            {"origen": 1, "destino": 2, "distancia": 4},
         ])
-        self.assertEqual(calcular_ruta(grafo_cero, 1, 2), ([1, 2], 0.0))
 
-        grafo_negativo = construir_grafo([
-            {"origen": 1, "destino": 2, "distancia": -3},
+        with self.assertRaisesRegex(
+            LogisticaError,
+            "destino no existe",
+        ):
+            calcular_ruta(grafo, 1, 99)
+
+    def test_mismo_origen_destino(self):
+        grafo = construir_grafo([
+            {"origen": 1, "destino": 2, "distancia": 4},
         ])
-        self.assertEqual(calcular_ruta(grafo_negativo, 1, 2), ([1, 2], -3.0))
+
+        self.assertEqual(calcular_ruta(grafo, 1, 1), ([1], 0.0))
+
+    def test_distancia_cero_negativa_nan_e_infinita_se_rechazan(self):
+        for distancia in [0, -3, math.nan, math.inf]:
+            with self.subTest(distancia=distancia):
+                with self.assertRaises(LogisticaError):
+                    construir_grafo([
+                        {"origen": 1, "destino": 2, "distancia": distancia},
+                    ])
+
+    def test_astar_rechaza_distancia_invalida_en_grafo_manual(self):
+        with self.assertRaisesRegex(
+            LogisticaError,
+            "distancia invalida",
+        ):
+            calcular_ruta({1: [(2, -1)], 2: []}, 1, 2)
 
 
 class MetaheuristicaTests(unittest.TestCase):
@@ -167,7 +198,7 @@ class MetaheuristicaTests(unittest.TestCase):
         self.assertGreater(jornada["distancia_total_km"], 0)
 
     def test_velocidad_invalida_falla_sin_llamadas_externas(self):
-        with self.assertRaisesRegex(Exception, "velocidad"):
+        with self.assertRaisesRegex(LogisticaError, "velocidad"):
             generar_jornada(
                 {
                     "bodega": self.bodega,
@@ -177,6 +208,141 @@ class MetaheuristicaTests(unittest.TestCase):
                 },
                 self.grafo,
             )
+
+    def test_pedidos_no_alcanzables_se_clasifican_sin_romper_jornadas_validas(self):
+        grafo = construir_grafo([
+            {"origen": 1, "destino": 2, "distancia": 6},
+            {"origen": 50, "destino": 51, "distancia": 2},
+        ])
+
+        with patch(
+            "algoritmo.metaheuristica_jornada.obtener_geometria_osrm",
+            side_effect=Exception("OSRM simulado no disponible"),
+        ):
+            resultado = generar_jornada(
+                {
+                    "bodega": self.bodega,
+                    "pedidos": [
+                        pedido(1, 2),
+                        pedido(2, 50, "Destino aislado"),
+                    ],
+                    "camiones": self.camiones,
+                    "velocidad_kmh": 40,
+                    "semilla": 123,
+                },
+                grafo,
+            )
+
+        self.assertEqual(resultado["pedidos_no_asignados"], [2])
+        asignados = [
+            entrega["pedido_id"]
+            for jornada in resultado["jornadas"]
+            for entrega in jornada["entregas"]
+        ]
+        self.assertEqual(asignados, [1])
+
+    def test_misma_semilla_reproduce_resultado_y_capacidad(self):
+        payload = {
+            "bodega": self.bodega,
+            "pedidos": [pedido(1, 2), pedido(2, 3)],
+            "camiones": self.camiones,
+            "velocidad_kmh": 40,
+            "semilla": 42,
+        }
+
+        with patch(
+            "algoritmo.metaheuristica_jornada.obtener_geometria_osrm",
+            side_effect=Exception("OSRM simulado no disponible"),
+        ):
+            primero = generar_jornada(payload, self.grafo)
+            segundo = generar_jornada(payload, self.grafo)
+
+        def firma(resultado):
+            return [
+                {
+                    "camion_id": jornada["camion_id"],
+                    "distancia_total_km": jornada["distancia_total_km"],
+                    "entregas": [
+                        (
+                            entrega["pedido_id"],
+                            entrega["orden_entrega"],
+                        )
+                        for entrega in jornada["entregas"]
+                    ],
+                }
+                for jornada in resultado["jornadas"]
+            ]
+
+        self.assertEqual(firma(primero), firma(segundo))
+        self.assertLessEqual(
+            primero["jornadas"][0]["capacidad_utilizada"],
+            primero["jornadas"][0]["capacidad_camion"],
+        )
+
+    def test_semillas_distintas_pueden_explorar_elecciones_distintas(self):
+        candidatos = [
+            ("A", 1),
+            ("B", 1),
+        ]
+
+        self.assertNotEqual(
+            seleccionar_elemento_ponderado(
+                candidatos,
+                random.Random(1),
+            ),
+            seleccionar_elemento_ponderado(
+                candidatos,
+                random.Random(5),
+            ),
+        )
+
+    def test_matriz_evita_repetir_astar_para_el_mismo_par(self):
+        with patch(
+            "algoritmo.metaheuristica_jornada.calcular_ruta",
+            wraps=calcular_ruta,
+        ) as spy:
+            matriz, caminos = construir_matriz_distancias(
+                self.grafo,
+                [1, 2, 3],
+            )
+
+        self.assertEqual(spy.call_count, 3)
+        self.assertEqual(matriz[1][3], 8.0)
+        self.assertEqual(caminos[(3, 1)], [3, 1])
+
+    def test_osrm_no_se_llama_dentro_de_aco_y_solo_para_jornada_final(self):
+        llamadas_osrm = 0
+
+        def fake_osrm(puntos):
+            nonlocal llamadas_osrm
+            llamadas_osrm += 1
+            return [[p["latitud"], p["longitud"]] for p in puntos]
+
+        with patch(
+            "algoritmo.metaheuristica_jornada.obtener_geometria_osrm",
+            side_effect=fake_osrm,
+        ):
+            resultado = generar_jornada(
+                {
+                    "bodega": self.bodega,
+                    "pedidos": [pedido(1, 2), pedido(2, 3)],
+                    "camiones": self.camiones,
+                    "velocidad_kmh": 40,
+                    "semilla": 7,
+                    "aco": {
+                        "num_hormigas": 4,
+                        "iteraciones": 5,
+                    },
+                },
+                self.grafo,
+            )
+
+        tramos_finales = sum(
+            len(jornada["ruta_general"]["tramos"])
+            for jornada in resultado["jornadas"]
+        )
+
+        self.assertLessEqual(llamadas_osrm, tramos_finales)
 
 
 if __name__ == "__main__":

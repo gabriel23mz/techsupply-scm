@@ -299,7 +299,7 @@ test('generación rechaza dos planes con el mismo camión o el mismo pedido', as
 
   await assert.rejects(
     () => service.generarJornadaReparto(),
-    /camión 10 fue asignado a más de una jornada/,
+    /camión duplicado/,
   );
 
   const duplicadoPedido = structuredClone(respuestaJornadaValida);
@@ -316,6 +316,6 @@ test('generación rechaza dos planes con el mismo camión o el mismo pedido', as
 
   await assert.rejects(
     () => service.generarJornadaReparto(),
-    /pedido 100 fue asignado a más de una jornada/,
+    /pedido duplicado/,
   );
 });

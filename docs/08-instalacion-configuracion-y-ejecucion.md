@@ -22,6 +22,9 @@ Variables activas esperadas:
 PORT=3000
 DATABASE_URL=postgresql://usuario:password@host:puerto/base
 PYTHON_API=http://127.0.0.1:8000
+PYTHON_TIMEOUT_MS=90000
+PYTHON_ROUTE_TIMEOUT_MS=15000
+PYTHON_JOURNEY_TIMEOUT_MS=90000
 AUTH_SECRET=valor-secreto
 ```
 
@@ -164,6 +167,7 @@ npm test
 npm run test:backend
 npm run test:python
 npm run test:frontend
+npm run benchmark:python
 ```
 
 Estructura:
@@ -198,6 +202,23 @@ Limitaciones:
 - No se prueba frontend con renderizado React.
 - Algunos riesgos se caracterizan con mocks para demostrar efectos parciales actuales sin corregirlos todavia.
 - Las pruebas de Node importan modulos que cargan `dotenv`; esto no implica conexion a la base ni envio de datos.
+
+## Benchmark logistico Python
+
+Ejecutar desde la raiz:
+
+```bash
+npm run benchmark:python
+```
+
+El benchmark usa fixtures reproducibles con semilla fija, calentamiento y tres mediciones por escenario. OSRM se simula para separar tiempo de algoritmo y geometria local del tiempo de red publica.
+
+Escenarios incluidos:
+
+- 5 pedidos / 1 camion.
+- 14 pedidos / 3 camiones.
+- 30 pedidos / 5 camiones.
+- 14 pedidos / 3 camiones con destinos repetidos.
 
 ## Problemas frecuentes
 

@@ -1,11 +1,17 @@
 import math
 import random
+import time
 from collections import defaultdict
 
 
 PENALIZACION_ARISTA_REPETIDA = 25
 PENALIZACION_DESTINO_DIVIDIDO = 100
 PENALIZACION_PEDIDO_NO_ASIGNADO = 10_000
+DEFAULT_NUM_HORMIGAS_MIN = 8
+DEFAULT_NUM_HORMIGAS_MAX = 25
+DEFAULT_ITERACIONES_MIN = 18
+DEFAULT_ITERACIONES_MAX = 70
+DEFAULT_ITERACIONES_SIN_MEJORA = 12
 
 
 def obtener_distancia(
@@ -126,7 +132,7 @@ def fragmentar_grupos(grupos, capacidad_maxima):
     return fragmentos
 
 
-def seleccionar_elemento_ponderado(candidatos):
+def seleccionar_elemento_ponderado(candidatos, rng):
     suma = sum(
         peso
         for _, peso in candidatos
@@ -134,11 +140,11 @@ def seleccionar_elemento_ponderado(candidatos):
     )
 
     if suma <= 0:
-        return random.choice(
+        return rng.choice(
             [elemento for elemento, _ in candidatos]
         )
 
-    valor = random.uniform(0, suma)
+    valor = rng.uniform(0, suma)
     acumulado = 0
 
     for elemento, peso in candidatos:
@@ -159,18 +165,21 @@ def construir_solucion_hormiga(
     feromonas,
     alfa,
     beta,
+    rng,
+    camiones_ordenados=None,
 ):
     pendientes = [grupo.copy() for grupo in grupos]
 
     asignaciones = []
     aristas_usadas_globalmente = defaultdict(int)
 
-    # Los camiones con mayor capacidad se consideran primero.
-    camiones_ordenados = sorted(
-        camiones,
-        key=lambda camion: int(camion["capacidad"]),
-        reverse=True,
-    )
+    if camiones_ordenados is None:
+        # Los camiones con mayor capacidad se consideran primero.
+        camiones_ordenados = sorted(
+            camiones,
+            key=lambda camion: int(camion["capacidad"]),
+            reverse=True,
+        )
 
     for camion in camiones_ordenados:
         capacidad = int(camion["capacidad"])
@@ -260,7 +269,8 @@ def construir_solucion_hormiga(
                 )
 
             seleccionado = seleccionar_elemento_ponderado(
-                candidatos_ponderados
+                candidatos_ponderados,
+                rng,
             )
 
             destino = int(
@@ -457,6 +467,38 @@ def calcular_costo_solucion(
     )
 
 
+def resolver_parametros(
+    total_destinos,
+    num_hormigas=None,
+    iteraciones=None,
+    iteraciones_sin_mejora=None,
+):
+    hormigas_default = min(
+        DEFAULT_NUM_HORMIGAS_MAX,
+        max(
+            DEFAULT_NUM_HORMIGAS_MIN,
+            total_destinos * 2,
+        ),
+    )
+
+    iteraciones_default = min(
+        DEFAULT_ITERACIONES_MAX,
+        max(
+            DEFAULT_ITERACIONES_MIN,
+            total_destinos * 4,
+        ),
+    )
+
+    return {
+        "num_hormigas": int(num_hormigas or hormigas_default),
+        "iteraciones": int(iteraciones or iteraciones_default),
+        "iteraciones_sin_mejora": int(
+            iteraciones_sin_mejora or
+            DEFAULT_ITERACIONES_SIN_MEJORA
+        ),
+    }
+
+
 def evaporar_feromonas(
     feromonas,
     evaporacion,
@@ -540,6 +582,10 @@ def ant_colony_cvrp(
     beta=3.0,
     evaporacion=0.35,
     q=100.0,
+    semilla=None,
+    iteraciones_sin_mejora=None,
+    max_segundos=None,
+    perfil=None,
 ):
     if not pedidos:
         return {
@@ -565,13 +611,37 @@ def ant_colony_cvrp(
         capacidad_maxima,
     )
 
+    parametros = resolver_parametros(
+        total_destinos=len(grupos),
+        num_hormigas=num_hormigas,
+        iteraciones=iteraciones,
+        iteraciones_sin_mejora=iteraciones_sin_mejora,
+    )
+
+    num_hormigas = parametros["num_hormigas"]
+    iteraciones = parametros["iteraciones"]
+    iteraciones_sin_mejora = parametros[
+        "iteraciones_sin_mejora"
+    ]
+
+    rng = random.Random(semilla)
+    camiones_ordenados = sorted(
+        camiones_validos,
+        key=lambda camion: int(camion["capacidad"]),
+        reverse=True,
+    )
+
     feromonas = {}
 
     mejor_solucion = None
     mejor_costo = float("inf")
+    sin_mejora = 0
+    iteraciones_ejecutadas = 0
+    inicio = time.perf_counter()
 
     for _ in range(iteraciones):
         soluciones_iteracion = []
+        iteraciones_ejecutadas += 1
 
         for _ in range(num_hormigas):
             solucion = construir_solucion_hormiga(
@@ -583,6 +653,8 @@ def ant_colony_cvrp(
                 feromonas=feromonas,
                 alfa=alfa,
                 beta=beta,
+                rng=rng,
+                camiones_ordenados=camiones_ordenados,
             )
 
             costo = calcular_costo_solucion(
@@ -599,6 +671,7 @@ def ant_colony_cvrp(
             if costo < mejor_costo:
                 mejor_costo = costo
                 mejor_solucion = solucion
+                sin_mejora = 0
 
         evaporar_feromonas(
             feromonas,
@@ -620,11 +693,28 @@ def ant_colony_cvrp(
                 q=q,
             )
 
+        if mejor_solucion is not None:
+            sin_mejora += 1
+
+        if sin_mejora >= iteraciones_sin_mejora:
+            break
+
+        if (
+            max_segundos is not None and
+            time.perf_counter() - inicio >= max_segundos
+        ):
+            break
+
     if mejor_solucion is None:
         raise Exception(
             "La colonia de hormigas CVRP no pudo "
             "construir una solución válida"
         )
+
+    if perfil is not None:
+        perfil["aco_iteraciones"] = iteraciones_ejecutadas
+        perfil["aco_hormigas"] = num_hormigas
+        perfil["aco_mejor_costo"] = mejor_costo
 
     return mejor_solucion
 

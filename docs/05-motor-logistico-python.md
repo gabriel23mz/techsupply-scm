@@ -23,7 +23,7 @@ El grafo se construye en memoria a partir de rutas enviadas por Node.js. Cada ru
 }
 ```
 
-El constructor tambien tolera `distancia_km`, pero el contrato actual enviado por Node usa `distancia`.
+El constructor tambien tolera `distancia_km`, pero el contrato actual enviado por Node usa `distancia`. Los nodos deben ser enteros positivos y las distancias deben ser finitas y mayores que cero.
 
 ## A*
 
@@ -32,7 +32,9 @@ El constructor tambien tolera `distancia_km`, pero el contrato actual enviado po
 Uso real:
 
 - Calcular ruta individual en `/api/rutas/calcular`.
-- Calcular distancias entre bodega, destinos y retorno dentro de la generacion de jornadas.
+- Poblar una matriz de distancias entre bodega y destinos unicos dentro de la generacion de jornadas.
+
+A* ya no se ejecuta dentro del ciclo interno de ACO. Si el grafo esta vacio, un nodo no existe o una arista es invalida, el servicio produce errores controlados.
 
 ## ACO-CVRP
 
@@ -48,11 +50,24 @@ La generacion de jornadas usa una metaheuristica de colonia de hormigas para un 
 
 Parametros por defecto:
 
-- 25 hormigas.
-- 70 iteraciones.
+- Hormigas adaptativas entre 8 y 25 segun destinos.
+- Iteraciones adaptativas entre 18 y 70 segun destinos.
+- Parada temprana por iteraciones sin mejora.
 - `alfa = 1.0`.
 - `beta = 3.0`.
 - evaporacion `0.35`.
+- semilla opcional por contrato (`semilla` o `aco.semilla`).
+
+La metaheuristica usa una instancia local `random.Random`, no el estado global de `random`. Misma entrada, misma configuracion y misma semilla producen el mismo resultado estable.
+
+## Matriz de distancias y cache
+
+Por solicitud se construye una matriz solo para:
+
+- Bodega.
+- Destinos unicos de pedidos.
+
+La matriz conserva distancia y camino de nodos por par. ACO consulta distancias en O(1), y la expansion final de entregas reutiliza los caminos guardados. Esto evita recalcular A* para cada hormiga, iteracion o evaluacion de costo.
 
 ## Capacidad y agrupacion
 
@@ -66,7 +81,38 @@ Cada jornada termina regresando a la bodega. La distancia total incluye el retor
 
 El servicio usa OSRM para obtener geometria real de carretera. OSRM devuelve coordenadas GeoJSON como `[longitud, latitud]`; el codigo las invierte a `[latitud, longitud]` para Leaflet.
 
-Si OSRM falla, la construccion de geometria puede caer a una linea directa entre origen y destino.
+OSRM no participa en ACO. Se llama solamente para las jornadas finales y usa cache por tramo dentro de la solicitud. Si OSRM falla, excede timeout, devuelve error HTTP, no JSON o geometria vacia, la construccion de geometria cae a una linea directa entre origen y destino. Ese fallback es visual y no representa distancia vial exacta.
+
+El frontend tambien usa OSRM para calculo vial auxiliar al crear/previsualizar rutas. Esa duplicacion sigue existiendo y pertenece a un flujo distinto al dibujo de jornadas, que consume la geometria entregada por backend/Python.
+
+## Contrato de errores
+
+Los errores controlados de FastAPI usan:
+
+```json
+{
+  "error": {
+    "code": "ROUTE_NOT_FOUND",
+    "message": "No existe una ruta entre el origen y el destino",
+    "details": {}
+  }
+}
+```
+
+Codigos usados o reservados:
+
+- `INVALID_INPUT`
+- `NODE_NOT_FOUND`
+- `ROUTE_NOT_FOUND`
+- `DISCONNECTED_GRAPH`
+- `INVALID_DISTANCE`
+- `INVALID_COORDINATES`
+- `INVALID_CAPACITY`
+- `DUPLICATE_ORDER`
+- `DUPLICATE_TRUCK`
+- `OSRM_TIMEOUT`
+- `OSRM_UNAVAILABLE`
+- `INVALID_RESULT`
 
 ## Contrato de ruta individual
 
@@ -135,9 +181,19 @@ Entrada resumida:
       "distancia": 10
     }
   ],
-  "velocidad_kmh": 40
+  "velocidad_kmh": 40,
+  "semilla": 42,
+  "benchmark": false,
+  "aco": {
+    "num_hormigas": 12,
+    "iteraciones": 30,
+    "iteraciones_sin_mejora": 12,
+    "semilla": 42
+  }
 }
 ```
+
+Los campos `semilla`, `benchmark` y `aco` son opcionales y mantienen compatibilidad con las solicitudes anteriores.
 
 Salida resumida:
 
@@ -163,7 +219,8 @@ Salida resumida:
       ]
     }
   ],
-  "pedidos_no_asignados": []
+  "pedidos_no_asignados": [],
+  "pedidos_no_asignados_detalle": []
 }
 ```
 
@@ -171,8 +228,20 @@ Salida resumida:
 
 - Si no hay pedidos, retorna jornadas vacias.
 - Si no hay camiones, retorna todos los pedidos como no asignados.
-- Si no hay ruta entre puntos, la distancia se trata como infinita o se lanza error segun el punto del flujo.
-- No hay semilla configurable para reproducibilidad.
-- No hay validadores personalizados para distancias negativas; se confia en las restricciones del backend/base.
+- Si un destino no es alcanzable pero otros si lo son, el pedido queda en `pedidos_no_asignados` y se agrega razon en `pedidos_no_asignados_detalle`.
+- Si la ruta individual no existe, se devuelve error controlado.
+- Distancias, coordenadas, IDs, capacidades, velocidad y duplicados se validan antes del algoritmo.
 - OSRM es una dependencia externa de red.
 
+## Benchmark Fase 3
+
+Benchmarks con OSRM simulado, misma entrada, calentamiento y tres mediciones:
+
+| Escenario | Antes mediana | Despues mediana | Mejora | A* antes 3 runs | A* despues/run | Distancia antes | Distancia despues |
+| --------- | ------------: | ---------------: | -----: | --------------: | ------------: | --------------: | ----------------: |
+| 5 pedidos / 1 camion | 2.0253s | 0.0183s | 99.1% | 110268 | 15 | 16.00 | 16.00 |
+| 14 pedidos / 3 camiones | 21.7033s | 0.2184s | 99.0% | 640551 | 105 | 75.00 | 73.00 |
+| 30 pedidos / 5 camiones | >180s timeout | 1.0879s | no comparable exacto | no completado | 465 | no completado | 221.00 |
+| destinos repetidos | 1.3917s | 0.0113s | 99.2% | 78768 | 10 | 18.00 | 18.00 |
+
+El cuello de botella era el recalculo de A* dentro del ciclo de ACO. La geometria OSRM no domina estos benchmarks porque se simulo sin red; con OSRM real el tiempo dependera de red, pero las llamadas quedan acotadas a tramos finales.

@@ -1,4 +1,5 @@
 import math
+import time
 from datetime import datetime, timedelta
 
 from algoritmo.astar import calcular_ruta
@@ -8,6 +9,17 @@ from algoritmo.colonia_hormigas_cvrp import (
 from algoritmo.osrm_service import (
     obtener_geometria_osrm,
 )
+from errores import LogisticaError
+
+
+def crear_perfil():
+    return {
+        "astar_ejecuciones": 0,
+        "osrm_llamadas": 0,
+        "matriz_pares": 0,
+        "destinos_unicos": 0,
+        "pedidos_total": 0,
+    }
 
 
 def distancia_entre(
@@ -30,9 +42,141 @@ def distancia_entre(
     return ruta, float(distancia)
 
 
+def construir_matriz_distancias(
+    grafo,
+    nodos_relevantes,
+    perfil=None,
+):
+    nodos = sorted(
+        {
+            int(nodo)
+            for nodo in nodos_relevantes
+        }
+    )
+
+    matriz = {
+        nodo: {}
+        for nodo in nodos
+    }
+
+    caminos = {}
+
+    for origen in nodos:
+        matriz[origen][origen] = 0.0
+        caminos[(origen, origen)] = [origen]
+
+    for indice, origen in enumerate(nodos):
+        for destino in nodos[indice + 1:]:
+            try:
+                ruta, distancia = calcular_ruta(
+                    grafo,
+                    origen,
+                    destino,
+                )
+
+                if perfil is not None:
+                    perfil["astar_ejecuciones"] += 1
+
+                if not ruta:
+                    distancia = float("inf")
+            except LogisticaError as error:
+                if error.code in {
+                    "ROUTE_NOT_FOUND",
+                    "DISCONNECTED_GRAPH",
+                    "NODE_NOT_FOUND",
+                }:
+                    ruta = []
+                    distancia = float("inf")
+                else:
+                    raise
+
+            matriz[origen][destino] = float(distancia)
+            matriz[destino][origen] = float(distancia)
+            caminos[(origen, destino)] = ruta
+            caminos[(destino, origen)] = list(reversed(ruta))
+
+    if perfil is not None:
+        perfil["matriz_pares"] = (
+            len(nodos) * (len(nodos) - 1)
+        ) // 2
+
+    return matriz, caminos
+
+
+def distancia_entre_matriz(
+    matriz,
+    caminos,
+):
+    def resolver(_grafo, origen, destino):
+        origen = int(origen)
+        destino = int(destino)
+
+        distancia = matriz.get(
+            origen,
+            {},
+        ).get(
+            destino,
+            float("inf"),
+        )
+
+        ruta = caminos.get(
+            (origen, destino),
+            [],
+        )
+
+        return ruta, distancia
+
+    return resolver
+
+
+def filtrar_pedidos_alcanzables(
+    pedidos,
+    bodega_id,
+    matriz,
+):
+    alcanzables = []
+    no_asignados = []
+
+    for pedido in pedidos:
+        destino_id = int(
+            pedido["destino_id"]
+        )
+
+        distancia_ida = matriz.get(
+            int(bodega_id),
+            {},
+        ).get(
+            destino_id,
+            float("inf"),
+        )
+
+        distancia_vuelta = matriz.get(
+            destino_id,
+            {},
+        ).get(
+            int(bodega_id),
+            float("inf"),
+        )
+
+        if (
+            math.isfinite(distancia_ida) and
+            math.isfinite(distancia_vuelta)
+        ):
+            alcanzables.append(pedido)
+        else:
+            no_asignados.append({
+                "pedido_id": pedido["pedido_id"],
+                "motivo": "DESTINO_NO_ALCANZABLE",
+            })
+
+    return alcanzables, no_asignados
+
+
 def construir_geometria_y_tramos(
     bodega,
     destinos_ordenados,
+    cache_osrm=None,
+    perfil=None,
 ):
     """
     Construye la geometría real tramo por tramo mediante OSRM.
@@ -64,16 +208,30 @@ def construir_geometria_y_tramos(
 
     geometria_completa = []
     tramos = []
+    cache_osrm = cache_osrm if cache_osrm is not None else {}
 
     for indice in range(len(puntos_ruta) - 1):
         origen = puntos_ruta[indice]
         destino = puntos_ruta[indice + 1]
+        cache_key = (
+            round(float(origen["latitud"]), 7),
+            round(float(origen["longitud"]), 7),
+            round(float(destino["latitud"]), 7),
+            round(float(destino["longitud"]), 7),
+        )
 
         try:
-            geometria_tramo = obtener_geometria_osrm([
-                origen,
-                destino,
-            ])
+            if cache_key in cache_osrm:
+                geometria_tramo = cache_osrm[cache_key]
+            else:
+                geometria_tramo = obtener_geometria_osrm([
+                    origen,
+                    destino,
+                ])
+                cache_osrm[cache_key] = geometria_tramo
+
+                if perfil is not None:
+                    perfil["osrm_llamadas"] += 1
         except Exception:
             geometria_tramo = [
                 [
@@ -184,8 +342,11 @@ def ordenar_pedidos_segun_destinos(
 def generar_jornada_individual(
     asignacion,
     bodega,
-    grafo,
+    matriz,
+    caminos,
     velocidad_kmh,
+    cache_osrm=None,
+    perfil=None,
 ):
     camion = asignacion["camion"]
 
@@ -234,8 +395,11 @@ def generar_jornada_individual(
         )
 
         ruta_nodos, distancia_tramo = (
-            distancia_entre(
-                grafo,
+            distancia_entre_matriz(
+                matriz,
+                caminos,
+            )(
+                None,
                 actual_id,
                 destino_id,
             )
@@ -328,8 +492,11 @@ def generar_jornada_individual(
         ]
     )
 
-    _, distancia_regreso = distancia_entre(
-        grafo,
+    _, distancia_regreso = distancia_entre_matriz(
+        matriz,
+        caminos,
+    )(
+        None,
         ultimo_destino,
         int(bodega["id"]),
     )
@@ -395,6 +562,8 @@ def generar_jornada_individual(
     mapa_ruta = construir_geometria_y_tramos(
         bodega,
         destinos_ordenados,
+        cache_osrm=cache_osrm,
+        perfil=perfil,
     )
 
     return {
@@ -423,9 +592,12 @@ def generar_jornada_individual(
 
 
 def generar_jornada(datos, grafo):
+    perfil = crear_perfil()
+    inicio_total = time.perf_counter()
     bodega = datos["bodega"]
     pedidos = datos["pedidos"]
     camiones = datos["camiones"]
+    perfil["pedidos_total"] = len(pedidos)
 
     velocidad_kmh = float(
         datos.get(
@@ -434,19 +606,26 @@ def generar_jornada(datos, grafo):
         )
     )
 
-    if velocidad_kmh <= 0:
-        raise Exception(
-            "La velocidad debe ser mayor a cero"
+    if velocidad_kmh <= 0 or not math.isfinite(velocidad_kmh):
+        raise LogisticaError(
+            "INVALID_INPUT",
+            "La velocidad debe ser mayor a cero",
+            {"velocidad_kmh": velocidad_kmh},
         )
 
     if not pedidos:
-        return {
+        resultado = {
             "jornadas": [],
             "pedidos_no_asignados": [],
         }
 
+        if datos.get("benchmark"):
+            resultado["perfil"] = perfil
+
+        return resultado
+
     if not camiones:
-        return {
+        resultado = {
             "jornadas": [],
             "pedidos_no_asignados": [
                 pedido["pedido_id"]
@@ -454,15 +633,84 @@ def generar_jornada(datos, grafo):
             ],
         }
 
+        if datos.get("benchmark"):
+            resultado["perfil"] = perfil
+
+        return resultado
+
+    destinos_unicos = sorted({
+        int(pedido["destino_id"])
+        for pedido in pedidos
+    })
+    perfil["destinos_unicos"] = len(destinos_unicos)
+
+    matriz, caminos = construir_matriz_distancias(
+        grafo,
+        [
+            int(bodega["id"]),
+            *destinos_unicos,
+        ],
+        perfil=perfil,
+    )
+
+    pedidos_alcanzables, no_asignados_detalle = (
+        filtrar_pedidos_alcanzables(
+            pedidos,
+            int(bodega["id"]),
+            matriz,
+        )
+    )
+
+    if not pedidos_alcanzables:
+        resultado = {
+            "jornadas": [],
+            "pedidos_no_asignados": [
+                item["pedido_id"]
+                for item in no_asignados_detalle
+            ],
+            "pedidos_no_asignados_detalle":
+                no_asignados_detalle,
+        }
+
+        if datos.get("benchmark"):
+            perfil["tiempo_total"] = (
+                time.perf_counter() - inicio_total
+            )
+            resultado["perfil"] = perfil
+
+        return resultado
+
+    distancia_cache = distancia_entre_matriz(
+        matriz,
+        caminos,
+    )
+
+    aco_config = datos.get("aco") or {}
+
     solucion = ant_colony_cvrp(
         grafo=grafo,
         bodega_id=int(bodega["id"]),
-        pedidos=pedidos,
+        pedidos=pedidos_alcanzables,
         camiones=camiones,
-        distancia_entre=distancia_entre,
+        distancia_entre=distancia_cache,
+        num_hormigas=aco_config.get("num_hormigas"),
+        iteraciones=aco_config.get("iteraciones"),
+        iteraciones_sin_mejora=aco_config.get(
+            "iteraciones_sin_mejora",
+        ),
+        alfa=aco_config.get("alfa", 1.0),
+        beta=aco_config.get("beta", 3.0),
+        evaporacion=aco_config.get("evaporacion", 0.35),
+        q=aco_config.get("q", 100.0),
+        semilla=(
+            aco_config.get("semilla") or
+            datos.get("semilla")
+        ),
+        perfil=perfil,
     )
 
     jornadas = []
+    cache_osrm = {}
 
     for asignacion in solucion[
         "asignaciones"
@@ -470,8 +718,11 @@ def generar_jornada(datos, grafo):
         jornada = generar_jornada_individual(
             asignacion=asignacion,
             bodega=bodega,
-            grafo=grafo,
+            matriz=matriz,
+            caminos=caminos,
             velocidad_kmh=velocidad_kmh,
+            cache_osrm=cache_osrm,
+            perfil=perfil,
         )
 
         if jornada is not None:
@@ -484,11 +735,30 @@ def generar_jornada(datos, grafo):
         ]
     ]
 
-    return {
+    pedidos_no_asignados.extend(
+        item["pedido_id"]
+        for item in no_asignados_detalle
+    )
+
+    pedidos_no_asignados = list(dict.fromkeys(
+        pedidos_no_asignados,
+    ))
+
+    resultado = {
         "jornadas": jornadas,
         "pedidos_no_asignados": (
             pedidos_no_asignados
         ),
+        "pedidos_no_asignados_detalle":
+            no_asignados_detalle,
     }
+
+    if datos.get("benchmark"):
+        perfil["tiempo_total"] = (
+            time.perf_counter() - inicio_total
+        )
+        resultado["perfil"] = perfil
+
+    return resultado
 
     

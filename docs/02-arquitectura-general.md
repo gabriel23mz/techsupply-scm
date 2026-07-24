@@ -68,7 +68,7 @@ El servicio Python usa FastAPI y expone:
 - `POST /api/rutas/calcular`
 - `POST /api/jornadas/generar`
 
-Internamente construye un grafo bidireccional desde rutas activas, usa A* para caminos minimos y ACO-CVRP para asignar pedidos a camiones y ordenar destinos. OSRM se usa para obtener geometria real cuando es posible; si falla, el sistema puede caer a lineas directas.
+Internamente construye un grafo bidireccional desde rutas activas, valida entradas con Pydantic, calcula una matriz de distancias entre bodega y destinos unicos, usa A* para poblar esa matriz y ACO-CVRP para asignar pedidos a camiones y ordenar destinos. OSRM se usa solo despues de elegir la solucion final para obtener geometria real; si falla, el sistema puede caer a lineas directas para visualizacion.
 
 ## Frontend
 
@@ -97,8 +97,9 @@ sequenceDiagram
   FE->>BE: POST /api/jornadas-reparto/generar
   BE->>DB: Lee pedidos listos, camiones, bodega y rutas
   BE->>PY: POST /api/jornadas/generar
-  PY->>PY: ACO-CVRP + A*
-  PY->>OS: Solicita geometria vial
+  PY->>PY: Validacion + matriz A*
+  PY->>PY: ACO-CVRP con matriz y semilla opcional
+  PY->>OS: Solicita geometria vial final
   OS-->>PY: GeoJSON de ruta
   PY-->>BE: Jornadas, entregas, distancias, tiempos, ruta_json
   BE->>DB: Transaccion: crea jornadas, despachos y actualiza pedidos
@@ -112,4 +113,3 @@ sequenceDiagram
 - Python no accede a la base de datos; recibe todo por JSON.
 - n8n no debe bloquear la operacion principal cuando se active.
 - La bodega central se identifica por `BODEGA_CENTRAL_ID = 1`.
-

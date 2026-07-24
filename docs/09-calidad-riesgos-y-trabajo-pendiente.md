@@ -21,6 +21,7 @@
 - Dashboard carga multiples colecciones completas.
 - OSRM se consume desde Python y tambien desde frontend.
 - No hay definicion formal versionada de contratos.
+- La validacion Python ya es estricta, pero `.env.example` todavia no expone todos los timeouts usados por Node.
 
 ## Riesgos de seguridad
 
@@ -42,6 +43,7 @@
 - Generar jornadas en paralelo ahora revalida y bloquea pedidos/camiones antes de persistir, pero la proteccion definitiva requiere restricciones parciales de base de datos.
 - Doble clic o reintento HTTP podria repetir operaciones sensibles.
 - Avanzar jornada no usa transaccion.
+- El tiempo de red de OSRM real sigue dependiendo del servicio externo aunque las llamadas ahora estan acotadas a la solucion final.
 
 ## Linea base automatizada de pruebas
 
@@ -64,8 +66,8 @@ npm run test:frontend
 
 Resultado de linea base:
 
-- Backend: 29 pruebas aprobadas.
-- Python: 15 pruebas aprobadas.
+- Backend: 32 pruebas aprobadas.
+- Python: 24 pruebas aprobadas.
 - Frontend: 1 prueba aprobada.
 - Fallos omitidos intencionalmente: ninguno.
 - Servicios reales utilizados: ninguno.
@@ -76,9 +78,10 @@ Resultado de linea base:
 - `despacho.service.js` quedo protegido con rollback para entrega, no entrega y avance de jornada asociado.
 - `jornadaReparto.service.js` revalida recursos despues de Python y revierte la persistencia si falla crear jornadas, actualizar pedidos o crear despachos.
 - `jornadaCreada` ahora usa jornada y despachos reales despues del commit.
-- A* falla con `KeyError` cuando el nodo de origen no existe en el grafo.
-- El grafo y A* aceptan distancias negativas y cero.
-- Los contratos Pydantic aceptan coordenadas fuera de rango.
+- A* ya no filtra `KeyError` por nodo inexistente; devuelve errores de dominio.
+- El grafo y A* rechazan distancias no positivas o no finitas.
+- Los contratos Pydantic rechazan coordenadas fuera de rango, duplicados, capacidades invalidas y velocidad no positiva.
+- ACO-CVRP usa semilla opcional local y matriz de distancias; A* no se ejecuta dentro del ciclo interno.
 - n8n sigue siendo stub local con salida por consola.
 
 ## Cobertura por modulo
@@ -97,7 +100,7 @@ Resultado de linea base:
 | Camiones | A | Resumen, capacidad y jornada vigente | Restricciones con jornadas activas |
 | Despachos | A | Entrega, no entrega, doble entrega, avance y rollback | Cancelacion heredada con efectos cruzados si aparecen |
 | Jornadas de reparto | A | Rechazo sin pedidos/camiones, inicio, avance, revalidacion post-Python, rollback y payload n8n | Restricciones de DB contra duplicados activos |
-| Node-Python | A | Ruta valida, respuesta invalida e indisponibilidad simulada | Planificacion multivehiculo invalida en servicio de jornada |
+| Node-Python | A | Ruta valida, timeout, errores estructurados, respuesta invalida y validacion estricta de jornadas | Validacion HTTP end-to-end con servidor real aislado |
 | n8n | C | Stub local sin webhook real | Cliente real con timeout, reintentos e idempotencia |
 | Dashboard | C | No hay endpoints backend propios detectados | Caracterizar si se agrega controlador dedicado |
 | Frontend | C | Smoke test de rutas principales | Renderizado React y flujos de usuario |
@@ -109,8 +112,8 @@ Resultado de linea base:
 | -------------- | --------- | --------- |
 | Lint backend y frontend | Detectar errores de estilo/imports | Alta |
 | Ampliar tests de servicios backend | Proteger reglas de negocio restantes | Alta |
-| Ampliar tests de contratos Node-Python | Evitar divergencias JSON de jornadas | Alta |
-| Ampliar tests Python de grafo y ACO-CVRP | Validar mas casos limite | Alta |
+| Ampliar tests de contratos Node-Python HTTP | Evitar divergencias JSON con FastAPI real aislado | Alta |
+| Benchmarks en CI manual | Detectar regresiones de rendimiento sin assertions fragiles | Media |
 | Detector de secretos | Evitar filtraciones | Alta |
 | Validacion de variables de entorno | Mejorar onboarding | Media |
 | CI basico | Ejecutar verificaciones antes de integrar | Media |
@@ -143,7 +146,8 @@ Antes de activar webhooks reales:
 | `src/services/jornadaReparto.service.js` | Complementar proteccion con restricciones PostgreSQL futuras |
 | `src/services/n8n.service.js` | Reemplazar stub por cliente real seguro |
 | `src/constants/logistica.js` | Centralizar estados y parametros logisticos |
-| `python/algoritmo/colonia_hormigas_cvrp.py` | Semilla/configuracion reproducible |
+| `python/algoritmo/colonia_hormigas_cvrp.py` | Ajustar parametros si cambian escalas reales |
+| `python/algoritmo/metaheuristica_jornada.py` | Revisar cache OSRM si se consolida con frontend |
 | `.env.example` | Actualizar a PostgreSQL/Supabase |
 
 ## Plan priorizado
@@ -168,6 +172,7 @@ Antes de activar webhooks reales:
 - Configurar CI.
 - Agregar detector de secretos.
 - Validar estructura documental y enlaces.
+- Mantener benchmark Python como verificacion manual de rendimiento.
 
 ### Fase 4 - Integraciones
 

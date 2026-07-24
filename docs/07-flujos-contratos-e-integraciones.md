@@ -29,7 +29,9 @@ sequenceDiagram
   BE->>DB: Camiones EN_BODEGA no ocupados
   BE->>DB: Bodega central y rutas activas
   BE->>PY: POST /api/jornadas/generar
+  PY->>PY: Validacion, matriz A*, ACO-CVRP
   PY-->>BE: jornadas + pedidos_no_asignados
+  BE->>BE: Validacion estricta de respuesta Python
   BE->>DB: Transaccion: revalidar y bloquear pedidos/camiones
   BE->>DB: Transaccion: jornada, despachos, pedidos DESPACHADO
   BE->>BE: Commit
@@ -131,6 +133,20 @@ Python responde:
 }
 ```
 
+Python puede responder errores controlados:
+
+```json
+{
+  "error": {
+    "code": "INVALID_DISTANCE",
+    "message": "La distancia debe ser finita y mayor que cero",
+    "details": {}
+  }
+}
+```
+
+Node normaliza errores 4xx, 5xx, timeout, conexion fallida y respuesta invalida manteniendo la estructura HTTP externa del backend.
+
 ## Contrato Node-Python: jornadas
 
 Node envia:
@@ -170,7 +186,15 @@ Node envia:
       "distancia": 10
     }
   ],
-  "velocidad_kmh": 40
+  "velocidad_kmh": 40,
+  "semilla": 42,
+  "benchmark": false,
+  "aco": {
+    "num_hormigas": 12,
+    "iteraciones": 30,
+    "iteraciones_sin_mejora": 12,
+    "semilla": 42
+  }
 }
 ```
 
@@ -208,9 +232,22 @@ Python responde:
       ]
     }
   ],
-  "pedidos_no_asignados": []
+  "pedidos_no_asignados": [],
+  "pedidos_no_asignados_detalle": []
 }
 ```
+
+Node valida antes de persistir:
+
+- Camiones conocidos y no duplicados.
+- Pedidos conocidos, no duplicados y clasificados exactamente una vez.
+- Pedidos no asignados sin cruce con entregas.
+- Capacidad por camion.
+- Distancias y tiempos finitos.
+- Geometria en pares `[latitud, longitud]`.
+- Retorno a bodega mediante tramo `RETORNO_BODEGA`.
+
+Si la validacion falla, no se abre la transaccion de persistencia.
 
 ## Estructura real de `ruta_json`
 
@@ -242,4 +279,4 @@ OSRM se usa en dos lugares:
 - Python: geometria de jornadas.
 - Frontend de rutas: calculo vial auxiliar al crear rutas.
 
-Esto es aceptable para el MVP, pero a futuro conviene decidir si el backend o Python centralizan esa dependencia.
+Python usa OSRM solo despues de seleccionar la solucion final y aplica cache por tramo dentro de la solicitud. OSRM no se ejecuta dentro de ACO. El frontend conserva su uso para catalogo/previsualizacion de rutas; no fue refactorizado en esta fase.
