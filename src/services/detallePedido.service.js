@@ -1,12 +1,19 @@
 import DetallePedido from '../models/DetallePedido.js';
 import Pedido from '../models/Pedido.js';
 import Producto from '../models/Producto.js';
+import sequelize from '../config/database.js';
 
-const recalcularTotalPedido = async (pedidoId) => {
+const recalcularTotalPedido = async (
+  pedidoId,
+  options = {},
+) => {
+  const { transaction } = options;
+
   const detalles = await DetallePedido.findAll({
     where: {
       pedido_id: pedidoId,
     },
+    transaction,
   });
 
   const total = detalles.reduce(
@@ -23,6 +30,7 @@ const recalcularTotalPedido = async (pedidoId) => {
       where: {
         id: pedidoId,
       },
+      transaction,
     },
   );
 };
@@ -45,196 +53,291 @@ export const crear = async ({
   producto_id,
   cantidad,
 }) => {
-  const pedido = await Pedido.findByPk(pedido_id);
+  const detalleId = await sequelize.transaction(
+    async (transaction) => {
+      const pedido = await Pedido.findByPk(
+        pedido_id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
 
-  if (!pedido) {
-    throw new Error('Pedido no encontrado');
-  }
+      if (!pedido) {
+        throw new Error('Pedido no encontrado');
+      }
 
-  if (
-    pedido.estado !== 'PENDIENTE' &&
-    pedido.estado !== 'PREPARANDO'
-  ) {
-    throw new Error(
-      'No se pueden agregar productos a este pedido',
-    );
-  }
+      if (
+        pedido.estado !== 'PENDIENTE' &&
+        pedido.estado !== 'PREPARANDO'
+      ) {
+        throw new Error(
+          'No se pueden agregar productos a este pedido',
+        );
+      }
 
-  const producto = await Producto.findOne({
-    where: {
-      id: producto_id,
-      estado: true,
+      const producto = await Producto.findOne({
+        where: {
+          id: producto_id,
+          estado: true,
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!producto) {
+        throw new Error('Producto no encontrado');
+      }
+
+      if (cantidad > producto.stock_actual) {
+        throw new Error('Stock insuficiente');
+      }
+
+      const precio_unitario = Number(
+        producto.precio_venta,
+      );
+
+      const subtotal =
+        precio_unitario * Number(cantidad);
+
+      await producto.update(
+        {
+          stock_actual:
+            producto.stock_actual - Number(cantidad),
+        },
+        {
+          transaction,
+        },
+      );
+
+      const detalle = await DetallePedido.create(
+        {
+          pedido_id,
+          producto_id,
+          cantidad,
+          precio_unitario,
+          subtotal,
+        },
+        {
+          transaction,
+        },
+      );
+
+      await recalcularTotalPedido(
+        pedido_id,
+        { transaction },
+      );
+
+      return detalle.id;
     },
-  });
-
-  if (!producto) {
-    throw new Error('Producto no encontrado');
-  }
-
-  if (cantidad > producto.stock_actual) {
-    throw new Error('Stock insuficiente');
-  }
-
-  const precio_unitario = Number(
-    producto.precio_venta,
   );
 
-  const subtotal =
-    precio_unitario * Number(cantidad);
-
-  await producto.update({
-    stock_actual:
-      producto.stock_actual - Number(cantidad),
-  });
-
-  const detalle = await DetallePedido.create({
-    pedido_id,
-    producto_id,
-    cantidad,
-    precio_unitario,
-    subtotal,
-  });
-
-  await recalcularTotalPedido(pedido_id);
-
-  return await obtenerPorId(detalle.id);
+  return await obtenerPorId(detalleId);
 };
 
 export const actualizar = async (
   id,
   datos,
 ) => {
-  const detalle =
-    await DetallePedido.findByPk(id);
+  const detalleId = await sequelize.transaction(
+    async (transaction) => {
+      const detalle =
+        await DetallePedido.findByPk(
+          id,
+          {
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          },
+        );
 
-  if (!detalle) {
+      if (!detalle) {
+        return null;
+      }
+
+      const pedido = await Pedido.findByPk(
+        detalle.pedido_id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
+
+      if (!pedido) {
+        throw new Error('Pedido no encontrado');
+      }
+
+      if (
+        pedido.estado !== 'PENDIENTE' &&
+        pedido.estado !== 'PREPARANDO'
+      ) {
+        throw new Error(
+          'No se puede modificar este pedido',
+        );
+      }
+
+      const producto = await Producto.findByPk(
+        detalle.producto_id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
+
+      if (!producto) {
+        throw new Error('Producto no encontrado');
+      }
+
+      const cantidadNueva = Number(
+        datos.cantidad,
+      );
+
+      const cantidadAnterior = Number(
+        detalle.cantidad,
+      );
+
+      const diferencia =
+        cantidadNueva - cantidadAnterior;
+
+      if (diferencia > 0) {
+        if (
+          diferencia > producto.stock_actual
+        ) {
+          throw new Error(
+            'Stock insuficiente',
+          );
+        }
+
+        await producto.update(
+          {
+            stock_actual:
+              producto.stock_actual -
+              diferencia,
+          },
+          {
+            transaction,
+          },
+        );
+      }
+
+      if (diferencia < 0) {
+        await producto.update(
+          {
+            stock_actual:
+              producto.stock_actual +
+              Math.abs(diferencia),
+          },
+          {
+            transaction,
+          },
+        );
+      }
+
+      const precioUnitario =
+        Number(detalle.precio_unitario);
+
+      const subtotal =
+        precioUnitario * cantidadNueva;
+
+      await detalle.update(
+        {
+          cantidad: cantidadNueva,
+          subtotal,
+        },
+        {
+          transaction,
+        },
+      );
+
+      await recalcularTotalPedido(
+        detalle.pedido_id,
+        { transaction },
+      );
+
+      return detalle.id;
+    },
+  );
+
+  if (!detalleId) {
     return null;
   }
 
-  const pedido = await Pedido.findByPk(
-    detalle.pedido_id,
-  );
-
-  if (!pedido) {
-    throw new Error('Pedido no encontrado');
-  }
-
-  if (
-    pedido.estado !== 'PENDIENTE' &&
-    pedido.estado !== 'PREPARANDO'
-  ) {
-    throw new Error(
-      'No se puede modificar este pedido',
-    );
-  }
-
-  const producto = await Producto.findByPk(
-    detalle.producto_id,
-  );
-
-  if (!producto) {
-    throw new Error('Producto no encontrado');
-  }
-
-  const cantidadNueva = Number(
-    datos.cantidad,
-  );
-
-  const cantidadAnterior = Number(
-    detalle.cantidad,
-  );
-
-  const diferencia =
-    cantidadNueva - cantidadAnterior;
-
-  if (diferencia > 0) {
-    if (
-      diferencia > producto.stock_actual
-    ) {
-      throw new Error(
-        'Stock insuficiente',
-      );
-    }
-
-    await producto.update({
-      stock_actual:
-        producto.stock_actual -
-        diferencia,
-    });
-  }
-
-  if (diferencia < 0) {
-    await producto.update({
-      stock_actual:
-        producto.stock_actual +
-        Math.abs(diferencia),
-    });
-  }
-
-  const precioUnitario =
-    Number(detalle.precio_unitario);
-
-  const subtotal =
-    precioUnitario * cantidadNueva;
-
-  await detalle.update({
-    cantidad: cantidadNueva,
-    subtotal,
-  });
-
-  await recalcularTotalPedido(
-    detalle.pedido_id,
-  );
-
-  return await obtenerPorId(id);
+  return await obtenerPorId(detalleId);
 };
 
 export const eliminar = async (id) => {
-  const detalle =
-    await DetallePedido.findByPk(id);
+  const eliminado = await sequelize.transaction(
+    async (transaction) => {
+      const detalle =
+        await DetallePedido.findByPk(
+          id,
+          {
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          },
+        );
 
-  if (!detalle) {
-    return null;
-  }
+      if (!detalle) {
+        return null;
+      }
 
-  const pedido = await Pedido.findByPk(
-    detalle.pedido_id,
+      const pedido = await Pedido.findByPk(
+        detalle.pedido_id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
+
+      if (!pedido) {
+        throw new Error('Pedido no encontrado');
+      }
+
+      if (
+        pedido.estado !== 'PENDIENTE' &&
+        pedido.estado !== 'PREPARANDO'
+      ) {
+        throw new Error(
+          'No se puede modificar este pedido',
+        );
+      }
+
+      const producto = await Producto.findByPk(
+        detalle.producto_id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
+
+      if (!producto) {
+        throw new Error('Producto no encontrado');
+      }
+
+      await producto.update(
+        {
+          stock_actual:
+            producto.stock_actual +
+            detalle.cantidad,
+        },
+        {
+          transaction,
+        },
+      );
+
+      const pedidoId = detalle.pedido_id;
+
+      await detalle.destroy({
+        transaction,
+      });
+
+      await recalcularTotalPedido(
+        pedidoId,
+        { transaction },
+      );
+
+      return true;
+    },
   );
 
-  if (!pedido) {
-    throw new Error('Pedido no encontrado');
-  }
-
-  if (
-    pedido.estado !== 'PENDIENTE' &&
-    pedido.estado !== 'PREPARANDO'
-  ) {
-    throw new Error(
-      'No se puede modificar este pedido',
-    );
-  }
-
-  const producto = await Producto.findByPk(
-    detalle.producto_id,
-  );
-
-  if (!producto) {
-    throw new Error('Producto no encontrado');
-  }
-
-  await producto.update({
-    stock_actual:
-      producto.stock_actual +
-      detalle.cantidad,
-  });
-
-  const pedidoId = detalle.pedido_id;
-
-  await detalle.destroy();
-
-  await recalcularTotalPedido(
-    pedidoId,
-  );
-
-  return true;
+  return eliminado;
 };

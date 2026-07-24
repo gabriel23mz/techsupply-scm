@@ -30,9 +30,14 @@ sequenceDiagram
   BE->>DB: Bodega central y rutas activas
   BE->>PY: POST /api/jornadas/generar
   PY-->>BE: jornadas + pedidos_no_asignados
+  BE->>DB: Transaccion: revalidar y bloquear pedidos/camiones
   BE->>DB: Transaccion: jornada, despachos, pedidos DESPACHADO
+  BE->>BE: Commit
+  BE-->>BE: n8n jornadaCreada stub post-commit
   BE-->>FE: resumen de jornadas creadas
 ```
+
+La llamada a Python ocurre antes de abrir la transaccion. Despues de recibir el plan, el backend vuelve a consultar y bloquear los pedidos propuestos, los camiones propuestos, los despachos activos y las jornadas activas. Si alguno cambio entre la planificacion y la persistencia, no se guarda ningun dato parcial.
 
 ## Inicio, avance y finalizacion
 
@@ -57,11 +62,15 @@ Entrega:
 
 - Despacho pasa a `ENTREGADO`.
 - Pedido pasa a `ENTREGADO`.
+- La jornada avanza al siguiente punto cuando el punto actual queda cerrado y existe un orden pendiente posterior.
 
 No entrega:
 
 - Despacho pasa a `NO_ENTREGADO`.
 - Pedido pasa a `REPROGRAMADO`.
+- La jornada aplica el mismo avance de posicion cuando corresponde.
+
+Estas operaciones se ejecutan dentro de una misma transaccion. Si falla la actualizacion de pedido o jornada, el despacho conserva su estado anterior.
 
 ## Retorno a bodega
 
@@ -224,7 +233,7 @@ Funciones existentes:
 
 Estado real: stub con `console.log`. No hay URLs de webhook, reintentos, timeout propio, cola, idempotencia ni trazabilidad persistida.
 
-Limitacion conocida: al notificar jornada creada despues de generar jornadas, el servicio actual intenta enviar `item.jornada` e `item.despachos` desde un resumen que no contiene esas propiedades completas. Debe corregirse antes de activar n8n real.
+`jornadaCreada` se emite despues del commit con la instancia real de la jornada creada y los despachos creados en la transaccion. El resumen devuelto al frontend se mantiene sin cambios.
 
 ## Integracion OSRM
 
@@ -234,4 +243,3 @@ OSRM se usa en dos lugares:
 - Frontend de rutas: calculo vial auxiliar al crear rutas.
 
 Esto es aceptable para el MVP, pero a futuro conviene decidir si el backend o Python centralizan esa dependencia.
-

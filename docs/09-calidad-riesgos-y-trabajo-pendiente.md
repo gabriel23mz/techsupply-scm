@@ -32,16 +32,14 @@
 
 ## Riesgos de integridad
 
-- Crear/editar/eliminar detalles modifica stock y total sin transaccion propia.
 - Cancelar pedido reintegra stock sin transaccion propia.
-- Entregar y marcar no entregado actualizan despacho y pedido sin transaccion.
 - No hay restriccion de base para impedir dos jornadas activas del mismo camion.
 - No hay restriccion parcial para impedir dos despachos activos del mismo pedido.
 - `ruta_json` puede quedar desactualizado si se modifican ubicaciones despues de generar jornadas.
 
-## Riesgos de concurrencia
+## Riesgos de concurrencia pendientes
 
-- Generar jornadas en paralelo podria seleccionar los mismos pedidos o camiones si no hay bloqueo/restriccion adicional.
+- Generar jornadas en paralelo ahora revalida y bloquea pedidos/camiones antes de persistir, pero la proteccion definitiva requiere restricciones parciales de base de datos.
 - Doble clic o reintento HTTP podria repetir operaciones sensibles.
 - Avanzar jornada no usa transaccion.
 
@@ -66,7 +64,7 @@ npm run test:frontend
 
 Resultado de linea base:
 
-- Backend: 17 pruebas aprobadas.
+- Backend: 29 pruebas aprobadas.
 - Python: 15 pruebas aprobadas.
 - Frontend: 1 prueba aprobada.
 - Fallos omitidos intencionalmente: ninguno.
@@ -74,8 +72,10 @@ Resultado de linea base:
 
 ## Riesgos confirmados por pruebas
 
-- `detallePedido.service.js` descuenta stock antes de crear el detalle. Si falla la creacion del detalle, el stock ya fue modificado.
-- `despacho.service.js` marca despacho como `ENTREGADO` antes de actualizar el pedido. Si falla la actualizacion del pedido, puede quedar un cambio parcial.
+- `detallePedido.service.js` quedo protegido con rollback para creacion, actualizacion, eliminacion y recalculo de total.
+- `despacho.service.js` quedo protegido con rollback para entrega, no entrega y avance de jornada asociado.
+- `jornadaReparto.service.js` revalida recursos despues de Python y revierte la persistencia si falla crear jornadas, actualizar pedidos o crear despachos.
+- `jornadaCreada` ahora usa jornada y despachos reales despues del commit.
 - A* falla con `KeyError` cuando el nodo de origen no existe en el grafo.
 - El grafo y A* aceptan distancias negativas y cero.
 - Los contratos Pydantic aceptan coordenadas fuera de rango.
@@ -93,10 +93,10 @@ Resultado de linea base:
 | Ubicaciones | B | Listado activo | Rangos de coordenadas en backend |
 | Rutas | B | Listado activo, aliases `origen` y `destino` | Duplicados y distancias invalidas |
 | Pedidos | A | Transicion de preparacion y rechazo sin detalles | Matriz completa de estados HTTP |
-| Detalles de pedido | A | Creacion, stock y riesgo no atomico | Actualizacion/eliminacion con fallos parciales |
+| Detalles de pedido | A | Rollback de creacion, actualizacion, eliminacion, stock y total | Cancelacion de pedido con reintegro |
 | Camiones | A | Resumen, capacidad y jornada vigente | Restricciones con jornadas activas |
-| Despachos | A | Entrega secuencial y riesgo no atomico | No entrega, cancelacion y finalizacion de jornada |
-| Jornadas de reparto | A | Rechazo sin pedidos/camiones, inicio y avance bloqueado | Persistencia completa con respuesta Python simulada |
+| Despachos | A | Entrega, no entrega, doble entrega, avance y rollback | Cancelacion heredada con efectos cruzados si aparecen |
+| Jornadas de reparto | A | Rechazo sin pedidos/camiones, inicio, avance, revalidacion post-Python, rollback y payload n8n | Restricciones de DB contra duplicados activos |
 | Node-Python | A | Ruta valida, respuesta invalida e indisponibilidad simulada | Planificacion multivehiculo invalida en servicio de jornada |
 | n8n | C | Stub local sin webhook real | Cliente real con timeout, reintentos e idempotencia |
 | Dashboard | C | No hay endpoints backend propios detectados | Caracterizar si se agrega controlador dedicado |
@@ -138,9 +138,9 @@ Antes de activar webhooks reales:
 | Archivo | Motivo |
 | ------- | ------ |
 | `src/routes/*.js` | Aplicar autenticacion y autorizacion |
-| `src/services/detallePedido.service.js` | Agregar transacciones para stock y total |
-| `src/services/despacho.service.js` | Agregar transacciones para entrega/no entrega |
-| `src/services/jornadaReparto.service.js` | Reforzar concurrencia y payload n8n |
+| `src/services/detallePedido.service.js` | Mantener pruebas de rollback al ajustar reglas |
+| `src/services/despacho.service.js` | Evaluar transaccion para cancelaciones si pasan a afectar pedido/jornada |
+| `src/services/jornadaReparto.service.js` | Complementar proteccion con restricciones PostgreSQL futuras |
 | `src/services/n8n.service.js` | Reemplazar stub por cliente real seguro |
 | `src/constants/logistica.js` | Centralizar estados y parametros logisticos |
 | `python/algoritmo/colonia_hormigas_cvrp.py` | Semilla/configuracion reproducible |
@@ -178,8 +178,8 @@ Antes de activar webhooks reales:
 ### Fase 5 - Correcciones funcionales
 
 - Proteger rutas backend.
-- Agregar transacciones a detalle/stock/total y despacho/pedido.
-- Corregir payload de `jornadaCreada`.
+- Agregar transaccion a cancelacion de pedido y avance de jornada si se mantiene como endpoint separado.
+- Agregar restricciones parciales de base para jornadas/despachos activos.
 - Actualizar variables de entorno de ejemplo.
 
 ## Mejoras que pertenecen al MVP

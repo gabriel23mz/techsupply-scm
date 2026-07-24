@@ -23,15 +23,71 @@ export function stubMethods(t, target, methods) {
 export function modelInstance(fields = {}) {
   const instance = {
     ...fields,
-    update: mock.fn(async (changes) => {
+    update: mock.fn(async (changes, options = {}) => {
+      options.transaction?.record?.(instance, changes);
       Object.assign(instance, changes);
       return instance;
     }),
-    destroy: mock.fn(async () => true),
+    destroy: mock.fn(async (options = {}) => {
+      options.transaction?.record?.(instance, {
+        destroyed: true,
+      });
+      instance.destroyed = true;
+      return true;
+    }),
     toJSON: () => ({ ...instance }),
   };
 
   return instance;
+}
+
+export function stubManagedTransaction(t, sequelize) {
+  stubMethods(t, sequelize, {
+    transaction: async (callback) => {
+      if (typeof callback !== 'function') {
+        throw new Error(
+          'Las pruebas solo simulan transacciones administradas',
+        );
+      }
+
+      const snapshots = new Map();
+      const transaction = {
+        LOCK: {
+          UPDATE: 'UPDATE',
+        },
+        record(target, changes) {
+          let snapshot = snapshots.get(target);
+
+          if (!snapshot) {
+            snapshot = {};
+            snapshots.set(target, snapshot);
+          }
+
+          for (const key of Object.keys(changes)) {
+            if (!(key in snapshot)) {
+              snapshot[key] = target[key];
+            }
+          }
+        },
+      };
+
+      try {
+        return await callback(transaction);
+      } catch (error) {
+        for (const [target, snapshot] of snapshots.entries()) {
+          for (const [key, value] of Object.entries(snapshot)) {
+            if (value === undefined) {
+              delete target[key];
+            } else {
+              target[key] = value;
+            }
+          }
+        }
+
+        throw error;
+      }
+    },
+  });
 }
 
 export function makeRes() {

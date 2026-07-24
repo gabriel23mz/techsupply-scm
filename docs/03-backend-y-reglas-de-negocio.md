@@ -84,7 +84,7 @@ Tambien existen modelos inbound (`Proveedor`, `OrdenCompra`, `DetalleOrdenCompra
 - El stock se reintegra al reducir cantidad o eliminar detalle.
 - El total del pedido se recalcula a partir de los subtotales.
 
-Limitacion conocida: las operaciones stock-detalle-total no usan transaccion propia en el servicio actual.
+Las operaciones crear, actualizar y eliminar detalle usan una transaccion administrada. Dentro de la transaccion se bloquean pedido, producto y detalle cuando corresponde, se ajusta stock y se recalcula el total. Si falla la creacion, actualizacion, eliminacion o recalculo, Sequelize revierte todos los cambios de esa operacion.
 
 ## Reglas de jornadas
 
@@ -95,8 +95,10 @@ La generacion de jornadas:
 - Excluye camiones con jornadas `PLANIFICADA` o `EN_RUTA`.
 - Usa la bodega central `BODEGA_CENTRAL_ID = 1`.
 - Envia pedidos, camiones, bodega y rutas activas a Python.
-- Persiste jornadas y despachos en una transaccion.
+- Persiste jornadas y despachos en una transaccion administrada.
 - Cambia pedidos asignados a `DESPACHADO`.
+- Despues de la respuesta de Python, vuelve a bloquear y validar pedidos, camiones, jornadas activas y despachos activos antes de persistir.
+- Python se invoca antes de abrir la transaccion. n8n se invoca despues del commit.
 
 El inicio de jornada:
 
@@ -132,8 +134,10 @@ Para entregar o marcar como no entregado:
 - La jornada debe estar `EN_RUTA`.
 - El despacho debe estar `EN_TRANSITO`.
 - El `orden_entrega` debe coincidir con `posicion_actual_orden`.
+- Despacho, pedido y jornada se bloquean y actualizan dentro de una misma transaccion.
+- Cuando todos los despachos del punto actual quedan cerrados, la jornada avanza al siguiente `orden_entrega` pendiente si existe.
 
-Limitacion conocida: `entregarDespacho` y `marcarNoEntregado` actualizan despacho y pedido sin transaccion.
+Si falla la actualizacion del pedido o de la jornada, el despacho no queda entregado ni marcado como no entregado.
 
 ## Servicios principales
 
@@ -170,24 +174,22 @@ Los controladores usan `successResponse` y `errorResponse`. El middleware global
 
 ## Transacciones existentes
 
-Se usan transacciones en operaciones centrales de jornadas:
+Se usan transacciones administradas y bloqueos de fila en:
 
+- Crear, actualizar y eliminar detalles de pedido.
 - Generacion de jornadas.
 - Inicio de jornada con locks.
 - Finalizacion de jornada con locks.
 - Recalculo de jornada.
+- Entrega y no entrega de despachos asociados a jornadas.
 
 ## Operaciones todavia no atomicas
 
-- Crear detalle, descontar stock y recalcular total.
-- Actualizar detalle, ajustar stock y recalcular total.
-- Eliminar detalle, reintegrar stock y recalcular total.
 - Cancelar pedido y reintegrar stock.
-- Entregar despacho y actualizar pedido.
-- Marcar no entregado y actualizar pedido.
 - Avanzar jornada.
+
+Riesgo pendiente: no existen restricciones de base de datos que impidan de forma definitiva dos jornadas activas para un mismo camion o dos despachos activos para un mismo pedido. La fase transaccional agrega bloqueos y revalidaciones de servicio, pero una restriccion parcial futura en PostgreSQL seria la proteccion mas fuerte.
 
 ## Seguridad actual
 
 Existe autenticacion con token HMAC y bcrypt para contrasenas. El frontend usa `ProtectedRoute` y guarda sesion local. En backend, `requireAuth` se aplica a `/api/auth/me`, pero las rutas operativas no estan protegidas todavia. Esto es una limitacion importante si el MVP se expone fuera de un entorno controlado.
-

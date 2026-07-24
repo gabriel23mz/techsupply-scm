@@ -398,66 +398,155 @@ export const generarJornadaReparto = async () => {
     };
   }
 
-  const transaction = await sequelize.transaction();
-
   const jornadasCreadas = [];
+  const eventosJornadaCreada = [];
 
-  try {
-    const pedidosProcesados = new Set();
+  await sequelize.transaction(
+    async (transaction) => {
+      const pedidosProcesados = new Set();
+      const camionesProcesados = new Set();
 
-    for (const plan of resultado.jornadas) {
-      if (
-        !plan ||
+      for (const plan of resultado.jornadas) {
+        if (
+          !plan ||
         !plan.camion_id ||
         !Array.isArray(plan.entregas) ||
         !plan.entregas.length
-      ) {
-        continue;
-      }
+        ) {
+          continue;
+        }
 
-      /*
-       * Evita que Python asigne accidentalmente
-       * el mismo pedido a dos jornadas.
-       */
-      for (const entrega of plan.entregas) {
-        const pedidoId = Number(entrega.pedido_id);
+        const camionId = Number(plan.camion_id);
 
-        if (pedidosProcesados.has(pedidoId)) {
+        if (camionesProcesados.has(camionId)) {
           throw new Error(
-            `El pedido ${pedidoId} fue asignado a más de una jornada`,
+            `El camión ${camionId} fue asignado a más de una jornada`,
           );
         }
 
-        pedidosProcesados.add(pedidoId);
-      }
-
-      const jornada = await JornadaReparto.create(
-        {
-          camion_id: plan.camion_id,
-          fecha: new Date(),
-          estado: 'PLANIFICADA',
-          posicion_actual_orden: 0,
-          ruta_json: plan.ruta_general,
-          distancia_total:
-            plan.distancia_total_km,
-          tiempo_estimado:
-            plan.tiempo_estimado_min,
-        },
-        {
-          transaction,
-        },
-      );
-
-      const despachosCreados = [];
-
-      for (const entrega of plan.entregas) {
-        const pedidoId = Number(entrega.pedido_id);
+        camionesProcesados.add(camionId);
 
         /*
+       * Evita que Python asigne accidentalmente
+       * el mismo pedido a dos jornadas.
+       */
+        const pedidoIdsPlan = [];
+
+        for (const entrega of plan.entregas) {
+          const pedidoId = Number(entrega.pedido_id);
+
+          if (pedidosProcesados.has(pedidoId)) {
+            throw new Error(
+              `El pedido ${pedidoId} fue asignado a más de una jornada`,
+            );
+          }
+
+          pedidosProcesados.add(pedidoId);
+          pedidoIdsPlan.push(pedidoId);
+        }
+
+        const pedidosBloqueados = await Pedido.findAll({
+          where: {
+            id: {
+              [Op.in]: pedidoIdsPlan,
+            },
+            estado: 'LISTO_PARA_DESPACHO',
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (pedidosBloqueados.length !== pedidoIdsPlan.length) {
+          throw new Error(
+            'Uno o más pedidos ya no están disponibles para despacho',
+          );
+        }
+
+        const despachosActivos = await Despacho.findAll({
+          where: {
+            pedido_id: {
+              [Op.in]: pedidoIdsPlan,
+            },
+            estado: {
+              [Op.in]: [
+                'PENDIENTE',
+                'EN_TRANSITO',
+              ],
+            },
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (despachosActivos.length) {
+          throw new Error(
+            'Uno o más pedidos ya poseen un despacho activo',
+          );
+        }
+
+        const camion = await Camion.findByPk(camionId, {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (
+          !camion ||
+        camion.estado !== 'EN_BODEGA' ||
+        Number(camion.capacidad) <= 0
+        ) {
+          throw new Error(
+            `El camión ${camionId} ya no está disponible`,
+          );
+        }
+
+        const jornadaActivaCamion =
+        await JornadaReparto.findOne({
+          where: {
+            camion_id: camionId,
+            estado: {
+              [Op.in]: [
+                'PLANIFICADA',
+                'EN_RUTA',
+              ],
+            },
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+        if (jornadaActivaCamion) {
+          throw new Error(
+            `El camión ${camionId} ya posee una jornada activa`,
+          );
+        }
+
+        const jornada = await JornadaReparto.create(
+          {
+            camion_id: plan.camion_id,
+            fecha: new Date(),
+            estado: 'PLANIFICADA',
+            posicion_actual_orden: 0,
+            ruta_json: plan.ruta_general,
+            distancia_total:
+            plan.distancia_total_km,
+            tiempo_estimado:
+            plan.tiempo_estimado_min,
+          },
+          {
+            transaction,
+          },
+        );
+
+        const despachosCreados = [];
+
+        for (const entrega of plan.entregas) {
+          const pedidoId = Number(entrega.pedido_id);
+
+          /*
          * Bloqueo lógico adicional:
          * solo cambia un pedido todavía disponible.
          */
-        const [cantidadActualizada] =
+          const [cantidadActualizada] =
           await Pedido.update(
             {
               estado: 'DESPACHADO',
@@ -471,61 +560,62 @@ export const generarJornadaReparto = async () => {
             },
           );
 
-        if (cantidadActualizada !== 1) {
-          throw new Error(
-            `El pedido ${pedidoId} ya no está disponible para despacho`,
-          );
-        }
+          if (cantidadActualizada !== 1) {
+            throw new Error(
+              `El pedido ${pedidoId} ya no está disponible para despacho`,
+            );
+          }
 
-        const despacho = await Despacho.create(
-          {
-            pedido_id: pedidoId,
-            jornada_reparto_id: jornada.id,
-            orden_entrega:
+          const despacho = await Despacho.create(
+            {
+              pedido_id: pedidoId,
+              jornada_reparto_id: jornada.id,
+              orden_entrega:
               entrega.orden_entrega,
-            estado: 'PENDIENTE',
-            ruta_json: entrega.ruta_parcial,
-            distancia_total:
+              estado: 'PENDIENTE',
+              ruta_json: entrega.ruta_parcial,
+              distancia_total:
               entrega.distancia_acumulada_km,
-            tiempo_estimado:
+              tiempo_estimado:
               entrega.tiempo_acumulado_min,
-            fecha_estimada_entrega:
+              fecha_estimada_entrega:
               entrega.fecha_estimada_entrega ||
               null,
-          },
-          {
-            transaction,
-          },
+            },
+            {
+              transaction,
+            },
+          );
+
+          despachosCreados.push(despacho);
+        }
+
+        jornadasCreadas.push(
+          resumirJornadaGenerada({
+            jornada,
+            despachos: despachosCreados,
+          }),
         );
 
-        despachosCreados.push(despacho);
-      }
-
-      jornadasCreadas.push(
-        resumirJornadaGenerada({
+        eventosJornadaCreada.push({
           jornada,
           despachos: despachosCreados,
-        }),
-      );
-    }
+        });
+      }
 
-    if (!jornadasCreadas.length) {
-      throw new Error(
-        'La planificación no produjo jornadas persistibles',
-      );
-    }
-
-    await transaction.commit();
-  } catch (error) {
-    await transaction.rollback();
-    throw error;
-  }
+      if (!jornadasCreadas.length) {
+        throw new Error(
+          'La planificación no produjo jornadas persistibles',
+        );
+      }
+    },
+  );
 
   /*
    * n8n siempre después del commit.
    * Un fallo de notificación no revierte la planificación.
    */
-  for (const item of jornadasCreadas) {
+  for (const item of eventosJornadaCreada) {
     await logisticaService.notificarJornadaCreada(
       item.jornada,
       item.despachos,

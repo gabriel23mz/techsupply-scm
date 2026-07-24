@@ -4,6 +4,7 @@ import Cliente from '../models/Cliente.js';
 import Usuario from '../models/Usuario.js';
 import Ubicacion from '../models/Ubicacion.js';
 import JornadaReparto from '../models/JornadaReparto.js';
+import sequelize from '../config/database.js';
 
 function normalizeRouteJson(value) {
   if (!value) {
@@ -230,6 +231,72 @@ async function enriquecerDespachos(despachos) {
   );
 }
 
+async function actualizarPosicionJornadaSiCorresponde(
+  jornada,
+  transaction,
+) {
+  const despachos = await Despacho.findAll({
+    where: {
+      jornada_reparto_id: jornada.id,
+    },
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+
+  const posicionActual = Number(
+    jornada.posicion_actual_orden,
+  );
+
+  const despachosPuntoActual =
+    despachos.filter(
+      (item) =>
+        Number(item.orden_entrega) ===
+        posicionActual,
+    );
+
+  const estadosCerrados = [
+    'ENTREGADO',
+    'NO_ENTREGADO',
+    'CANCELADO',
+  ];
+
+  const puntoActualCerrado =
+    despachosPuntoActual.length > 0 &&
+    despachosPuntoActual.every(
+      (item) =>
+        estadosCerrados.includes(
+          item.estado,
+        ),
+    );
+
+  if (!puntoActualCerrado) {
+    return;
+  }
+
+  const ordenesPendientes = despachos
+    .filter(
+      (item) =>
+        Number(item.orden_entrega) >
+          posicionActual &&
+        item.estado === 'EN_TRANSITO',
+    )
+    .map((item) => Number(item.orden_entrega));
+
+  if (!ordenesPendientes.length) {
+    return;
+  }
+
+  await jornada.update(
+    {
+      posicion_actual_orden:
+        Math.min(...ordenesPendientes),
+    },
+    {
+      transaction,
+    },
+  );
+}
+
 const includeRelations = [
   {
     model: JornadaReparto,
@@ -378,62 +445,93 @@ export const existeDespachoActivo = async (
 };
 
 export const entregarDespacho = async (id) => {
-  const despacho = await Despacho.findByPk(id, {
-    include: [
-      {
-        model: JornadaReparto,
-        as: 'jornada',
-      },
-      {
-        model: Pedido,
-      },
-    ],
-  });
+  await sequelize.transaction(
+    async (transaction) => {
+      const despacho = await Despacho.findByPk(
+        id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
 
-  if (!despacho) {
-    throw new Error('Despacho no encontrado');
-  }
+      if (!despacho) {
+        throw new Error('Despacho no encontrado');
+      }
 
-  if (!despacho.jornada) {
-    throw new Error(
-      'El despacho no está asociado a una jornada de reparto',
-    );
-  }
+      const jornada =
+        await JornadaReparto.findByPk(
+          despacho.jornada_reparto_id,
+          {
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          },
+        );
 
-  if (despacho.jornada.estado !== 'EN_RUTA') {
-    throw new Error(
-      'La jornada debe estar EN_RUTA para entregar despachos',
-    );
-  }
+      if (!jornada) {
+        throw new Error(
+          'El despacho no está asociado a una jornada de reparto',
+        );
+      }
 
-  if (despacho.estado !== 'EN_TRANSITO') {
-    throw new Error(
-      'Solo se pueden entregar despachos en estado EN_TRANSITO',
-    );
-  }
+      const pedido = await Pedido.findByPk(
+        despacho.pedido_id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
 
-  if (
-    Number(despacho.orden_entrega) !==
-    Number(
-      despacho.jornada.posicion_actual_orden,
-    )
-  ) {
-    throw new Error(
-      'El camión aún no se encuentra en el punto de entrega de este despacho',
-    );
-  }
+      if (!pedido) {
+        throw new Error('Pedido no encontrado');
+      }
 
-  await despacho.update({
-    estado: 'ENTREGADO',
-    fecha_entrega: new Date(),
-  });
+      if (jornada.estado !== 'EN_RUTA') {
+        throw new Error(
+          'La jornada debe estar EN_RUTA para entregar despachos',
+        );
+      }
 
-  await Pedido.update(
-    { estado: 'ENTREGADO' },
-    {
-      where: {
-        id: despacho.pedido_id,
-      },
+      if (despacho.estado !== 'EN_TRANSITO') {
+        throw new Error(
+          'Solo se pueden entregar despachos en estado EN_TRANSITO',
+        );
+      }
+
+      if (
+        Number(despacho.orden_entrega) !==
+        Number(jornada.posicion_actual_orden)
+      ) {
+        throw new Error(
+          'El camión aún no se encuentra en el punto de entrega de este despacho',
+        );
+      }
+
+      const fechaEntrega = new Date();
+
+      await despacho.update(
+        {
+          estado: 'ENTREGADO',
+          fecha_entrega: fechaEntrega,
+        },
+        {
+          transaction,
+        },
+      );
+
+      await pedido.update(
+        {
+          estado: 'ENTREGADO',
+        },
+        {
+          transaction,
+        },
+      );
+
+      await actualizarPosicionJornadaSiCorresponde(
+        jornada,
+        transaction,
+      );
     },
   );
 
@@ -441,62 +539,93 @@ export const entregarDespacho = async (id) => {
 };
 
 export const marcarNoEntregado = async (id) => {
-  const despacho = await Despacho.findByPk(id, {
-    include: [
-      {
-        model: JornadaReparto,
-        as: 'jornada',
-      },
-      {
-        model: Pedido,
-      },
-    ],
-  });
+  await sequelize.transaction(
+    async (transaction) => {
+      const despacho = await Despacho.findByPk(
+        id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
 
-  if (!despacho) {
-    throw new Error('Despacho no encontrado');
-  }
+      if (!despacho) {
+        throw new Error('Despacho no encontrado');
+      }
 
-  if (!despacho.jornada) {
-    throw new Error(
-      'El despacho no está asociado a una jornada de reparto',
-    );
-  }
+      const jornada =
+        await JornadaReparto.findByPk(
+          despacho.jornada_reparto_id,
+          {
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          },
+        );
 
-  if (despacho.jornada.estado !== 'EN_RUTA') {
-    throw new Error(
-      'La jornada debe estar EN_RUTA para marcar un despacho como no entregado',
-    );
-  }
+      if (!jornada) {
+        throw new Error(
+          'El despacho no está asociado a una jornada de reparto',
+        );
+      }
 
-  if (despacho.estado !== 'EN_TRANSITO') {
-    throw new Error(
-      'Solo se pueden marcar como no entregados despachos en estado EN_TRANSITO',
-    );
-  }
+      const pedido = await Pedido.findByPk(
+        despacho.pedido_id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
 
-  if (
-    Number(despacho.orden_entrega) !==
-    Number(
-      despacho.jornada.posicion_actual_orden,
-    )
-  ) {
-    throw new Error(
-      'El camión aún no se encuentra en el punto de entrega de este despacho',
-    );
-  }
+      if (!pedido) {
+        throw new Error('Pedido no encontrado');
+      }
 
-  await despacho.update({
-    estado: 'NO_ENTREGADO',
-    fecha_entrega: new Date(),
-  });
+      if (jornada.estado !== 'EN_RUTA') {
+        throw new Error(
+          'La jornada debe estar EN_RUTA para marcar un despacho como no entregado',
+        );
+      }
 
-  await Pedido.update(
-    { estado: 'REPROGRAMADO' },
-    {
-      where: {
-        id: despacho.pedido_id,
-      },
+      if (despacho.estado !== 'EN_TRANSITO') {
+        throw new Error(
+          'Solo se pueden marcar como no entregados despachos en estado EN_TRANSITO',
+        );
+      }
+
+      if (
+        Number(despacho.orden_entrega) !==
+        Number(jornada.posicion_actual_orden)
+      ) {
+        throw new Error(
+          'El camión aún no se encuentra en el punto de entrega de este despacho',
+        );
+      }
+
+      const fechaEntrega = new Date();
+
+      await despacho.update(
+        {
+          estado: 'NO_ENTREGADO',
+          fecha_entrega: fechaEntrega,
+        },
+        {
+          transaction,
+        },
+      );
+
+      await pedido.update(
+        {
+          estado: 'REPROGRAMADO',
+        },
+        {
+          transaction,
+        },
+      );
+
+      await actualizarPosicionJornadaSiCorresponde(
+        jornada,
+        transaction,
+      );
     },
   );
 

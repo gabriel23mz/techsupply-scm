@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { modelInstance, stubMethods } from './helpers/testEnv.js';
+import {
+  modelInstance,
+  stubManagedTransaction,
+  stubMethods,
+} from './helpers/testEnv.js';
 
 test('pedidos rechaza finalizar preparación sin detalles y conserva transición válida', async (t) => {
   const service = await import('../../src/services/pedido.service.js');
@@ -31,8 +35,9 @@ test('pedidos rechaza finalizar preparación sin detalles y conserva transición
   });
 });
 
-test('detalle de pedido descuenta stock antes de persistir, exponiendo riesgo no atómico actual', async (t) => {
+test('detalle de pedido revierte stock si falla la creación del detalle', async (t) => {
   const service = await import('../../src/services/detallePedido.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
   const { default: Pedido } = await import('../../src/models/Pedido.js');
   const { default: Producto } = await import('../../src/models/Producto.js');
   const { default: DetallePedido } = await import('../../src/models/DetallePedido.js');
@@ -40,6 +45,7 @@ test('detalle de pedido descuenta stock antes de persistir, exponiendo riesgo no
   const pedido = modelInstance({ id: 9, estado: 'PENDIENTE' });
   const producto = modelInstance({ id: 4, stock_actual: 5, precio_venta: 12 });
 
+  stubManagedTransaction(t, sequelize);
   stubMethods(t, Pedido, {
     findByPk: async () => pedido,
     update: async () => [1],
@@ -59,27 +65,167 @@ test('detalle de pedido descuenta stock antes de persistir, exponiendo riesgo no
     /fallo simulado/,
   );
 
-  assert.deepEqual(producto.update.mock.calls[0].arguments[0], {
-    stock_actual: 3,
+  assert.equal(producto.stock_actual, 5);
+  assert.equal(DetallePedido.create.mock.callCount(), 1);
+});
+
+test('detalle de pedido revierte stock y detalle si falla recalcular total', async (t) => {
+  const service = await import('../../src/services/detallePedido.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: Pedido } = await import('../../src/models/Pedido.js');
+  const { default: Producto } = await import('../../src/models/Producto.js');
+  const { default: DetallePedido } = await import('../../src/models/DetallePedido.js');
+
+  const pedido = modelInstance({ id: 10, estado: 'PENDIENTE', total: 0 });
+  const producto = modelInstance({ id: 5, stock_actual: 4, precio_venta: 15 });
+  const detallesCreados = [];
+
+  stubManagedTransaction(t, sequelize);
+  stubMethods(t, Pedido, {
+    findByPk: async () => pedido,
+    update: async () => {
+      throw new Error('fallo simulado al recalcular total');
+    },
   });
+  stubMethods(t, Producto, {
+    findOne: async () => producto,
+  });
+  stubMethods(t, DetallePedido, {
+    create: async (datos, options) => {
+      const detalle = modelInstance({ id: 55, ...datos });
+      options.transaction.record(detallesCreados, { length: detallesCreados.length });
+      detallesCreados.push(detalle);
+      return detalle;
+    },
+    findAll: async () => detallesCreados,
+  });
+
+  await assert.rejects(
+    () => service.crear({ pedido_id: 10, producto_id: 5, cantidad: 1 }),
+    /fallo simulado al recalcular total/,
+  );
+
+  assert.equal(producto.stock_actual, 4);
+  assert.equal(detallesCreados.length, 0);
+  assert.equal(pedido.total, 0);
+});
+
+test('detalle de pedido revierte stock si falla actualización de detalle', async (t) => {
+  const service = await import('../../src/services/detallePedido.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: Pedido } = await import('../../src/models/Pedido.js');
+  const { default: Producto } = await import('../../src/models/Producto.js');
+  const { default: DetallePedido } = await import('../../src/models/DetallePedido.js');
+
+  const detalle = modelInstance({
+    id: 80,
+    pedido_id: 10,
+    producto_id: 5,
+    cantidad: 1,
+    precio_unitario: 15,
+    subtotal: 15,
+  });
+  detalle.update = t.mock.fn(async () => {
+    throw new Error('fallo simulado al actualizar detalle');
+  });
+  const pedido = modelInstance({ id: 10, estado: 'PENDIENTE', total: 15 });
+  const producto = modelInstance({ id: 5, stock_actual: 4 });
+
+  stubManagedTransaction(t, sequelize);
+  stubMethods(t, Pedido, {
+    findByPk: async () => pedido,
+  });
+  stubMethods(t, Producto, {
+    findByPk: async () => producto,
+  });
+  stubMethods(t, DetallePedido, {
+    findByPk: async () => detalle,
+    findAll: async () => [detalle],
+  });
+
+  await assert.rejects(
+    () => service.actualizar(80, { cantidad: 3 }),
+    /fallo simulado al actualizar detalle/,
+  );
+
+  assert.equal(producto.stock_actual, 4);
+  assert.equal(detalle.cantidad, 1);
+  assert.equal(detalle.subtotal, 15);
+});
+
+test('detalle de pedido revierte stock si falla eliminación del detalle', async (t) => {
+  const service = await import('../../src/services/detallePedido.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: Pedido } = await import('../../src/models/Pedido.js');
+  const { default: Producto } = await import('../../src/models/Producto.js');
+  const { default: DetallePedido } = await import('../../src/models/DetallePedido.js');
+
+  const detalle = modelInstance({
+    id: 81,
+    pedido_id: 10,
+    producto_id: 5,
+    cantidad: 2,
+    precio_unitario: 15,
+    subtotal: 30,
+  });
+  detalle.destroy = t.mock.fn(async () => {
+    throw new Error('fallo simulado al eliminar detalle');
+  });
+  const pedido = modelInstance({ id: 10, estado: 'PENDIENTE', total: 30 });
+  const producto = modelInstance({ id: 5, stock_actual: 4 });
+
+  stubManagedTransaction(t, sequelize);
+  stubMethods(t, Pedido, {
+    findByPk: async () => pedido,
+  });
+  stubMethods(t, Producto, {
+    findByPk: async () => producto,
+  });
+  stubMethods(t, DetallePedido, {
+    findByPk: async () => detalle,
+    findAll: async () => [detalle],
+  });
+
+  await assert.rejects(
+    () => service.eliminar(81),
+    /fallo simulado al eliminar detalle/,
+  );
+
+  assert.equal(producto.stock_actual, 4);
+  assert.equal(detalle.destroyed, undefined);
 });
 
 test('despachos impide entrega fuera de orden y actualiza pedido al entregar en orden', async (t) => {
   const service = await import('../../src/services/despacho.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
   const { default: Despacho } = await import('../../src/models/Despacho.js');
   const { default: Pedido } = await import('../../src/models/Pedido.js');
   const { default: Ubicacion } = await import('../../src/models/Ubicacion.js');
+  const { default: JornadaReparto } = await import('../../src/models/JornadaReparto.js');
 
   const fueraDeOrden = modelInstance({
     id: 20,
     pedido_id: 30,
+    jornada_reparto_id: 40,
     estado: 'EN_TRANSITO',
     orden_entrega: 2,
-    jornada: { estado: 'EN_RUTA', posicion_actual_orden: 1 },
   });
+  const pedido = modelInstance({ id: 30, estado: 'DESPACHADO' });
+  const jornada = modelInstance({ id: 40, estado: 'EN_RUTA', posicion_actual_orden: 1 });
 
+  stubManagedTransaction(t, sequelize);
   stubMethods(t, Despacho, {
     findByPk: async () => fueraDeOrden,
+    findAll: async () => [
+      fueraDeOrden,
+      { id: 99, orden_entrega: 2, estado: 'EN_TRANSITO' },
+    ],
+  });
+  stubMethods(t, Pedido, {
+    findByPk: async () => pedido,
+  });
+  stubMethods(t, JornadaReparto, {
+    findByPk: async () => jornada,
   });
 
   await assert.rejects(
@@ -88,9 +234,6 @@ test('despachos impide entrega fuera de orden y actualiza pedido al entregar en 
   );
 
   fueraDeOrden.orden_entrega = 1;
-  stubMethods(t, Pedido, {
-    update: async () => [1],
-  });
   stubMethods(t, Ubicacion, {
     findAll: async () => [],
   });
@@ -98,31 +241,39 @@ test('despachos impide entrega fuera de orden y actualiza pedido al entregar en 
   const resultado = await service.entregarDespacho(20);
 
   assert.equal(resultado.estado, 'ENTREGADO');
-  assert.deepEqual(Pedido.update.mock.calls[0].arguments[0], {
-    estado: 'ENTREGADO',
-  });
+  assert.equal(pedido.estado, 'ENTREGADO');
+  assert.equal(jornada.posicion_actual_orden, 2);
 });
 
-test('despacho entregado puede quedar parcial si falla actualización de pedido', async (t) => {
+test('despacho revierte entrega si falla actualización de pedido', async (t) => {
   const service = await import('../../src/services/despacho.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
   const { default: Despacho } = await import('../../src/models/Despacho.js');
   const { default: Pedido } = await import('../../src/models/Pedido.js');
+  const { default: JornadaReparto } = await import('../../src/models/JornadaReparto.js');
 
   const despacho = modelInstance({
     id: 21,
     pedido_id: 31,
+    jornada_reparto_id: 41,
     estado: 'EN_TRANSITO',
     orden_entrega: 1,
-    jornada: { estado: 'EN_RUTA', posicion_actual_orden: 1 },
   });
+  const pedido = modelInstance({ id: 31, estado: 'DESPACHADO' });
+  pedido.update = t.mock.fn(async () => {
+    throw new Error('fallo simulado al actualizar pedido');
+  });
+  const jornada = modelInstance({ id: 41, estado: 'EN_RUTA', posicion_actual_orden: 1 });
 
+  stubManagedTransaction(t, sequelize);
   stubMethods(t, Despacho, {
     findByPk: async () => despacho,
   });
   stubMethods(t, Pedido, {
-    update: async () => {
-      throw new Error('fallo simulado al actualizar pedido');
-    },
+    findByPk: async () => pedido,
+  });
+  stubMethods(t, JornadaReparto, {
+    findByPk: async () => jornada,
   });
 
   await assert.rejects(
@@ -130,7 +281,122 @@ test('despacho entregado puede quedar parcial si falla actualización de pedido'
     /fallo simulado/,
   );
 
-  assert.deepEqual(despacho.update.mock.calls[0].arguments[0].estado, 'ENTREGADO');
+  assert.equal(despacho.estado, 'EN_TRANSITO');
+  assert.equal(pedido.estado, 'DESPACHADO');
+});
+
+test('despacho revierte entrega si falla avance de jornada', async (t) => {
+  const service = await import('../../src/services/despacho.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: Despacho } = await import('../../src/models/Despacho.js');
+  const { default: Pedido } = await import('../../src/models/Pedido.js');
+  const { default: JornadaReparto } = await import('../../src/models/JornadaReparto.js');
+
+  const despacho = modelInstance({
+    id: 22,
+    pedido_id: 32,
+    jornada_reparto_id: 42,
+    estado: 'EN_TRANSITO',
+    orden_entrega: 1,
+  });
+  const pedido = modelInstance({ id: 32, estado: 'DESPACHADO' });
+  const jornada = modelInstance({ id: 42, estado: 'EN_RUTA', posicion_actual_orden: 1 });
+  jornada.update = t.mock.fn(async () => {
+    throw new Error('fallo simulado al avanzar jornada');
+  });
+
+  stubManagedTransaction(t, sequelize);
+  stubMethods(t, Despacho, {
+    findByPk: async () => despacho,
+    findAll: async () => [
+      despacho,
+      { id: 33, orden_entrega: 2, estado: 'EN_TRANSITO' },
+    ],
+  });
+  stubMethods(t, Pedido, {
+    findByPk: async () => pedido,
+  });
+  stubMethods(t, JornadaReparto, {
+    findByPk: async () => jornada,
+  });
+
+  await assert.rejects(
+    () => service.entregarDespacho(22),
+    /fallo simulado al avanzar jornada/,
+  );
+
+  assert.equal(despacho.estado, 'EN_TRANSITO');
+  assert.equal(pedido.estado, 'DESPACHADO');
+  assert.equal(jornada.posicion_actual_orden, 1);
+});
+
+test('despacho rechaza doble entrega con estado controlado', async (t) => {
+  const service = await import('../../src/services/despacho.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: Despacho } = await import('../../src/models/Despacho.js');
+  const { default: Pedido } = await import('../../src/models/Pedido.js');
+  const { default: JornadaReparto } = await import('../../src/models/JornadaReparto.js');
+
+  stubManagedTransaction(t, sequelize);
+  stubMethods(t, Despacho, {
+    findByPk: async () => modelInstance({
+      id: 23,
+      pedido_id: 33,
+      jornada_reparto_id: 43,
+      estado: 'ENTREGADO',
+      orden_entrega: 1,
+    }),
+  });
+  stubMethods(t, Pedido, {
+    findByPk: async () => modelInstance({ id: 33, estado: 'ENTREGADO' }),
+  });
+  stubMethods(t, JornadaReparto, {
+    findByPk: async () => modelInstance({ id: 43, estado: 'EN_RUTA', posicion_actual_orden: 1 }),
+  });
+
+  await assert.rejects(
+    () => service.entregarDespacho(23),
+    /Solo se pueden entregar despachos en estado EN_TRANSITO/,
+  );
+});
+
+test('despacho no entregado actualiza pedido y avanza jornada de forma atómica', async (t) => {
+  const service = await import('../../src/services/despacho.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: Despacho } = await import('../../src/models/Despacho.js');
+  const { default: Pedido } = await import('../../src/models/Pedido.js');
+  const { default: JornadaReparto } = await import('../../src/models/JornadaReparto.js');
+
+  const despacho = modelInstance({
+    id: 24,
+    pedido_id: 34,
+    jornada_reparto_id: 44,
+    estado: 'EN_TRANSITO',
+    orden_entrega: 1,
+  });
+  const pedido = modelInstance({ id: 34, estado: 'DESPACHADO' });
+  const jornada = modelInstance({ id: 44, estado: 'EN_RUTA', posicion_actual_orden: 1 });
+
+  stubManagedTransaction(t, sequelize);
+  stubMethods(t, Despacho, {
+    findByPk: async () => despacho,
+    findAll: async () => [
+      despacho,
+      { id: 35, orden_entrega: 2, estado: 'EN_TRANSITO' },
+    ],
+  });
+  stubMethods(t, Pedido, {
+    findByPk: async () => pedido,
+  });
+  stubMethods(t, JornadaReparto, {
+    findByPk: async () => jornada,
+  });
+
+  const resultado = await service.marcarNoEntregado(24);
+
+  assert.equal(resultado.estado, 'NO_ENTREGADO');
+  assert.equal(pedido.estado, 'REPROGRAMADO');
+  assert.equal(jornada.posicion_actual_orden, 2);
 });
 
 test('jornada rechaza generación sin pedidos o sin camiones disponibles', async (t) => {
