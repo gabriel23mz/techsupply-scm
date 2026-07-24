@@ -5,11 +5,11 @@
 El backend esta dividido en:
 
 - `models`: definiciones Sequelize.
-- `routes`: endpoints REST.
-- `controllers`: validacion de entrada basica y respuestas HTTP.
-- `services`: reglas de negocio y orquestacion.
-- `middlewares`: autenticacion, 404 y errores.
-- `utils`: respuestas y token de autenticacion.
+- `routes`: endpoints REST y montaje de validadores HTTP.
+- `controllers`: lectura de entrada HTTP, llamada unica al servicio principal y `successResponse`.
+- `services`: casos de uso, reglas de negocio, normalizacion, consultas Sequelize, transacciones y orquestacion.
+- `middlewares`: validacion HTTP, autenticacion, 404 y errores.
+- `utils`: respuestas, token de autenticacion y errores tipados.
 - `constants`: constantes logisticas.
 
 ## Modelos principales
@@ -170,7 +170,43 @@ Si falla la actualizacion del pedido o de la jornada, el despacho no queda entre
 
 ## Manejo de errores
 
-Los controladores usan `successResponse` y `errorResponse`. El middleware global devuelve `success: false` y el mensaje del error. Esto es util en desarrollo, pero puede exponer detalles internos si se publica sin ajustes.
+Los controladores activos delegan errores mediante `asyncHandler`. El middleware global `errorHandler` es el unico punto que convierte errores a HTTP y conserva la forma publica:
+
+```json
+{
+  "success": false,
+  "message": "Mensaje publico"
+}
+```
+
+Errores tipados activos:
+
+| Clase | HTTP | Uso |
+| ----- | ---: | --- |
+| `ValidationError` | 400 | Entrada HTTP invalida |
+| `NotFoundError` | 404 | Registro o ruta inexistente |
+| `ConflictError` | 400 | Duplicados y conflictos de unicidad |
+| `BusinessRuleError` | 400 | Regla de negocio incumplida |
+| `UnauthorizedError` | 401 | Login, token o autenticacion |
+| `ForbiddenError` | 403 | Autorizacion futura |
+| `ExternalServiceError` | 502 | Python, timeout o contrato externo invalido |
+
+Tambien se normalizan `SequelizeValidationError`, `SequelizeUniqueConstraintError` y `SequelizeForeignKeyConstraintError`. En produccion, los errores internos inesperados responden `Error interno del servidor` sin exponer stack, SQL ni detalles de conexion.
+
+Los codigos internos (`CATEGORIA_DUPLICADA`, `PEDIDO_NO_MODIFICABLE`, `PYTHON_TIMEOUT`, entre otros) quedan en los errores operacionales para trazabilidad interna. La respuesta HTTP publica no agrega campos nuevos para mantener compatibilidad con el frontend.
+
+## Validaciones HTTP
+
+Las validaciones de entrada estan en `src/middlewares/requestValidators.js` y cubren:
+
+- Campos obligatorios.
+- IDs positivos.
+- Strings vacios.
+- Correo, cedula y telefono.
+- Cantidades, precios, stock y distancia.
+- Coordenadas enviadas en pares.
+
+Las reglas que requieren base de datos o estado del dominio permanecen en servicios: duplicados, relaciones, stock, estados de pedido, camiones ocupados, orden de entrega, transacciones e integraciones.
 
 ## Transacciones existentes
 

@@ -1,8 +1,14 @@
-const notFound = (req, res) => {
-  return res.status(404).json({
-    success: false,
-    message: 'Ruta no encontrada',
-  });
+import {
+  NotFoundError,
+} from '../utils/errors.js';
+
+const notFound = (req, res, next) => {
+  return next(
+    new NotFoundError(
+      'Ruta no encontrada',
+      'RUTA_NO_ENCONTRADA',
+    ),
+  );
 };
 
 export default notFound;

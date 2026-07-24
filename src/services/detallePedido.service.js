@@ -3,6 +3,11 @@ import Pedido from '../models/Pedido.js';
 import Producto from '../models/Producto.js';
 import sequelize from '../config/database.js';
 
+import {
+  BusinessRuleError,
+  NotFoundError,
+} from '../utils/errors.js';
+
 const recalcularTotalPedido = async (
   pedidoId,
   options = {},
@@ -43,9 +48,18 @@ export const obtenerTodos = async () => {
 };
 
 export const obtenerPorId = async (id) => {
-  return await DetallePedido.findByPk(id, {
+  const detalle = await DetallePedido.findByPk(id, {
     include: [Pedido, Producto],
   });
+
+  if (!detalle) {
+    throw new NotFoundError(
+      'Detalle no encontrado',
+      'DETALLE_NO_ENCONTRADO',
+    );
+  }
+
+  return detalle;
 };
 
 export const crear = async ({
@@ -53,6 +67,11 @@ export const crear = async ({
   producto_id,
   cantidad,
 }) => {
+  /*
+   * Invariante:
+   * El ajuste de stock, el detalle y el total del pedido
+   * deben confirmarse o revertirse como una sola operación.
+   */
   const detalleId = await sequelize.transaction(
     async (transaction) => {
       const pedido = await Pedido.findByPk(
@@ -64,15 +83,19 @@ export const crear = async ({
       );
 
       if (!pedido) {
-        throw new Error('Pedido no encontrado');
+        throw new NotFoundError(
+          'Pedido no encontrado',
+          'PEDIDO_NO_ENCONTRADO',
+        );
       }
 
       if (
         pedido.estado !== 'PENDIENTE' &&
         pedido.estado !== 'PREPARANDO'
       ) {
-        throw new Error(
+        throw new BusinessRuleError(
           'No se pueden agregar productos a este pedido',
+          'PEDIDO_NO_MODIFICABLE',
         );
       }
 
@@ -86,11 +109,17 @@ export const crear = async ({
       });
 
       if (!producto) {
-        throw new Error('Producto no encontrado');
+        throw new NotFoundError(
+          'Producto no encontrado',
+          'PRODUCTO_NO_ENCONTRADO',
+        );
       }
 
       if (cantidad > producto.stock_actual) {
-        throw new Error('Stock insuficiente');
+        throw new BusinessRuleError(
+          'Stock insuficiente',
+          'STOCK_INSUFICIENTE',
+        );
       }
 
       const precio_unitario = Number(
@@ -139,6 +168,11 @@ export const actualizar = async (
   id,
   datos,
 ) => {
+  /*
+   * Invariante:
+   * La diferencia de stock, el subtotal y el total del pedido
+   * permanecen dentro de la misma transacción.
+   */
   const detalleId = await sequelize.transaction(
     async (transaction) => {
       const detalle =
@@ -151,7 +185,10 @@ export const actualizar = async (
         );
 
       if (!detalle) {
-        return null;
+        throw new NotFoundError(
+          'Detalle no encontrado',
+          'DETALLE_NO_ENCONTRADO',
+        );
       }
 
       const pedido = await Pedido.findByPk(
@@ -163,15 +200,19 @@ export const actualizar = async (
       );
 
       if (!pedido) {
-        throw new Error('Pedido no encontrado');
+        throw new NotFoundError(
+          'Pedido no encontrado',
+          'PEDIDO_NO_ENCONTRADO',
+        );
       }
 
       if (
         pedido.estado !== 'PENDIENTE' &&
         pedido.estado !== 'PREPARANDO'
       ) {
-        throw new Error(
+        throw new BusinessRuleError(
           'No se puede modificar este pedido',
+          'PEDIDO_NO_MODIFICABLE',
         );
       }
 
@@ -184,7 +225,10 @@ export const actualizar = async (
       );
 
       if (!producto) {
-        throw new Error('Producto no encontrado');
+        throw new NotFoundError(
+          'Producto no encontrado',
+          'PRODUCTO_NO_ENCONTRADO',
+        );
       }
 
       const cantidadNueva = Number(
@@ -202,8 +246,9 @@ export const actualizar = async (
         if (
           diferencia > producto.stock_actual
         ) {
-          throw new Error(
+          throw new BusinessRuleError(
             'Stock insuficiente',
+            'STOCK_INSUFICIENTE',
           );
         }
 
@@ -257,14 +302,15 @@ export const actualizar = async (
     },
   );
 
-  if (!detalleId) {
-    return null;
-  }
-
   return await obtenerPorId(detalleId);
 };
 
 export const eliminar = async (id) => {
+  /*
+   * Invariante:
+   * La devolución de stock y la eliminación del detalle
+   * se confirman o revierten juntas.
+   */
   const eliminado = await sequelize.transaction(
     async (transaction) => {
       const detalle =
@@ -277,7 +323,10 @@ export const eliminar = async (id) => {
         );
 
       if (!detalle) {
-        return null;
+        throw new NotFoundError(
+          'Detalle no encontrado',
+          'DETALLE_NO_ENCONTRADO',
+        );
       }
 
       const pedido = await Pedido.findByPk(
@@ -289,15 +338,19 @@ export const eliminar = async (id) => {
       );
 
       if (!pedido) {
-        throw new Error('Pedido no encontrado');
+        throw new NotFoundError(
+          'Pedido no encontrado',
+          'PEDIDO_NO_ENCONTRADO',
+        );
       }
 
       if (
         pedido.estado !== 'PENDIENTE' &&
         pedido.estado !== 'PREPARANDO'
       ) {
-        throw new Error(
+        throw new BusinessRuleError(
           'No se puede modificar este pedido',
+          'PEDIDO_NO_MODIFICABLE',
         );
       }
 
@@ -310,7 +363,10 @@ export const eliminar = async (id) => {
       );
 
       if (!producto) {
-        throw new Error('Producto no encontrado');
+        throw new NotFoundError(
+          'Producto no encontrado',
+          'PRODUCTO_NO_ENCONTRADO',
+        );
       }
 
       await producto.update(

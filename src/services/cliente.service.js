@@ -1,6 +1,75 @@
 import Cliente from '../models/Cliente.js';
 import Ubicacion from '../models/Ubicacion.js';
 
+import {
+  BODEGA_CENTRAL_ID,
+} from '../constants/logistica.js';
+
+import {
+  BusinessRuleError,
+  ConflictError,
+  NotFoundError,
+} from '../utils/errors.js';
+
+const capitalizarNombre = (nombre) =>
+  nombre
+    .trim()
+    .toLowerCase()
+    .split(' ')
+    .filter(Boolean)
+    .map(
+      (palabra) =>
+        palabra.charAt(0).toUpperCase() +
+        palabra.slice(1),
+    )
+    .join(' ');
+
+const normalizarDatos = (datos) => {
+  const normalizados = { ...datos };
+
+  if (normalizados.nombre !== undefined) {
+    normalizados.nombre =
+      capitalizarNombre(normalizados.nombre);
+  }
+
+  if (normalizados.correo !== undefined) {
+    normalizados.correo =
+      String(normalizados.correo).trim().toLowerCase();
+  }
+
+  if (normalizados.direccion !== undefined) {
+    normalizados.direccion =
+      normalizados.direccion.trim();
+  }
+
+  return normalizados;
+};
+
+const validarUbicacionCliente = async (
+  ubicacionId,
+) => {
+  if (ubicacionId === undefined) {
+    return;
+  }
+
+  if (Number(ubicacionId) === BODEGA_CENTRAL_ID) {
+    throw new BusinessRuleError(
+      'La ubicación seleccionada es de uso interno',
+      'UBICACION_INTERNA',
+    );
+  }
+
+  const ubicacion =
+    await existeUbicacion(ubicacionId);
+
+  if (!ubicacion) {
+    throw new BusinessRuleError(
+      'La ubicación especificada no existe',
+      'UBICACION_NO_EXISTE',
+    );
+  }
+};
+
 export const obtenerTodos = async () => {
   return await Cliente.findAll({
     where: {
@@ -17,7 +86,7 @@ export const obtenerTodos = async () => {
 };
 
 export const obtenerPorId = async (id) => {
-  return await Cliente.findOne({
+  const cliente = await Cliente.findOne({
     where: {
       id,
       estado: true,
@@ -29,40 +98,66 @@ export const obtenerPorId = async (id) => {
       },
     ],
   });
+
+  if (!cliente) {
+    throw new NotFoundError(
+      'Cliente no encontrado',
+      'CLIENTE_NO_ENCONTRADO',
+    );
+  }
+
+  return cliente;
 };
 
 export const crear = async (datos) => {
-  return await Cliente.create(datos);
+  const datosNormalizados = normalizarDatos(datos);
+
+  if (
+    await existeIdentificacion(
+      datosNormalizados.identificacion,
+    )
+  ) {
+    throw new ConflictError(
+      'La identificación ya se encuentra registrada',
+      'IDENTIFICACION_DUPLICADA',
+    );
+  }
+
+  await validarUbicacionCliente(
+    datosNormalizados.ubicacion_id,
+  );
+
+  return await Cliente.create(datosNormalizados);
 };
 
 export const actualizar = async (id, datos) => {
-  const cliente = await Cliente.findOne({
-    where: {
-      id,
-      estado: true,
-    },
-  });
+  const cliente = await obtenerPorId(id);
+  const datosNormalizados = normalizarDatos(datos);
 
-  if (!cliente) {
-    return null;
+  if (
+    datosNormalizados.identificacion !== undefined &&
+    await existeIdentificacion(
+      datosNormalizados.identificacion,
+      id,
+    )
+  ) {
+    throw new ConflictError(
+      'La identificación ya se encuentra registrada',
+      'IDENTIFICACION_DUPLICADA',
+    );
   }
 
-  await cliente.update(datos);
+  await validarUbicacionCliente(
+    datosNormalizados.ubicacion_id,
+  );
+
+  await cliente.update(datosNormalizados);
 
   return cliente;
 };
 
 export const eliminar = async (id) => {
-  const cliente = await Cliente.findOne({
-    where: {
-      id,
-      estado: true,
-    },
-  });
-
-  if (!cliente) {
-    return null;
-  }
+  const cliente = await obtenerPorId(id);
 
   await cliente.update({
     estado: false,

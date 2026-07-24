@@ -1,94 +1,60 @@
 import * as despachoService from '../services/despacho.service.js';
-
 import * as logisticaService from '../services/logistica.service.js';
 
 import {
   successResponse,
-  errorResponse,
 } from '../utils/apiResponse.js';
 
-export const obtenerTodos = async (req, res) => {
-  try {
+import {
+  asyncHandler,
+} from '../middlewares/asyncHandler.js';
+
+export const obtenerTodos = asyncHandler(
+  async (req, res) => {
     const despachos =
-        await despachoService.obtenerTodos();
+      await despachoService.obtenerTodos();
 
     return successResponse(
       res,
       despachos,
       'Despachos obtenidos correctamente',
     );
-  } catch (error) {
-    return errorResponse(
-      res,
-      error.message,
-    );
-  }
-};
+  },
+);
 
-export const obtenerPorId = async (req, res) => {
-  try {
-    const { id } = req.params;
-
+export const obtenerPorId = asyncHandler(
+  async (req, res) => {
     const despacho =
-        await despachoService.obtenerPorId(
-          id,
-        );
-
-    if (!despacho) {
-      return errorResponse(
-        res,
-        'Despacho no encontrado',
-        404,
+      await despachoService.obtenerPorId(
+        req.params.id,
       );
-    }
 
     return successResponse(
       res,
       despacho,
       'Despacho encontrado',
     );
-  } catch (error) {
-    return errorResponse(
-      res,
-      error.message,
-    );
-  }
-};
+  },
+);
 
-export const obtenerPedidosDisponibles = async (req, res) => {
-  try {
-
+export const obtenerPedidosDisponibles = asyncHandler(
+  async (req, res) => {
     const pedidos =
-        await logisticaService.obtenerPedidosDisponibles();
+      await logisticaService.obtenerPedidosDisponibles();
 
     return successResponse(
       res,
       pedidos,
       'Pedidos disponibles para despacho obtenidos correctamente',
     );
+  },
+);
 
-  } catch (error) {
-
-    return errorResponse(
-      res,
-      error.message,
-    );
-
-  }
-};
-
-export const crear = async (
-  req,
-  res,
-) => {
-  try {
-
-    const { pedido_id } =
-      req.body;
-
+export const crear = asyncHandler(
+  async (req, res) => {
     const despacho =
       await logisticaService.crearDespacho(
-        pedido_id,
+        req.body.pedido_id,
       );
 
     return successResponse(
@@ -97,29 +63,14 @@ export const crear = async (
       'Despacho creado correctamente',
       201,
     );
+  },
+);
 
-  } catch (error) {
-
-    return errorResponse(
-      res,
-      error.message,
-    );
-
-  }
-};
-
-export const iniciar = async (
-  req,
-  res,
-) => {
-  try {
-
-    const { id } =
-      req.params;
-
+export const iniciar = asyncHandler(
+  async (req, res) => {
     const despacho =
       await logisticaService.iniciarDespacho(
-        id,
+        req.params.id,
       );
 
     return successResponse(
@@ -127,29 +78,14 @@ export const iniciar = async (
       despacho,
       'Despacho iniciado correctamente',
     );
+  },
+);
 
-  } catch (error) {
-
-    return errorResponse(
-      res,
-      error.message,
-    );
-
-  }
-};
-
-export const entregar = async (
-  req,
-  res,
-) => {
-  try {
-
-    const { id } =
-      req.params;
-
+export const entregar = asyncHandler(
+  async (req, res) => {
     const despacho =
       await logisticaService.entregarDespacho(
-        id,
+        req.params.id,
       );
 
     return successResponse(
@@ -157,29 +93,14 @@ export const entregar = async (
       despacho,
       'Despacho entregado correctamente',
     );
+  },
+);
 
-  } catch (error) {
-
-    return errorResponse(
-      res,
-      error.message,
-    );
-
-  }
-};
-
-export const cancelar = async (
-  req,
-  res,
-) => {
-  try {
-
-    const { id } =
-      req.params;
-
+export const cancelar = asyncHandler(
+  async (req, res) => {
     const despacho =
       await logisticaService.cancelarDespacho(
-        id,
+        req.params.id,
       );
 
     return successResponse(
@@ -187,55 +108,35 @@ export const cancelar = async (
       despacho,
       'Despacho cancelado correctamente',
     );
+  },
+);
 
-  } catch (error) {
-
-    return errorResponse(
-      res,
-      error.message,
-    );
-
-  }
-};
-
-
-export const entregarDespacho = async (req, res) => {
-  try {
-    const resultado = await despachoService.entregarDespacho(req.params.id);
-
-    await logisticaService.notificarDespachoEntregado(resultado);
+export const entregarDespacho = asyncHandler(
+  async (req, res) => {
+    const resultado =
+      await despachoService.entregarDespacho(
+        req.params.id,
+      );
 
     return successResponse(
       res,
       resultado,
       'Despacho entregado correctamente',
     );
-  } catch (error) {
-    return errorResponse(
-      res,
-      error.message || 'Error al entregar el despacho',
-      400,
-    );
-  }
-};
+  },
+);
 
-export const marcarNoEntregado = async (req, res) => {
-  try {
-    const resultado = await despachoService.marcarNoEntregado(req.params.id);
+export const marcarNoEntregado = asyncHandler(
+  async (req, res) => {
+    const resultado =
+      await despachoService.marcarNoEntregado(
+        req.params.id,
+      );
 
-    await logisticaService.notificarDespachoNoEntregado(resultado);
-    
     return successResponse(
       res,
       resultado,
       'Despacho marcado como no entregado correctamente',
     );
-  } catch (error) {
-    return errorResponse(
-      res,
-      error.message || 'Error al marcar el despacho como no entregado',
-      400,
-    );
-  }
-};
-
+  },
+);

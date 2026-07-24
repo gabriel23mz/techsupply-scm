@@ -11,6 +11,8 @@
 - Mapas con Leaflet ya integrados.
 - Transacciones en operaciones logisticas centrales.
 - n8n desacoplado de la operacion principal.
+- Controladores backend activos adelgazados y errores centralizados.
+- Errores operacionales tipados con normalizacion de errores Sequelize y externos.
 
 ## Deuda tecnica
 
@@ -27,7 +29,7 @@
 
 - Las rutas operativas del backend no aplican `requireAuth`.
 - No hay autorizacion por roles en endpoints.
-- El manejador de errores puede exponer mensajes internos.
+- Los errores internos inesperados ya no exponen mensajes en produccion.
 - El servicio n8n imprime objetos completos en consola.
 - Los secretos reales deben mantenerse fuera de Git y de la documentacion.
 
@@ -66,7 +68,7 @@ npm run test:frontend
 
 Resultado de linea base:
 
-- Backend: 32 pruebas aprobadas.
+- Backend: 35 pruebas aprobadas.
 - Python: 24 pruebas aprobadas.
 - Frontend: 1 prueba aprobada.
 - Fallos omitidos intencionalmente: ninguno.
@@ -174,13 +176,22 @@ Antes de activar webhooks reales:
 - Validar estructura documental y enlaces.
 - Mantener benchmark Python como verificacion manual de rendimiento.
 
-### Fase 4 - Integraciones
+### Fase 4 - Estabilizacion interna
+
+- Estandarizar flujo ruta, validacion, controlador y servicio.
+- Centralizar manejo de errores con errores tipados.
+- Mover normalizacion y reglas desde controladores a servicios.
+- Mantener modelos, asociaciones, estados, endpoints y contratos externos congelados.
+
+Estado: implementada para modulos activos outbound.
+
+### Fase 5 - Integraciones
 
 - Implementar n8n real con reintentos e idempotencia.
 - Centralizar OSRM si el proyecto crece.
 - Agregar observabilidad basica de eventos logisticos.
 
-### Fase 5 - Correcciones funcionales
+### Fase 6 - Correcciones funcionales
 
 - Proteger rutas backend.
 - Agregar transaccion a cancelacion de pedido y avance de jornada si se mantiene como endpoint separado.

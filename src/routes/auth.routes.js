@@ -2,26 +2,27 @@ import {
   Router,
 } from 'express';
 
-import {
-  login,
-  me,
-} from '../controllers/auth.controller.js';
+import * as authController
+  from '../controllers/auth.controller.js';
 
-import {
-  requireAuth,
-} from '../middlewares/auth.middleware.js';
+import * as authMiddleware
+  from '../middlewares/auth.middleware.js';
+
+import * as requestValidators
+  from '../middlewares/requestValidators.js';
 
 const router = Router();
 
 router.post(
   '/login',
-  login,
+  requestValidators.validarLogin,
+  authController.login,
 );
 
 router.get(
   '/me',
-  requireAuth,
-  me,
+  authMiddleware.requireAuth,
+  authController.me,
 );
 
 export default router;

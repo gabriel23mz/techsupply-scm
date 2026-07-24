@@ -6,11 +6,23 @@ import Ubicacion from '../models/Ubicacion.js';
 import JornadaReparto from '../models/JornadaReparto.js';
 import sequelize from '../config/database.js';
 
+import * as n8nService from './n8n.service.js';
+
+import {
+  BusinessRuleError,
+  NotFoundError,
+} from '../utils/errors.js';
+
 function normalizeRouteJson(value) {
   if (!value) {
     return {};
   }
 
+  /*
+   * PostgreSQL devuelve ruta_json como JSONB.
+   * Esta normalización mantiene compatibilidad con valores
+   * históricos que puedan llegar serializados como texto.
+   */
   if (typeof value === 'object') {
     return value;
   }
@@ -366,7 +378,17 @@ export const obtenerPorId = async (id) => {
     include: includeRelations,
   });
 
-  return enriquecerDespacho(despacho);
+  const despachoEnriquecido =
+    await enriquecerDespacho(despacho);
+
+  if (!despachoEnriquecido) {
+    throw new NotFoundError(
+      'Despacho no encontrado',
+      'DESPACHO_NO_ENCONTRADO',
+    );
+  }
+
+  return despachoEnriquecido;
 };
 
 export const crear = async ({
@@ -390,7 +412,10 @@ export const iniciar = async (id) => {
   const despacho = await Despacho.findByPk(id);
 
   if (!despacho) {
-    return null;
+    throw new NotFoundError(
+      'Despacho no encontrado',
+      'DESPACHO_NO_ENCONTRADO',
+    );
   }
 
   await despacho.update({
@@ -405,7 +430,10 @@ export const entregar = async (id) => {
   const despacho = await Despacho.findByPk(id);
 
   if (!despacho) {
-    return null;
+    throw new NotFoundError(
+      'Despacho no encontrado',
+      'DESPACHO_NO_ENCONTRADO',
+    );
   }
 
   await despacho.update({
@@ -420,7 +448,10 @@ export const cancelar = async (id) => {
   const despacho = await Despacho.findByPk(id);
 
   if (!despacho) {
-    return null;
+    throw new NotFoundError(
+      'Despacho no encontrado',
+      'DESPACHO_NO_ENCONTRADO',
+    );
   }
 
   await despacho.update({
@@ -445,6 +476,11 @@ export const existeDespachoActivo = async (
 };
 
 export const entregarDespacho = async (id) => {
+  /*
+   * Invariante:
+   * Un despacho solo puede entregarse cuando corresponde
+   * a la posición actual de la jornada.
+   */
   await sequelize.transaction(
     async (transaction) => {
       const despacho = await Despacho.findByPk(
@@ -456,7 +492,10 @@ export const entregarDespacho = async (id) => {
       );
 
       if (!despacho) {
-        throw new Error('Despacho no encontrado');
+        throw new NotFoundError(
+          'Despacho no encontrado',
+          'DESPACHO_NO_ENCONTRADO',
+        );
       }
 
       const jornada =
@@ -469,8 +508,9 @@ export const entregarDespacho = async (id) => {
         );
 
       if (!jornada) {
-        throw new Error(
+        throw new BusinessRuleError(
           'El despacho no está asociado a una jornada de reparto',
+          'DESPACHO_SIN_JORNADA',
         );
       }
 
@@ -483,18 +523,23 @@ export const entregarDespacho = async (id) => {
       );
 
       if (!pedido) {
-        throw new Error('Pedido no encontrado');
+        throw new NotFoundError(
+          'Pedido no encontrado',
+          'PEDIDO_NO_ENCONTRADO',
+        );
       }
 
       if (jornada.estado !== 'EN_RUTA') {
-        throw new Error(
+        throw new BusinessRuleError(
           'La jornada debe estar EN_RUTA para entregar despachos',
+          'JORNADA_NO_EN_RUTA',
         );
       }
 
       if (despacho.estado !== 'EN_TRANSITO') {
-        throw new Error(
+        throw new BusinessRuleError(
           'Solo se pueden entregar despachos en estado EN_TRANSITO',
+          'DESPACHO_ESTADO_INVALIDO_ENTREGA',
         );
       }
 
@@ -502,8 +547,9 @@ export const entregarDespacho = async (id) => {
         Number(despacho.orden_entrega) !==
         Number(jornada.posicion_actual_orden)
       ) {
-        throw new Error(
+        throw new BusinessRuleError(
           'El camión aún no se encuentra en el punto de entrega de este despacho',
+          'DESPACHO_FUERA_DE_ORDEN',
         );
       }
 
@@ -535,10 +581,25 @@ export const entregarDespacho = async (id) => {
     },
   );
 
-  return obtenerPorId(id);
+  const resultado = await obtenerPorId(id);
+
+  /*
+   * n8n se ejecuta después del commit para que un fallo
+   * de notificación no revierta la entrega confirmada.
+   */
+  await n8nService
+    .despachoEntregado(resultado)
+    .catch(console.error);
+
+  return resultado;
 };
 
 export const marcarNoEntregado = async (id) => {
+  /*
+   * Invariante:
+   * La no entrega avanza la jornada y reprograma el pedido
+   * de forma atómica.
+   */
   await sequelize.transaction(
     async (transaction) => {
       const despacho = await Despacho.findByPk(
@@ -550,7 +611,10 @@ export const marcarNoEntregado = async (id) => {
       );
 
       if (!despacho) {
-        throw new Error('Despacho no encontrado');
+        throw new NotFoundError(
+          'Despacho no encontrado',
+          'DESPACHO_NO_ENCONTRADO',
+        );
       }
 
       const jornada =
@@ -563,8 +627,9 @@ export const marcarNoEntregado = async (id) => {
         );
 
       if (!jornada) {
-        throw new Error(
+        throw new BusinessRuleError(
           'El despacho no está asociado a una jornada de reparto',
+          'DESPACHO_SIN_JORNADA',
         );
       }
 
@@ -577,18 +642,23 @@ export const marcarNoEntregado = async (id) => {
       );
 
       if (!pedido) {
-        throw new Error('Pedido no encontrado');
+        throw new NotFoundError(
+          'Pedido no encontrado',
+          'PEDIDO_NO_ENCONTRADO',
+        );
       }
 
       if (jornada.estado !== 'EN_RUTA') {
-        throw new Error(
+        throw new BusinessRuleError(
           'La jornada debe estar EN_RUTA para marcar un despacho como no entregado',
+          'JORNADA_NO_EN_RUTA',
         );
       }
 
       if (despacho.estado !== 'EN_TRANSITO') {
-        throw new Error(
+        throw new BusinessRuleError(
           'Solo se pueden marcar como no entregados despachos en estado EN_TRANSITO',
+          'DESPACHO_ESTADO_INVALIDO_NO_ENTREGA',
         );
       }
 
@@ -596,8 +666,9 @@ export const marcarNoEntregado = async (id) => {
         Number(despacho.orden_entrega) !==
         Number(jornada.posicion_actual_orden)
       ) {
-        throw new Error(
+        throw new BusinessRuleError(
           'El camión aún no se encuentra en el punto de entrega de este despacho',
+          'DESPACHO_FUERA_DE_ORDEN',
         );
       }
 
@@ -629,5 +700,15 @@ export const marcarNoEntregado = async (id) => {
     },
   );
 
-  return obtenerPorId(id);
+  const resultado = await obtenerPorId(id);
+
+  /*
+   * n8n se ejecuta después del commit para que un fallo
+   * de notificación no revierta la operación logística.
+   */
+  await n8nService
+    .despachoNoEntregado(resultado)
+    .catch(console.error);
+
+  return resultado;
 };

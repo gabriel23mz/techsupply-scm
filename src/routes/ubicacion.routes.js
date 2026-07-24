@@ -1,24 +1,43 @@
-import { Router } from 'express';
-
 import {
-  obtenerTodas,
-  obtenerPorId,
-  crear,
-  actualizar,
-  eliminar,
-} from '../controllers/ubicacion.controller.js';
+  Router,
+} from 'express';
+
+import * as ubicacionController
+  from '../controllers/ubicacion.controller.js';
+
+import * as requestValidators
+  from '../middlewares/requestValidators.js';
 
 const router = Router();
 
-router.get('/', obtenerTodas);
+router.get(
+  '/',
+  ubicacionController.obtenerTodas,
+);
 
-router.get('/:id', obtenerPorId);
+router.get(
+  '/:id',
+  requestValidators.validarIdParam,
+  ubicacionController.obtenerPorId,
+);
 
-router.post('/', crear);
+router.post(
+  '/',
+  requestValidators.validarCrearUbicacion,
+  ubicacionController.crear,
+);
 
-router.put('/:id', actualizar);
+router.put(
+  '/:id',
+  requestValidators.validarIdParam,
+  requestValidators.validarActualizarUbicacion,
+  ubicacionController.actualizar,
+);
 
-router.delete('/:id', eliminar);
+router.delete(
+  '/:id',
+  requestValidators.validarIdParam,
+  ubicacionController.eliminar,
+);
 
 export default router;
-

@@ -4,6 +4,10 @@ import sequelize from '../config/database.js';
 
 import { BODEGA_CENTRAL_ID } from '../constants/logistica.js';
 import * as logisticaService from './logistica.service.js';
+import {
+  BusinessRuleError,
+  NotFoundError,
+} from '../utils/errors.js';
 
 
 const {
@@ -27,7 +31,7 @@ const obtenerCapacidadCamion = (camion) => {
   const capacidad = Number(camion.capacidad);
 
   if (!Number.isInteger(capacidad) || capacidad <= 0) {
-    throw new Error(
+    throw new BusinessRuleError(
       'El camión no tiene una capacidad válida configurada',
     );
   }
@@ -57,7 +61,7 @@ const obtenerPlanUnico = (
     !resultado ||
     !Array.isArray(resultado.jornadas)
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'Python devolvió una recalculación inválida',
     );
   }
@@ -286,7 +290,7 @@ export const generarJornadaReparto = async () => {
   });
 
   if (!pedidos.length) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No existen pedidos listos para despacho',
     );
   }
@@ -330,7 +334,7 @@ export const generarJornadaReparto = async () => {
   });
 
   if (!camiones.length) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No existen camiones disponibles con capacidad válida',
     );
   }
@@ -340,7 +344,7 @@ export const generarJornadaReparto = async () => {
   );
 
   if (!bodega) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No se encontró la bodega central',
     );
   }
@@ -349,7 +353,7 @@ export const generarJornadaReparto = async () => {
     bodega.latitud === null ||
     bodega.longitud === null
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'La bodega central no tiene coordenadas registradas',
     );
   }
@@ -361,7 +365,7 @@ export const generarJornadaReparto = async () => {
   });
 
   if (!rutas.length) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No existen rutas activas para calcular las jornadas',
     );
   }
@@ -383,7 +387,7 @@ export const generarJornadaReparto = async () => {
     !Array.isArray(resultado.jornadas) ||
     !Array.isArray(resultado.pedidos_no_asignados)
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'Python devolvió una planificación multivehículo inválida',
     );
   }
@@ -419,7 +423,7 @@ export const generarJornadaReparto = async () => {
         const camionId = Number(plan.camion_id);
 
         if (camionesProcesados.has(camionId)) {
-          throw new Error(
+          throw new BusinessRuleError(
             `El camión ${camionId} fue asignado a más de una jornada`,
           );
         }
@@ -436,7 +440,7 @@ export const generarJornadaReparto = async () => {
           const pedidoId = Number(entrega.pedido_id);
 
           if (pedidosProcesados.has(pedidoId)) {
-            throw new Error(
+            throw new BusinessRuleError(
               `El pedido ${pedidoId} fue asignado a más de una jornada`,
             );
           }
@@ -457,7 +461,7 @@ export const generarJornadaReparto = async () => {
         });
 
         if (pedidosBloqueados.length !== pedidoIdsPlan.length) {
-          throw new Error(
+          throw new BusinessRuleError(
             'Uno o más pedidos ya no están disponibles para despacho',
           );
         }
@@ -479,7 +483,7 @@ export const generarJornadaReparto = async () => {
         });
 
         if (despachosActivos.length) {
-          throw new Error(
+          throw new BusinessRuleError(
             'Uno o más pedidos ya poseen un despacho activo',
           );
         }
@@ -494,7 +498,7 @@ export const generarJornadaReparto = async () => {
         camion.estado !== 'EN_BODEGA' ||
         Number(camion.capacidad) <= 0
         ) {
-          throw new Error(
+          throw new BusinessRuleError(
             `El camión ${camionId} ya no está disponible`,
           );
         }
@@ -515,7 +519,7 @@ export const generarJornadaReparto = async () => {
         });
 
         if (jornadaActivaCamion) {
-          throw new Error(
+          throw new BusinessRuleError(
             `El camión ${camionId} ya posee una jornada activa`,
           );
         }
@@ -561,7 +565,7 @@ export const generarJornadaReparto = async () => {
           );
 
           if (cantidadActualizada !== 1) {
-            throw new Error(
+            throw new BusinessRuleError(
               `El pedido ${pedidoId} ya no está disponible para despacho`,
             );
           }
@@ -604,7 +608,7 @@ export const generarJornadaReparto = async () => {
       }
 
       if (!jornadasCreadas.length) {
-        throw new Error(
+        throw new BusinessRuleError(
           'La planificación no produjo jornadas persistibles',
         );
       }
@@ -652,13 +656,14 @@ export const iniciarJornada = async (id) => {
       });
 
       if (!jornada) {
-        throw new Error(
+        throw new NotFoundError(
           'Jornada de reparto no encontrada',
+          'JORNADA_NO_ENCONTRADA',
         );
       }
 
       if (jornada.estado !== 'PLANIFICADA') {
-        throw new Error(
+        throw new BusinessRuleError(
           'Solo se puede iniciar una jornada en estado PLANIFICADA',
         );
       }
@@ -672,13 +677,13 @@ export const iniciarJornada = async (id) => {
       );
 
       if (!camion) {
-        throw new Error(
+        throw new BusinessRuleError(
           'El camión asociado a la jornada no existe',
         );
       }
 
       if (camion.estado !== 'EN_BODEGA') {
-        throw new Error(
+        throw new BusinessRuleError(
           'La jornada solo puede iniciar si el camión está EN_BODEGA',
         );
       }
@@ -692,7 +697,7 @@ export const iniciarJornada = async (id) => {
       });
 
       if (!despachos.length) {
-        throw new Error(
+        throw new BusinessRuleError(
           'La jornada no posee despachos asignados',
         );
       }
@@ -703,7 +708,7 @@ export const iniciarJornada = async (id) => {
       );
 
       if (despachoNoPendiente) {
-        throw new Error(
+        throw new BusinessRuleError(
           'Todos los despachos deben estar PENDIENTES antes de iniciar la jornada',
         );
       }
@@ -717,7 +722,7 @@ export const iniciarJornada = async (id) => {
         );
 
       if (!ordenes.length) {
-        throw new Error(
+        throw new BusinessRuleError(
           'Los despachos no tienen un orden de entrega válido',
         );
       }
@@ -764,7 +769,7 @@ export const iniciarJornada = async (id) => {
         despachosActualizados !==
         despachos.length
       ) {
-        throw new Error(
+        throw new BusinessRuleError(
           'No fue posible iniciar todos los despachos de la jornada',
         );
       }
@@ -825,7 +830,7 @@ export const iniciarJornada = async (id) => {
     });
 
   if (!jornadaActualizada) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No fue posible recuperar la jornada iniciada',
     );
   }
@@ -852,11 +857,14 @@ export const avanzarJornada = async (id) => {
   });
 
   if (!jornada) {
-    throw new Error('Jornada de reparto no encontrada');
+    throw new NotFoundError(
+      'Jornada de reparto no encontrada',
+      'JORNADA_NO_ENCONTRADA',
+    );
   }
 
   if (jornada.estado !== 'EN_RUTA') {
-    throw new Error('Solo se puede avanzar una jornada en estado EN_RUTA');
+    throw new BusinessRuleError('Solo se puede avanzar una jornada en estado EN_RUTA');
   }
 
   const posicionActual = Number(jornada.posicion_actual_orden);
@@ -866,7 +874,7 @@ export const avanzarJornada = async (id) => {
   );
 
   if (!despachosPuntoActual.length) {
-    throw new Error('No existen despachos para la posición actual de la jornada');
+    throw new BusinessRuleError('No existen despachos para la posición actual de la jornada');
   }
 
   const todosCerrados = despachosPuntoActual.every((despacho) =>
@@ -874,7 +882,7 @@ export const avanzarJornada = async (id) => {
   );
 
   if (!todosCerrados) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No se puede avanzar hasta entregar o marcar como no entregados todos los despachos del punto actual',
     );
   }
@@ -888,7 +896,7 @@ export const avanzarJornada = async (id) => {
     .map((despacho) => Number(despacho.orden_entrega));
 
   if (!ordenesPendientes.length) {
-    throw new Error('La jornada ya no tiene más puntos pendientes por recorrer');
+    throw new BusinessRuleError('La jornada ya no tiene más puntos pendientes por recorrer');
   }
 
   const siguienteOrden = Math.min(...ordenesPendientes);
@@ -920,13 +928,14 @@ export const finalizarJornada = async (id) => {
       });
 
       if (!jornada) {
-        throw new Error(
+        throw new NotFoundError(
           'Jornada de reparto no encontrada',
+          'JORNADA_NO_ENCONTRADA',
         );
       }
 
       if (jornada.estado !== 'EN_RUTA') {
-        throw new Error(
+        throw new BusinessRuleError(
           'Solo se puede finalizar una jornada en estado EN_RUTA',
         );
       }
@@ -940,13 +949,13 @@ export const finalizarJornada = async (id) => {
       );
 
       if (!camion) {
-        throw new Error(
+        throw new BusinessRuleError(
           'El camión asociado a la jornada no existe',
         );
       }
 
       if (camion.estado !== 'EN_RUTA') {
-        throw new Error(
+        throw new BusinessRuleError(
           'El camión asociado debe estar EN_RUTA para finalizar la jornada',
         );
       }
@@ -960,7 +969,7 @@ export const finalizarJornada = async (id) => {
       });
 
       if (!despachos.length) {
-        throw new Error(
+        throw new BusinessRuleError(
           'La jornada no posee despachos',
         );
       }
@@ -983,7 +992,7 @@ export const finalizarJornada = async (id) => {
       );
 
       if (despachosSinCerrar.length > 0) {
-        throw new Error(
+        throw new BusinessRuleError(
           'No se puede finalizar la jornada mientras existan despachos pendientes o en tránsito',
         );
       }
@@ -1022,7 +1031,7 @@ export const finalizarJornada = async (id) => {
           );
 
         if (pedidosActualizados !== 1) {
-          throw new Error(
+          throw new BusinessRuleError(
             `El pedido ${despacho.pedido_id} no se encontraba REPROGRAMADO`,
           );
         }
@@ -1105,7 +1114,7 @@ export const finalizarJornada = async (id) => {
     });
 
   if (!jornadaFinalizada) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No fue posible recuperar la jornada finalizada',
     );
   }
@@ -1282,8 +1291,9 @@ export const obtenerJornadaPorId = async (id) => {
   });
 
   if (!jornada) {
-    throw new Error(
+    throw new NotFoundError(
       'Jornada de reparto no encontrada',
+      'JORNADA_NO_ENCONTRADA',
     );
   }
 
@@ -1350,7 +1360,10 @@ export const recalcularJornada = async (id) => {
   });
 
   if (!jornada) {
-    throw new Error('Jornada de reparto no encontrada');
+    throw new NotFoundError(
+      'Jornada de reparto no encontrada',
+      'JORNADA_NO_ENCONTRADA',
+    );
   }
 
   /*
@@ -1360,25 +1373,25 @@ export const recalcularJornada = async (id) => {
    */
 
   if (jornada.estado !== 'PLANIFICADA') {
-    throw new Error(
+    throw new BusinessRuleError(
       'Solo se puede recalcular una jornada PLANIFICADA',
     );
   }
 
   if (!jornada.camion) {
-    throw new Error(
+    throw new BusinessRuleError(
       'La jornada no tiene un camión asociado',
     );
   }
 
   if (jornada.camion.estado !== 'EN_BODEGA') {
-    throw new Error(
+    throw new BusinessRuleError(
       'Solo se puede recalcular si el camión está EN_BODEGA',
     );
   }
 
   if (!jornada.despachos.length) {
-    throw new Error(
+    throw new BusinessRuleError(
       'La jornada no posee despachos para recalcular',
     );
   }
@@ -1389,7 +1402,7 @@ export const recalcularJornada = async (id) => {
     );
 
   if (tieneDespachosNoPendientes) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No se puede recalcular una jornada con despachos que ya cambiaron de estado',
     );
   }
@@ -1410,7 +1423,7 @@ export const recalcularJornada = async (id) => {
     capacidad - cantidadActual;
 
   if (espaciosDisponibles <= 0) {
-    throw new Error(
+    throw new BusinessRuleError(
       'El camión ya alcanzó su capacidad máxima de pedidos',
     );
   }
@@ -1439,7 +1452,7 @@ export const recalcularJornada = async (id) => {
   });
 
   if (!nuevosPedidos.length) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No existen pedidos nuevos para incorporar',
     );
   }
@@ -1483,7 +1496,7 @@ export const recalcularJornada = async (id) => {
       !pedido.Cliente ||
       !pedido.Cliente.Ubicacion
     ) {
-      throw new Error(
+      throw new BusinessRuleError(
         `El despacho ${despacho.id} no posee una ubicación válida`,
       );
     }
@@ -1572,7 +1585,7 @@ export const recalcularJornada = async (id) => {
   );
 
   if (!bodega) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No se encontró la bodega central',
     );
   }
@@ -1581,7 +1594,7 @@ export const recalcularJornada = async (id) => {
     bodega.latitud === null ||
     bodega.longitud === null
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'La bodega central no tiene coordenadas registradas',
     );
   }
@@ -1593,7 +1606,7 @@ export const recalcularJornada = async (id) => {
   });
 
   if (!rutas.length) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No existen rutas activas',
     );
   }
@@ -1734,7 +1747,7 @@ export const recalcularJornada = async (id) => {
       );
 
     if (!resultadoPlanificado) {
-      throw new Error(
+      throw new BusinessRuleError(
         'Python no pudo generar la jornada recalculada',
       );
     }
@@ -1758,7 +1771,7 @@ export const recalcularJornada = async (id) => {
       );
 
     if (pedidoEsperadoNoAsignado) {
-      throw new Error(
+      throw new BusinessRuleError(
         `Python no pudo asignar el pedido ${pedidoEsperadoNoAsignado.id} en la recalculación final`,
       );
     }
@@ -1781,7 +1794,7 @@ export const recalcularJornada = async (id) => {
       idsEntregas.length !==
       idsEntregasUnicos.size
     ) {
-      throw new Error(
+      throw new BusinessRuleError(
         'Python devolvió pedidos duplicados en la jornada recalculada',
       );
     }
@@ -1800,7 +1813,7 @@ export const recalcularJornada = async (id) => {
     );
 
     if (faltanPedidos) {
-      throw new Error(
+      throw new BusinessRuleError(
         'Python no incluyó todos los pedidos esperados en la jornada recalculada',
       );
     }
@@ -1896,7 +1909,7 @@ export const recalcularJornada = async (id) => {
           );
 
         if (cantidadActualizada !== 1) {
-          throw new Error(
+          throw new BusinessRuleError(
             `El pedido ${pedidoId} cambió de estado durante la recalculación`,
           );
         }
@@ -1969,7 +1982,7 @@ export const recalcularJornada = async (id) => {
           );
 
         if (cantidadActualizada !== 1) {
-          throw new Error(
+          throw new BusinessRuleError(
             `El pedido ${pedido.id} ya no está disponible para despacho`,
           );
         }

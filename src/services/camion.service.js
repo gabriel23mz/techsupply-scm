@@ -1,6 +1,9 @@
 import { Op } from 'sequelize';
 
 import db from '../models/index.js';
+import {
+  NotFoundError,
+} from '../utils/errors.js';
 
 const {
   Camion,
@@ -275,7 +278,10 @@ export const obtenerPorId = async (id) => {
   });
 
   if (!camion) {
-    return null;
+    throw new NotFoundError(
+      'Camión no encontrado',
+      'CAMION_NO_ENCONTRADO',
+    );
   }
 
   return construirResumenCamion(

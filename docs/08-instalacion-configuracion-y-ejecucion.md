@@ -194,6 +194,7 @@ Componentes simulados o aislados:
 - OSRM en Python mediante `unittest.mock.patch`.
 - n8n como stub local, sin webhooks reales.
 - Frontend mediante lectura estatica de configuracion y rutas principales.
+- Arquitectura Fase 4 mediante pruebas de `errorHandler` y busquedas estructurales de controladores.
 
 Limitaciones:
 
@@ -202,6 +203,7 @@ Limitaciones:
 - No se prueba frontend con renderizado React.
 - Algunos riesgos se caracterizan con mocks para demostrar efectos parciales actuales sin corregirlos todavia.
 - Las pruebas de Node importan modulos que cargan `dotenv`; esto no implica conexion a la base ni envio de datos.
+- La linea base posterior a Fase 4 es 35 pruebas backend, 24 pruebas Python y 1 prueba frontend.
 
 ## Benchmark logistico Python
 

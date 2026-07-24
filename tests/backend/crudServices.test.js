@@ -14,7 +14,10 @@ test('categorias caracteriza listado, actualización y eliminación lógica', as
       assert.deepEqual(query.order, [['id', 'ASC']]);
       return [categoria];
     },
-    findOne: async () => categoria,
+    findOne: async (query) => {
+      if (query.where?.nombre === 'Redes') return null;
+      return categoria;
+    },
     create: async (datos) => ({ id: 2, ...datos }),
   });
 
@@ -46,7 +49,10 @@ test('usuarios excluye password_hash y elimina mediante estado false', async (t)
   });
 
   assert.deepEqual(await service.obtenerTodos(), [usuario]);
-  assert.equal(await service.eliminar(404), null);
+  await assert.rejects(
+    () => service.eliminar(404),
+    /Usuario no encontrado/,
+  );
   assert.equal(await service.eliminar(7), true);
   assert.deepEqual(usuario.update.mock.calls[0].arguments[0], { estado: false });
 });

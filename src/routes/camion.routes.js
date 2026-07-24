@@ -1,31 +1,24 @@
-import { Router } from 'express';
-
 import {
-  obtenerPorId,
-  obtenerTodos,
-} from '../controllers/camion.controller.js';
+  Router,
+} from 'express';
+
+import * as camionController
+  from '../controllers/camion.controller.js';
+
+import * as requestValidators
+  from '../middlewares/requestValidators.js';
 
 const router = Router();
 
-/*
-|--------------------------------------------------------------------------
-| Consulta de camiones
-|--------------------------------------------------------------------------
-|
-| Este módulo es únicamente informativo.
-| No expone operaciones POST, PUT, PATCH o DELETE.
-|--------------------------------------------------------------------------
-*/
-
 router.get(
   '/',
-  obtenerTodos,
+  camionController.obtenerTodos,
 );
 
 router.get(
   '/:id',
-  obtenerPorId,
+  requestValidators.validarIdParam,
+  camionController.obtenerPorId,
 );
 
 export default router;
-

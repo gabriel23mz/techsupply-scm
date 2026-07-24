@@ -4,6 +4,10 @@ import Usuario from '../models/Usuario.js';
 import DetallePedido from '../models/DetallePedido.js';
 import Producto from '../models/Producto.js';
 
+import {
+  BusinessRuleError,
+  NotFoundError,
+} from '../utils/errors.js';
 
 const pedidoRelations = [
   {
@@ -43,6 +47,58 @@ const pedidoRelationsDetalle = [
   },
 ];
 
+const obtenerPedidoBase = async (id) => {
+  const pedido = await Pedido.findByPk(id);
+
+  if (!pedido) {
+    throw new NotFoundError(
+      'Pedido no encontrado',
+      'PEDIDO_NO_ENCONTRADO',
+    );
+  }
+
+  return pedido;
+};
+
+const validarCliente = async (clienteId) => {
+  if (clienteId === undefined) {
+    return;
+  }
+
+  const cliente = await Cliente.findOne({
+    where: {
+      id: clienteId,
+      estado: true,
+    },
+  });
+
+  if (!cliente) {
+    throw new BusinessRuleError(
+      'Cliente no válido',
+      'CLIENTE_INVALIDO',
+    );
+  }
+};
+
+const validarUsuario = async (usuarioId) => {
+  if (usuarioId === undefined) {
+    return;
+  }
+
+  const usuario = await Usuario.findOne({
+    where: {
+      id: usuarioId,
+      estado: true,
+    },
+  });
+
+  if (!usuario) {
+    throw new BusinessRuleError(
+      'Usuario no válido',
+      'USUARIO_INVALIDO',
+    );
+  }
+};
 
 export const obtenerTodos = async () => {
   return await Pedido.findAll({
@@ -51,64 +107,87 @@ export const obtenerTodos = async () => {
   });
 };
 
-
 export const obtenerPorId = async (id) => {
-  return await Pedido.findByPk(id, {
+  const pedido = await Pedido.findByPk(id, {
     include: pedidoRelationsDetalle,
   });
-};
-
-
-export const crear = async (datos) => {
-  return await Pedido.create(datos);
-};
-
-
-export const actualizar = async (id, datos) => {
-  const pedido = await Pedido.findByPk(id);
 
   if (!pedido) {
-    return null;
+    throw new NotFoundError(
+      'Pedido no encontrado',
+      'PEDIDO_NO_ENCONTRADO',
+    );
   }
+
+  return pedido;
+};
+
+export const crear = async (datos) => {
+  await validarCliente(datos.cliente_id);
+  await validarUsuario(datos.usuario_id);
+
+  const pedido = await Pedido.create({
+    cliente_id: datos.cliente_id,
+    usuario_id: datos.usuario_id,
+    fecha: datos.fecha || new Date(),
+    estado: 'PENDIENTE',
+    total: 0,
+  });
+
+  return await obtenerPorId(pedido.id);
+};
+
+export const actualizar = async (id, datos) => {
+  const pedido = await obtenerPedidoBase(id);
 
   if (
     pedido.estado !== 'PENDIENTE' &&
     pedido.estado !== 'PREPARANDO'
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'Solo se pueden modificar pedidos pendientes o en preparación',
+      'PEDIDO_NO_MODIFICABLE',
     );
   }
+
+  if (datos.estado !== undefined) {
+    throw new BusinessRuleError(
+      'Utilice los endpoints de flujo para modificar estados',
+      'PEDIDO_ESTADO_SOLO_FLUJO',
+    );
+  }
+
+  if (datos.total !== undefined) {
+    throw new BusinessRuleError(
+      'El total es calculado automáticamente por el sistema',
+      'PEDIDO_TOTAL_AUTOMATICO',
+    );
+  }
+
+  await validarCliente(datos.cliente_id);
+  await validarUsuario(datos.usuario_id);
 
   await pedido.update(datos);
 
   return await obtenerPorId(id);
 };
 
-
 export const eliminar = async (id) => {
-  const pedido = await Pedido.findByPk(id);
+  await obtenerPedidoBase(id);
 
-  if (!pedido) {
-    return null;
-  }
-
-  throw new Error(
+  throw new BusinessRuleError(
     'La eliminación de pedidos no está permitida. Utilice el endpoint de cancelación.',
+    'PEDIDO_ELIMINACION_NO_PERMITIDA',
   );
 };
 
-
 export const preparar = async (id) => {
-  const pedido = await Pedido.findByPk(id);
-
-  if (!pedido) {
-    return null;
-  }
+  const pedido = await obtenerPedidoBase(id);
 
   if (pedido.estado !== 'PENDIENTE') {
-    throw new Error(
+    throw new BusinessRuleError(
       'Solo los pedidos PENDIENTES pueden prepararse',
+      'PEDIDO_ESTADO_INVALIDO_PREPARAR',
     );
   }
 
@@ -119,17 +198,13 @@ export const preparar = async (id) => {
   return await obtenerPorId(id);
 };
 
-
 export const finalizarPreparacion = async (id) => {
-  const pedido = await Pedido.findByPk(id);
-
-  if (!pedido) {
-    return null;
-  }
+  const pedido = await obtenerPedidoBase(id);
 
   if (pedido.estado !== 'PREPARANDO') {
-    throw new Error(
+    throw new BusinessRuleError(
       'Solo los pedidos en PREPARANDO pueden finalizar la preparación',
+      'PEDIDO_ESTADO_INVALIDO_FINALIZAR_PREPARACION',
     );
   }
 
@@ -141,8 +216,9 @@ export const finalizarPreparacion = async (id) => {
     });
 
   if (detalles.length === 0) {
-    throw new Error(
+    throw new BusinessRuleError(
       'El pedido debe tener al menos un producto antes de quedar listo para despacho',
+      'PEDIDO_SIN_DETALLES',
     );
   }
 
@@ -153,21 +229,17 @@ export const finalizarPreparacion = async (id) => {
   return await obtenerPorId(id);
 };
 
-
 export const cancelar = async (id) => {
-  const pedido = await Pedido.findByPk(id);
-
-  if (!pedido) {
-    return null;
-  }
+  const pedido = await obtenerPedidoBase(id);
 
   if (
     pedido.estado !== 'PENDIENTE' &&
     pedido.estado !== 'PREPARANDO' &&
     pedido.estado !== 'LISTO_PARA_DESPACHO'
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'Solo se pueden cancelar pedidos pendientes, en preparación o listos para despacho',
+      'PEDIDO_NO_CANCELABLE',
     );
   }
 
@@ -200,7 +272,6 @@ export const cancelar = async (id) => {
   return await obtenerPorId(id);
 };
 
-
 export const pedidoTieneDetalles = async (pedidoId) => {
   const cantidad =
     await DetallePedido.count({
@@ -221,7 +292,10 @@ export const sincronizarEstadoConDespacho = async (
   );
 
   if (!pedido) {
-    return null;
+    throw new NotFoundError(
+      'Pedido no encontrado',
+      'PEDIDO_NO_ENCONTRADO',
+    );
   }
 
   let nuevoEstado;
@@ -241,8 +315,9 @@ export const sincronizarEstadoConDespacho = async (
     break;
 
   default:
-    throw new Error(
+    throw new BusinessRuleError(
       'Evento de despacho no válido',
+      'EVENTO_DESPACHO_INVALIDO',
     );
   }
 
@@ -254,7 +329,6 @@ export const sincronizarEstadoConDespacho = async (
     pedidoId,
   );
 };
-
 
 export const obtenerPedidosDisponibles = async () => {
   return await Pedido.findAll({

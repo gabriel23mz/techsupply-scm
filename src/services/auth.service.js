@@ -6,6 +6,11 @@ import {
   createAuthToken,
 } from '../utils/authToken.js';
 
+import {
+  NotFoundError,
+  UnauthorizedError,
+} from '../utils/errors.js';
+
 function sanitizeUser(usuario) {
   const plain =
     typeof usuario.toJSON ===
@@ -42,8 +47,9 @@ export const login = async ({
     !usuario ||
     usuario.estado === false
   ) {
-    throw new Error(
+    throw new UnauthorizedError(
       'Correo o contraseña incorrectos',
+      'CREDENCIALES_INVALIDAS',
     );
   }
 
@@ -54,8 +60,9 @@ export const login = async ({
     );
 
   if (!validPassword) {
-    throw new Error(
+    throw new UnauthorizedError(
       'Correo o contraseña incorrectos',
+      'CREDENCIALES_INVALIDAS',
     );
   }
 
@@ -84,6 +91,13 @@ export const obtenerUsuarioSesion =
           ],
         },
       });
+
+    if (!usuario) {
+      throw new NotFoundError(
+        'Usuario no encontrado',
+        'USUARIO_NO_ENCONTRADO',
+      );
+    }
 
     return usuario;
   };

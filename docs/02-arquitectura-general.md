@@ -57,6 +57,28 @@ src/
 
 El archivo `server.js` registra rutas bajo `/api`, configura CORS para el frontend local y autentica la conexion Sequelize.
 
+## Flujo interno backend
+
+Los modulos activos del backend siguen este flujo:
+
+```text
+Ruta Express
+  -> Middleware de validacion HTTP
+  -> Controlador HTTP delgado
+  -> Servicio de caso de uso
+  -> Modelos Sequelize y servicios auxiliares
+```
+
+Responsabilidades:
+
+- `routes`: conservan URLs y metodos HTTP, y conectan validadores por endpoint.
+- `middlewares/requestValidators.js`: valida estructura de entrada, campos obligatorios, IDs, formatos y rangos basicos.
+- `controllers`: leen `params`, `body` o sesion autenticada, llaman una vez al servicio principal y devuelven `successResponse`.
+- `services`: concentran normalizacion, reglas de negocio, consultas Sequelize, transacciones, locks, calculos e integraciones.
+- `middlewares/errorHandler.js`: traduce errores tipados, errores Sequelize y fallos inesperados a la respuesta HTTP publica.
+
+Los controladores activos no importan modelos Sequelize, no cifran contrasenas, no gestionan transacciones y no invocan Python ni n8n directamente.
+
 ## Base de datos
 
 La base activa es PostgreSQL, conectada mediante `DATABASE_URL`. Las migraciones crean tablas, claves foraneas, indices, enums y checks. La columna `ruta_json` de jornadas y despachos fue migrada a JSONB.
@@ -113,3 +135,4 @@ sequenceDiagram
 - Python no accede a la base de datos; recibe todo por JSON.
 - n8n no debe bloquear la operacion principal cuando se active.
 - La bodega central se identifica por `BODEGA_CENTRAL_ID = 1`.
+- Los errores operacionales del backend se representan con clases tipadas y se responden desde un unico middleware central.

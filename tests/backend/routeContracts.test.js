@@ -1,7 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import './helpers/testEnv.js';
+
+const activeRouteFiles = [
+  'auth.routes.js',
+  'usuario.routes.js',
+  'cliente.routes.js',
+  'categoria.routes.js',
+  'producto.routes.js',
+  'ubicacion.routes.js',
+  'ruta.routes.js',
+  'pedido.routes.js',
+  'detallePedido.routes.js',
+  'despacho.routes.js',
+  'jornadaReparto.routes.js',
+  'camion.routes.js',
+];
 
 function getRoutes(router) {
   return router.stack
@@ -12,6 +29,32 @@ function getRoutes(router) {
       handlers: layer.route.stack.length,
     }));
 }
+
+test('rutas activas importan controladores mediante namespace', () => {
+  for (const file of activeRouteFiles) {
+    const source = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        'src',
+        'routes',
+        file,
+      ),
+      'utf8',
+    );
+
+    assert.doesNotMatch(
+      source,
+      /import\s*\{[\s\S]*?\}\s*from\s*['"]\.\.\/controllers\//,
+      file,
+    );
+
+    assert.match(
+      source,
+      /import\s+\*\s+as\s+\w+Controller\s+from\s+['"]\.\.\/controllers\/[\w]+\.controller\.js['"]/,
+      file,
+    );
+  }
+});
 
 test('rutas Express activas conservan método, URL y orden observable', async () => {
   const modules = {

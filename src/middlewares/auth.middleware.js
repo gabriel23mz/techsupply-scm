@@ -1,10 +1,10 @@
 import {
-  errorResponse,
-} from '../utils/apiResponse.js';
-
-import {
   verifyAuthToken,
 } from '../utils/authToken.js';
+
+import {
+  UnauthorizedError,
+} from '../utils/errors.js';
 
 export function requireAuth(
   req,
@@ -25,10 +25,9 @@ export function requireAuth(
       scheme !== 'Bearer' ||
       !token
     ) {
-      return errorResponse(
-        res,
+      throw new UnauthorizedError(
         'Autenticación requerida',
-        401,
+        'AUTH_REQUERIDA',
       );
     }
 
@@ -37,10 +36,13 @@ export function requireAuth(
 
     return next();
   } catch (error) {
-    return errorResponse(
-      res,
+    return next(
+      error instanceof UnauthorizedError
+        ? error
+        : new UnauthorizedError(
       error.message,
-      401,
+          'TOKEN_INVALIDO',
+        ),
     );
   }
 }

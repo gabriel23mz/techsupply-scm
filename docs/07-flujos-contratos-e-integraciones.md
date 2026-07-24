@@ -147,6 +147,8 @@ Python puede responder errores controlados:
 
 Node normaliza errores 4xx, 5xx, timeout, conexion fallida y respuesta invalida manteniendo la estructura HTTP externa del backend.
 
+Desde Node, los fallos de Python se representan como `ExternalServiceError`. El mensaje publico conserva el contexto anterior, pero el middleware central evita exponer detalles internos inesperados cuando el error no es operacional.
+
 ## Contrato Node-Python: jornadas
 
 Node envia:
@@ -271,6 +273,8 @@ Funciones existentes:
 Estado real: stub con `console.log`. No hay URLs de webhook, reintentos, timeout propio, cola, idempotencia ni trazabilidad persistida.
 
 `jornadaCreada` se emite despues del commit con la instancia real de la jornada creada y los despachos creados en la transaccion. El resumen devuelto al frontend se mantiene sin cambios.
+
+`despachoEntregado` y `despachoNoEntregado` tambien se ejecutan despues del commit en el servicio de despachos asociado a jornadas. Un fallo del stub n8n no revierte la entrega ni la no entrega confirmada.
 
 ## Integracion OSRM
 

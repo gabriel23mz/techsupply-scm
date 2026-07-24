@@ -26,6 +26,10 @@
 
 import axios from 'axios';
 
+import {
+  ExternalServiceError,
+} from '../utils/errors.js';
+
 /**
  * ---------------------------------------------------------
  * Cliente HTTP
@@ -72,7 +76,10 @@ const ensure = (
   message,
 ) => {
   if (!condition) {
-    throw new Error(message);
+    throw new ExternalServiceError(
+      message,
+      'PYTHON_CONTRACT_ERROR',
+    );
   }
 };
 
@@ -84,8 +91,9 @@ const normalizePythonError = (
     error.code === 'ECONNABORTED' ||
     error.name === 'CanceledError'
   ) {
-    return new Error(
+    return new ExternalServiceError(
       `${context}: timeout del servicio Python`,
+      'PYTHON_TIMEOUT',
       { cause: error },
     );
   }
@@ -95,8 +103,9 @@ const normalizePythonError = (
     error.code === 'ENOTFOUND' ||
     error.code === 'ECONNRESET'
   ) {
-    return new Error(
+    return new ExternalServiceError(
       `${context}: no fue posible comunicarse con el servicio Python: ${error.message}`,
+      'PYTHON_UNAVAILABLE',
       { cause: error },
     );
   }
@@ -111,8 +120,9 @@ const normalizePythonError = (
     const message = structuredError?.message ??
       error.message;
 
-    return new Error(
+    return new ExternalServiceError(
       `${context}: ${code} - ${message}`,
+      'PYTHON_HTTP_ERROR',
       { cause: error },
     );
   }

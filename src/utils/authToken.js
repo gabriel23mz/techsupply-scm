@@ -1,5 +1,9 @@
 import crypto from 'crypto';
 
+import {
+  UnauthorizedError,
+} from './errors.js';
+
 const TOKEN_TTL_SECONDS =
   60 * 60 * 12;
 
@@ -49,8 +53,9 @@ export function createAuthToken(user) {
 
 export function verifyAuthToken(token) {
   if (!token) {
-    throw new Error(
+    throw new UnauthorizedError(
       'Token no proporcionado',
+      'TOKEN_NO_PROPORCIONADO',
     );
   }
 
@@ -63,8 +68,9 @@ export function verifyAuthToken(token) {
     !payload ||
     !signature
   ) {
-    throw new Error(
+    throw new UnauthorizedError(
       'Token inválido',
+      'TOKEN_INVALIDO',
     );
   }
 
@@ -85,8 +91,9 @@ export function verifyAuthToken(token) {
       expectedBuffer,
     )
   ) {
-    throw new Error(
+    throw new UnauthorizedError(
       'Token inválido',
+      'TOKEN_INVALIDO',
     );
   }
 
@@ -101,8 +108,9 @@ export function verifyAuthToken(token) {
     Number(data.exp) <
     Math.floor(Date.now() / 1000)
   ) {
-    throw new Error(
+    throw new UnauthorizedError(
       'Token expirado',
+      'TOKEN_EXPIRADO',
     );
   }
 

@@ -1,23 +1,43 @@
-import { Router } from 'express';
-
 import {
-  obtenerTodas,
-  obtenerPorId,
-  crear,
-  actualizar,
-  eliminar,
-} from '../controllers/categoria.controller.js';
+  Router,
+} from 'express';
+
+import * as categoriaController
+  from '../controllers/categoria.controller.js';
+
+import * as requestValidators
+  from '../middlewares/requestValidators.js';
 
 const router = Router();
 
-router.get('/', obtenerTodas);
+router.get(
+  '/',
+  categoriaController.obtenerTodas,
+);
 
-router.get('/:id', obtenerPorId);
+router.get(
+  '/:id',
+  requestValidators.validarIdParam,
+  categoriaController.obtenerPorId,
+);
 
-router.post('/', crear);
+router.post(
+  '/',
+  requestValidators.validarCrearCategoria,
+  categoriaController.crear,
+);
 
-router.put('/:id', actualizar);
+router.put(
+  '/:id',
+  requestValidators.validarIdParam,
+  requestValidators.validarActualizarCategoria,
+  categoriaController.actualizar,
+);
 
-router.delete('/:id', eliminar);
+router.delete(
+  '/:id',
+  requestValidators.validarIdParam,
+  categoriaController.eliminar,
+);
 
 export default router;

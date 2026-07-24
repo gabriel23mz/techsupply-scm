@@ -1,21 +1,15 @@
 import * as camionService from '../services/camion.service.js';
 
 import {
-  errorResponse,
   successResponse,
 } from '../utils/apiResponse.js';
 
-/*
-|--------------------------------------------------------------------------
-| GET /api/camiones
-|--------------------------------------------------------------------------
-*/
+import {
+  asyncHandler,
+} from '../middlewares/asyncHandler.js';
 
-export const obtenerTodos = async (
-  req,
-  res,
-) => {
-  try {
+export const obtenerTodos = asyncHandler(
+  async (req, res) => {
     const camiones =
       await camionService.obtenerTodos();
 
@@ -24,60 +18,20 @@ export const obtenerTodos = async (
       camiones,
       'Camiones obtenidos correctamente',
     );
-  } catch (error) {
-    console.error(
-      'Error al obtener camiones:',
-      error,
-    );
+  },
+);
 
-    return errorResponse(
-      res,
-      error.message ||
-        'No fue posible obtener los camiones',
-    );
-  }
-};
-
-/*
-|--------------------------------------------------------------------------
-| GET /api/camiones/:id
-|--------------------------------------------------------------------------
-*/
-
-export const obtenerPorId = async (
-  req,
-  res,
-) => {
-  try {
-    const { id } = req.params;
-
+export const obtenerPorId = asyncHandler(
+  async (req, res) => {
     const camion =
-      await camionService.obtenerPorId(id);
-
-    if (!camion) {
-      return errorResponse(
-        res,
-        'Camión no encontrado',
-        404,
+      await camionService.obtenerPorId(
+        req.params.id,
       );
-    }
 
     return successResponse(
       res,
       camion,
       'Camión obtenido correctamente',
     );
-  } catch (error) {
-    console.error(
-      'Error al obtener el camión:',
-      error,
-    );
-
-    return errorResponse(
-      res,
-      error.message ||
-        'No fue posible obtener el camión',
-    );
-  }
-};
-
+  },
+);

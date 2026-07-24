@@ -6,6 +6,12 @@ import * as pythonService from './python.service.js';
 import * as n8nService from './n8n.service.js';
 
 import { BODEGA_CENTRAL_ID } from '../constants/logistica.js';
+import {
+  BusinessRuleError,
+  ConflictError,
+  ExternalServiceError,
+  NotFoundError,
+} from '../utils/errors.js';
 
 //
 // Bodega central del sistema.
@@ -122,8 +128,9 @@ export const crearDespacho = async (
     );
 
   if (!pedido) {
-    throw new Error(
+    throw new NotFoundError(
       'Pedido no encontrado',
+      'PEDIDO_NO_ENCONTRADO',
     );
   }
 
@@ -135,8 +142,9 @@ export const crearDespacho = async (
     pedido.estado !==
     'LISTO_PARA_DESPACHO'
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'El pedido debe estar LISTO_PARA_DESPACHO',
+      'PEDIDO_NO_LISTO_DESPACHO',
     );
   }
 
@@ -150,8 +158,9 @@ export const crearDespacho = async (
     );
 
   if (!tieneDetalles) {
-    throw new Error(
+    throw new BusinessRuleError(
       'El pedido no posee productos',
+      'PEDIDO_SIN_DETALLES',
     );
   }
 
@@ -165,8 +174,9 @@ export const crearDespacho = async (
     );
 
   if (despachoActivo) {
-    throw new Error(
+    throw new ConflictError(
       'El pedido ya posee un despacho activo',
+      'PEDIDO_CON_DESPACHO_ACTIVO',
     );
   }
 
@@ -177,14 +187,16 @@ export const crearDespacho = async (
   const cliente = pedido.Cliente;
 
   if (!cliente) {
-    throw new Error(
+    throw new BusinessRuleError(
       'El pedido no tiene un cliente asociado',
+      'PEDIDO_SIN_CLIENTE',
     );
   }
 
   if (!cliente.ubicacion_id) {
-    throw new Error(
+    throw new BusinessRuleError(
       'El cliente no tiene una ubicación registrada',
+      'CLIENTE_SIN_UBICACION',
     );
   }
 
@@ -196,8 +208,9 @@ export const crearDespacho = async (
     await rutaService.obtenerTodas();
 
   if (!rutas.length) {
-    throw new Error(
+    throw new BusinessRuleError(
       'No existen rutas registradas',
+      'RUTAS_NO_REGISTRADAS',
     );
   }
 
@@ -227,8 +240,9 @@ export const crearDespacho = async (
     });
 
   if (!resultado) {
-    throw new Error(
+    throw new ExternalServiceError(
       'No fue posible calcular la ruta',
+      'PYTHON_RUTA_SIN_RESULTADO',
     );
   }
 
@@ -236,8 +250,9 @@ export const crearDespacho = async (
     !resultado.ruta ||
     resultado.ruta.length === 0
   ) {
-    throw new Error(
+    throw new ExternalServiceError(
       'Python no devolvió una ruta válida',
+      'PYTHON_RUTA_INVALIDA',
     );
   }
 
@@ -311,8 +326,9 @@ export const iniciarDespacho = async (
     );
 
   if (!despacho) {
-    throw new Error(
+    throw new NotFoundError(
       'Despacho no encontrado',
+      'DESPACHO_NO_ENCONTRADO',
     );
   }
 
@@ -324,8 +340,9 @@ export const iniciarDespacho = async (
     despacho.estado !==
     'PENDIENTE'
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'Solo puede iniciarse un despacho pendiente',
+      'DESPACHO_NO_INICIABLE',
     );
   }
 
@@ -369,8 +386,9 @@ export const entregarDespacho = async (
     );
 
   if (!despacho) {
-    throw new Error(
+    throw new NotFoundError(
       'Despacho no encontrado',
+      'DESPACHO_NO_ENCONTRADO',
     );
   }
 
@@ -382,8 +400,9 @@ export const entregarDespacho = async (
     despacho.estado !==
     'EN_TRANSITO'
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'Solo puede entregarse un despacho en tránsito',
+      'DESPACHO_NO_ENTREGABLE',
     );
   }
 
@@ -445,8 +464,9 @@ export const cancelarDespacho = async (
     );
 
   if (!despacho) {
-    throw new Error(
+    throw new NotFoundError(
       'Despacho no encontrado',
+      'DESPACHO_NO_ENCONTRADO',
     );
   }
 
@@ -462,8 +482,9 @@ export const cancelarDespacho = async (
       despacho.estado,
     )
   ) {
-    throw new Error(
+    throw new BusinessRuleError(
       'Solo puede cancelarse un despacho activo',
+      'DESPACHO_NO_CANCELABLE',
     );
   }
 
