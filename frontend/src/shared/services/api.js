@@ -38,14 +38,20 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    const status =
+      error.response?.status;
+
     const message =
+      status === 403
+        ? 'Acceso denegado. Tu usuario no tiene permiso para esta operación.'
+        :
       error.response?.data?.message ??
       error.response?.data?.error ??
       error.message ??
       'Error de comunicación con el servidor';
 
     if (
-      error.response?.status === 401 &&
+      status === 401 &&
       !error.config?.url?.includes(
         '/auth/login',
       )

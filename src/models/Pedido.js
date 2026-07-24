@@ -20,6 +20,31 @@ const Pedido = sequelize.define(
       allowNull: false,
     },
 
+    creado_por_usuario_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    enviado_preparacion_por_usuario_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    enviado_preparacion_en: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+
+    preparacion_finalizada_por_usuario_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    preparacion_finalizada_en: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+
     fecha: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -73,6 +98,10 @@ const Pedido = sequelize.define(
       {
         fields: ['cliente_id'],
         name: 'pedidos_cliente_idx',
+      },
+      {
+        fields: ['creado_por_usuario_id'],
+        name: 'pedidos_creado_por_usuario_idx',
       },
     ],
   },

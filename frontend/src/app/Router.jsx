@@ -34,7 +34,13 @@ function Router() {
                       key={route.path}
                       path={route.path}
                       element={
-                        route.element
+                        <ProtectedRoute
+                          requiredPermission={
+                            route.permission
+                          }
+                        >
+                          {route.element}
+                        </ProtectedRoute>
                       }
                     />
                   ),

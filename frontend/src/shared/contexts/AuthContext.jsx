@@ -51,16 +51,27 @@ export function AuthProvider({ children }) {
   };
 
   const value = useMemo(
-    () => ({
+    () => {
+      const permissions =
+        session?.permissions ??
+        session?.permisos ??
+        [];
+
+      return ({
       user: session?.user ?? null,
       token: session?.token ?? null,
+      permissions,
+      hasPermission: (permission) =>
+        !permission ||
+        permissions.includes(permission),
       isAuthenticated: Boolean(
         session?.user,
       ),
       isAuthenticating,
       login,
       logout,
-    }),
+    });
+    },
     [
       isAuthenticating,
       session,

@@ -18,6 +18,8 @@ const activeRouteFiles = [
   'despacho.routes.js',
   'jornadaReparto.routes.js',
   'camion.routes.js',
+  'bodega.routes.js',
+  'chofer.routes.js',
 ];
 
 const readFiles = (directory, extensions) => {
@@ -88,6 +90,8 @@ test('rutas Express activas conservan método, URL y orden observable', async ()
     despachos: await import('../../src/routes/despacho.routes.js'),
     jornadas: await import('../../src/routes/jornadaReparto.routes.js'),
     camiones: await import('../../src/routes/camion.routes.js'),
+    bodega: await import('../../src/routes/bodega.routes.js'),
+    choferes: await import('../../src/routes/chofer.routes.js'),
   };
 
   const actual = Object.fromEntries(
@@ -135,9 +139,11 @@ test('rutas Express activas conservan método, URL y orden observable', async ()
   assert.deepEqual(actual.jornadas.map((route) => [route.methods, route.path]), [
     [['get'], '/'],
     [['get'], '/mapa-general'],
+    [['get'], '/mis-jornadas'],
     [['get'], '/:id'],
     [['post'], '/generar'],
     [['patch'], '/:id/recalcular'],
+    [['patch'], '/:id/asignar-chofer'],
     [['patch'], '/:id/iniciar'],
     [['patch'], '/:id/avanzar'],
     [['patch'], '/:id/finalizar'],
@@ -157,7 +163,72 @@ test('rutas Express activas conservan método, URL y orden observable', async ()
   assert.deepEqual(actual.camiones.map((route) => [route.methods, route.path]), [
     [['get'], '/'],
     [['get'], '/:id'],
+    [['post'], '/'],
+    [['put'], '/:id'],
+    [['delete'], '/:id'],
   ]);
+
+  assert.deepEqual(actual.bodega.map((route) => [route.methods, route.path]), [
+    [['get'], '/pedidos'],
+    [['get'], '/pedidos/:id'],
+    [['patch'], '/detalles/:id/preparacion'],
+    [['patch'], '/pedidos/:id/finalizar-preparacion'],
+    [['get'], '/jornadas'],
+    [['get'], '/jornadas/:id/carga'],
+    [['patch'], '/despachos/:id/carga'],
+    [['patch'], '/jornadas/:id/confirmar-carga'],
+  ]);
+
+  assert.deepEqual(actual.choferes.map((route) => [route.methods, route.path]), [
+    [['get'], '/'],
+    [['get'], '/disponibles'],
+    [['post'], '/'],
+    [['get'], '/:id'],
+    [['put'], '/:id'],
+    [['delete'], '/:id'],
+  ]);
+});
+
+test('rutas operativas activas declaran autenticación antes de autorización', () => {
+  const operationalRouteFiles = activeRouteFiles.filter(
+    (file) => file !== 'auth.routes.js',
+  );
+
+  for (const file of operationalRouteFiles) {
+    const source = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        'src',
+        'routes',
+        file,
+      ),
+      'utf8',
+    );
+
+    assert.match(
+      source,
+      /import\s+\*\s+as\s+authMiddleware\s+from\s+['"]\.\.\/middlewares\/auth\.middleware\.js['"]/,
+      file,
+    );
+    assert.match(
+      source,
+      /router\.use\(\s*authMiddleware\.requireAuth,\s*\);/,
+      file,
+    );
+
+    const authIndex = source.indexOf(
+      'router.use(\n  authMiddleware.requireAuth',
+    );
+    const authorizationIndex = source.indexOf(
+      'authorizationMiddleware.requirePermission',
+    );
+
+    assert.ok(
+      authIndex >= 0 &&
+        authorizationIndex > authIndex,
+      `${file} debe autenticar antes de autorizar`,
+    );
+  }
 });
 
 test('asociaciones Sequelize declaran aliases canónicos explícitos', async () => {
@@ -200,6 +271,22 @@ test('asociaciones Sequelize declaran aliases canónicos explícitos', async () 
     ['DetalleIngreso', 'BelongsTo', 'Producto', 'producto_id', 'producto'],
     ['Camion', 'HasMany', 'JornadaReparto', 'camion_id', 'jornadas'],
     ['JornadaReparto', 'BelongsTo', 'Camion', 'camion_id', 'camion'],
+    ['Usuario', 'HasOne', 'Chofer', 'usuario_id', 'chofer'],
+    ['Chofer', 'BelongsTo', 'Usuario', 'usuario_id', 'usuario'],
+    ['Chofer', 'HasMany', 'JornadaReparto', 'chofer_id', 'jornadas'],
+    ['JornadaReparto', 'BelongsTo', 'Chofer', 'chofer_id', 'chofer'],
+    ['Usuario', 'HasMany', 'Pedido', 'creado_por_usuario_id', 'pedidosCreados'],
+    ['Pedido', 'BelongsTo', 'Usuario', 'creado_por_usuario_id', 'creadoPor'],
+    ['Usuario', 'HasMany', 'Pedido', 'enviado_preparacion_por_usuario_id', 'pedidosEnviadosPreparacion'],
+    ['Pedido', 'BelongsTo', 'Usuario', 'enviado_preparacion_por_usuario_id', 'enviadoPreparacionPor'],
+    ['Usuario', 'HasMany', 'Pedido', 'preparacion_finalizada_por_usuario_id', 'pedidosPreparacionFinalizada'],
+    ['Pedido', 'BelongsTo', 'Usuario', 'preparacion_finalizada_por_usuario_id', 'preparacionFinalizadaPor'],
+    ['Usuario', 'HasMany', 'DetallePedido', 'preparado_por_usuario_id', 'detallesPreparados'],
+    ['DetallePedido', 'BelongsTo', 'Usuario', 'preparado_por_usuario_id', 'preparadoPor'],
+    ['Usuario', 'HasMany', 'Despacho', 'cargado_por_usuario_id', 'despachosCargados'],
+    ['Despacho', 'BelongsTo', 'Usuario', 'cargado_por_usuario_id', 'cargadoPor'],
+    ['Usuario', 'HasMany', 'JornadaReparto', 'carga_confirmada_por_usuario_id', 'cargasConfirmadas'],
+    ['JornadaReparto', 'BelongsTo', 'Usuario', 'carga_confirmada_por_usuario_id', 'cargaConfirmadaPor'],
     ['JornadaReparto', 'HasMany', 'Despacho', 'jornada_reparto_id', 'despachos'],
     ['Despacho', 'BelongsTo', 'JornadaReparto', 'jornada_reparto_id', 'jornada'],
   ];
@@ -270,6 +357,13 @@ test('aliases respetan singular/plural según cardinalidad', async () => {
     'proveedor',
     'ordenCompra',
     'ingresoInventario',
+    'chofer',
+    'creadoPor',
+    'enviadoPreparacionPor',
+    'preparacionFinalizadaPor',
+    'preparadoPor',
+    'cargadoPor',
+    'cargaConfirmadaPor',
   ]);
   const collectionAliases = new Set([
     'productos',
@@ -285,6 +379,12 @@ test('aliases respetan singular/plural según cardinalidad', async () => {
     'ingresosInventario',
     'detallesIngreso',
     'jornadas',
+    'pedidosCreados',
+    'pedidosEnviadosPreparacion',
+    'pedidosPreparacionFinalizada',
+    'detallesPreparados',
+    'despachosCargados',
+    'cargasConfirmadas',
   ]);
 
   for (const model of Object.values(db)) {

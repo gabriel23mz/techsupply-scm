@@ -9,12 +9,14 @@ import {
 
 test('pedidos rechaza finalizar preparación sin detalles y conserva transición válida', async (t) => {
   const service = await import('../../src/services/pedido.service.js');
+  const { default: sequelize } = await import('../../src/config/database.js');
   const { default: Pedido } = await import('../../src/models/Pedido.js');
   const { default: DetallePedido } = await import('../../src/models/DetallePedido.js');
 
   const pedido = modelInstance({ id: 3, estado: 'PREPARANDO' });
   let detalles = [];
 
+  stubManagedTransaction(t, sequelize);
   stubMethods(t, Pedido, {
     findByPk: async () => pedido,
   });
@@ -27,12 +29,23 @@ test('pedidos rechaza finalizar preparación sin detalles y conserva transición
     /debe tener al menos un producto/,
   );
 
-  detalles = [{ id: 1 }];
+  detalles = [
+    {
+      id: 1,
+      cantidad: 2,
+      cantidad_preparada: 2,
+    },
+  ];
   await service.finalizarPreparacion(3);
 
-  assert.deepEqual(pedido.update.mock.calls[0].arguments[0], {
-    estado: 'LISTO_PARA_DESPACHO',
-  });
+  assert.equal(
+    pedido.update.mock.calls[0].arguments[0].estado,
+    'LISTO_PARA_DESPACHO',
+  );
+  assert.ok(
+    pedido.update.mock.calls[0].arguments[0]
+      .preparacion_finalizada_en instanceof Date,
+  );
 });
 
 test('detalle de pedido revierte stock si falla la creación del detalle', async (t) => {
@@ -442,11 +455,40 @@ test('inicio de jornada exige PLANIFICADA y cambia camión/despachos de forma co
     transaction: async (callback) => callback(transaction),
   });
 
-  const jornada = modelInstance({ id: 70, camion_id: 5, estado: 'PLANIFICADA' });
+  const jornada = modelInstance({
+    id: 70,
+    camion_id: 5,
+    chofer_id: 8,
+    estado: 'PLANIFICADA',
+    carga_confirmada_en: new Date(),
+  });
+  const chofer = modelInstance({
+    id: 8,
+    usuario_id: 88,
+    activo: true,
+    fecha_vencimiento_licencia: '2099-12-31',
+    usuario: {
+      id: 88,
+      rol: 'CHOFER',
+      estado: true,
+    },
+  });
   const camion = modelInstance({ id: 5, estado: 'EN_BODEGA' });
   const despachos = [
-    modelInstance({ id: 1, estado: 'PENDIENTE', orden_entrega: 2 }),
-    modelInstance({ id: 2, estado: 'PENDIENTE', orden_entrega: 1 }),
+    modelInstance({
+      id: 1,
+      pedido_id: 701,
+      estado: 'PENDIENTE',
+      orden_entrega: 2,
+      cargado: true,
+    }),
+    modelInstance({
+      id: 2,
+      pedido_id: 702,
+      estado: 'PENDIENTE',
+      orden_entrega: 1,
+      cargado: true,
+    }),
   ];
   let jornadaFindCount = 0;
 
@@ -457,12 +499,19 @@ test('inicio de jornada exige PLANIFICADA y cambia camión/despachos de forma co
         ? jornada
         : { ...jornada, camion, despachos };
     },
+    findOne: async () => null,
+  });
+  stubMethods(t, db.Chofer, {
+    findByPk: async () => chofer,
   });
   stubMethods(t, db.Camion, {
     findByPk: async () => camion,
   });
   stubMethods(t, db.Despacho, {
     findAll: async () => despachos,
+    update: async () => [2],
+  });
+  stubMethods(t, db.Pedido, {
     update: async () => [2],
   });
 

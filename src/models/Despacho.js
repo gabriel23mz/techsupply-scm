@@ -61,6 +61,22 @@ const Despacho = sequelize.define(
       defaultValue: 'PENDIENTE',
     },
 
+    cargado: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+
+    cargado_por_usuario_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    fecha_carga: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+
     ruta_json: {
       type: DataTypes.JSONB,
       allowNull: true,

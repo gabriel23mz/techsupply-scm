@@ -7,10 +7,14 @@ import {
   useAuth,
 } from '../shared/contexts/AuthContext';
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({
+  children,
+  requiredPermission,
+}) {
   const location = useLocation();
 
   const {
+    hasPermission,
     isAuthenticated,
   } = useAuth();
 
@@ -23,6 +27,25 @@ function ProtectedRoute({ children }) {
           from: location,
         }}
       />
+    );
+  }
+
+  if (
+    requiredPermission &&
+    !hasPermission(requiredPermission)
+  ) {
+    return (
+      <main className="app-content">
+        <section className="pedidos-empty">
+          <i className="bi bi-shield-lock" />
+          <h4>
+            Acceso denegado
+          </h4>
+          <p>
+            Tu usuario no tiene permiso para consultar esta sección.
+          </p>
+        </section>
+      </main>
     );
   }
 

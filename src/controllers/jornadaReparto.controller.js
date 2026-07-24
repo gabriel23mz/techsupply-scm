@@ -27,6 +27,7 @@ export const iniciarJornada = asyncHandler(
     const resultado =
       await jornadaRepartoService.iniciarJornada(
         req.params.id,
+        req.user,
       );
 
     return successResponse(
@@ -57,6 +58,7 @@ export const finalizarJornada = asyncHandler(
     const resultado =
       await jornadaRepartoService.finalizarJornada(
         req.params.id,
+        req.user,
       );
 
     return successResponse(
@@ -70,7 +72,9 @@ export const finalizarJornada = asyncHandler(
 export const obtenerJornadas = asyncHandler(
   async (req, res) => {
     const jornadas =
-      await jornadaRepartoService.obtenerJornadas();
+      await jornadaRepartoService.obtenerJornadas(
+        req.user,
+      );
 
     return successResponse(
       res,
@@ -85,6 +89,7 @@ export const obtenerJornadaPorId = asyncHandler(
     const jornada =
       await jornadaRepartoService.obtenerJornadaPorId(
         req.params.id,
+        req.user,
       );
 
     return successResponse(
@@ -119,6 +124,37 @@ export const obtenerMapaGeneral = asyncHandler(
       res,
       resultado,
       'Mapa general de jornadas obtenido correctamente',
+    );
+  },
+);
+
+export const asignarChofer = asyncHandler(
+  async (req, res) => {
+    const jornada =
+      await jornadaRepartoService.asignarChofer(
+        req.params.id,
+        req.body.chofer_id,
+      );
+
+    return successResponse(
+      res,
+      jornada,
+      'Chofer asignado correctamente',
+    );
+  },
+);
+
+export const obtenerMisJornadas = asyncHandler(
+  async (req, res) => {
+    const jornadas =
+      await jornadaRepartoService.obtenerJornadas(
+        req.user,
+      );
+
+    return successResponse(
+      res,
+      jornadas,
+      'Jornadas propias obtenidas correctamente',
     );
   },
 );

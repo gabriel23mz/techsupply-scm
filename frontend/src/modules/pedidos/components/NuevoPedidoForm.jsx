@@ -1,12 +1,11 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from 'react';
 
 function NuevoPedidoForm({
   clientes,
-  usuarios,
+  user,
   isSaving,
   onSubmit,
   onCancel,
@@ -14,31 +13,11 @@ function NuevoPedidoForm({
   const [formData, setFormData] =
     useState({
       cliente_id: '',
-      usuario_id: '',
       fecha_entrega: '',
     });
 
   const [errors, setErrors] =
     useState({});
-
-  useEffect(() => {
-    if (
-      usuarios.length === 1 &&
-      !formData.usuario_id
-    ) {
-      setFormData(
-        (current) => ({
-          ...current,
-          usuario_id: String(
-            usuarios[0].id,
-          ),
-        }),
-      );
-    }
-  }, [
-    formData.usuario_id,
-    usuarios,
-  ]);
 
   const selectedClient =
     useMemo(
@@ -56,22 +35,6 @@ function NuevoPedidoForm({
       ],
     );
 
-  const selectedUser =
-    useMemo(
-      () =>
-        usuarios.find(
-          (usuario) =>
-            Number(usuario.id) ===
-            Number(
-              formData.usuario_id,
-            ),
-        ) ?? null,
-      [
-        formData.usuario_id,
-        usuarios,
-      ],
-    );
-
   const handleSubmit = (
     event,
   ) => {
@@ -82,11 +45,6 @@ function NuevoPedidoForm({
     if (!formData.cliente_id) {
       nextErrors.cliente_id =
         'Selecciona un cliente.';
-    }
-
-    if (!formData.usuario_id) {
-      nextErrors.usuario_id =
-        'Selecciona un responsable.';
     }
 
     setErrors(nextErrors);
@@ -100,9 +58,6 @@ function NuevoPedidoForm({
     onSubmit({
       cliente_id: Number(
         formData.cliente_id,
-      ),
-      usuario_id: Number(
-        formData.usuario_id,
       ),
       fecha: new Date().toISOString(),
       fecha_entrega:
@@ -181,59 +136,6 @@ function NuevoPedidoForm({
 
           <div>
             <label className="form-label">
-              Responsable
-            </label>
-
-            <select
-              className={`form-select ${
-                errors.usuario_id
-                  ? 'is-invalid'
-                  : ''
-              }`}
-              value={
-                formData.usuario_id
-              }
-              onChange={(event) =>
-                setFormData(
-                  (current) => ({
-                    ...current,
-                    usuario_id:
-                      event.target
-                        .value,
-                  }),
-                )
-              }
-            >
-              <option value="">
-                Selecciona un responsable
-              </option>
-
-              {usuarios.map(
-                (usuario) => (
-                  <option
-                    key={usuario.id}
-                    value={usuario.id}
-                  >
-                    {[
-                      usuario.nombre,
-                      usuario.apellido,
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  </option>
-                ),
-              )}
-            </select>
-
-            {errors.usuario_id && (
-              <div className="invalid-feedback">
-                {errors.usuario_id}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="form-label">
               Fecha del pedido
             </label>
 
@@ -292,14 +194,13 @@ function NuevoPedidoForm({
             <i className="bi bi-person-badge" />
             <span>Responsable</span>
             <strong>
-              {selectedUser
-                ? [
-                  selectedUser.nombre,
-                  selectedUser.apellido,
-                ]
-                  .filter(Boolean)
-                  .join(' ')
-                : 'No seleccionado'}
+              {[
+                user?.nombre,
+                user?.apellido,
+              ]
+                .filter(Boolean)
+                .join(' ') ||
+                'Usuario autenticado'}
             </strong>
           </div>
 

@@ -2,8 +2,8 @@ import {
   Router,
 } from 'express';
 
-import * as categoriaController
-  from '../controllers/categoria.controller.js';
+import * as choferController
+  from '../controllers/chofer.controller.js';
 
 import * as requestValidators
   from '../middlewares/requestValidators.js';
@@ -27,46 +27,54 @@ router.use(
 router.get(
   '/',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.CATALOGO_LEER,
+    PERMISSIONS.CHOFERES_LEER,
   ),
-  categoriaController.obtenerTodas,
+  choferController.obtenerTodos,
 );
 
 router.get(
-  '/:id',
+  '/disponibles',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.CATALOGO_LEER,
+    PERMISSIONS.CHOFERES_LEER,
   ),
-  requestValidators.validarIdParam,
-  categoriaController.obtenerPorId,
+  choferController.obtenerDisponibles,
 );
 
 router.post(
   '/',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.CATALOGO_GESTIONAR,
+    PERMISSIONS.CHOFERES_GESTIONAR,
   ),
-  requestValidators.validarCrearCategoria,
-  categoriaController.crear,
+  requestValidators.validarCrearChofer,
+  choferController.crear,
+);
+
+router.get(
+  '/:id',
+  authorizationMiddleware.requirePermission(
+    PERMISSIONS.CHOFERES_LEER,
+  ),
+  requestValidators.validarIdParam,
+  choferController.obtenerPorId,
 );
 
 router.put(
   '/:id',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.CATALOGO_GESTIONAR,
+    PERMISSIONS.CHOFERES_GESTIONAR,
   ),
   requestValidators.validarIdParam,
-  requestValidators.validarActualizarCategoria,
-  categoriaController.actualizar,
+  requestValidators.validarActualizarChofer,
+  choferController.actualizar,
 );
 
 router.delete(
   '/:id',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.CATALOGO_GESTIONAR,
+    PERMISSIONS.CHOFERES_GESTIONAR,
   ),
   requestValidators.validarIdParam,
-  categoriaController.eliminar,
+  choferController.eliminar,
 );
 
 export default router;

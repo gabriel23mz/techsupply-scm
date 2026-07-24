@@ -43,6 +43,7 @@ const Usuario = sequelize.define(
         'BODEGA',
         'VENTAS',
         'LOGISTICA',
+        'CHOFER',
       ),
       allowNull: false,
     },

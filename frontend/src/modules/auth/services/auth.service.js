@@ -31,7 +31,14 @@ export const iniciarSesion = async ({
     );
   }
 
-  return data;
+  return {
+    ...data,
+    user: data.user ?? data.usuario,
+    permissions:
+      data.permissions ??
+      data.permisos ??
+      [],
+  };
 };
 
 export const obtenerSesionLocal = () => {
@@ -40,9 +47,22 @@ export const obtenerSesionLocal = () => {
       SESSION_KEY,
     );
 
-    return raw
+    const session = raw
       ? JSON.parse(raw)
       : null;
+
+    if (!session) {
+      return null;
+    }
+
+    return {
+      ...session,
+      user: session.user ?? session.usuario,
+      permissions:
+        session.permissions ??
+        session.permisos ??
+        [],
+    };
   } catch {
     return null;
   }

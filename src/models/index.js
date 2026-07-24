@@ -19,6 +19,7 @@ import DetalleIngreso from './DetalleIngreso.js';
 
 import Camion from './Camion.js';
 import JornadaReparto from './JornadaReparto.js';
+import Chofer from './Chofer.js';
 
 
 //
@@ -115,6 +116,36 @@ Pedido.belongsTo(Usuario, {
   as: 'usuario',
 });
 
+Usuario.hasMany(Pedido, {
+  foreignKey: 'creado_por_usuario_id',
+  as: 'pedidosCreados',
+});
+
+Pedido.belongsTo(Usuario, {
+  foreignKey: 'creado_por_usuario_id',
+  as: 'creadoPor',
+});
+
+Usuario.hasMany(Pedido, {
+  foreignKey: 'enviado_preparacion_por_usuario_id',
+  as: 'pedidosEnviadosPreparacion',
+});
+
+Pedido.belongsTo(Usuario, {
+  foreignKey: 'enviado_preparacion_por_usuario_id',
+  as: 'enviadoPreparacionPor',
+});
+
+Usuario.hasMany(Pedido, {
+  foreignKey: 'preparacion_finalizada_por_usuario_id',
+  as: 'pedidosPreparacionFinalizada',
+});
+
+Pedido.belongsTo(Usuario, {
+  foreignKey: 'preparacion_finalizada_por_usuario_id',
+  as: 'preparacionFinalizadaPor',
+});
+
 //
 // Pedido -> DetallePedido
 //
@@ -141,6 +172,16 @@ DetallePedido.belongsTo(Producto, {
   as: 'producto',
 });
 
+Usuario.hasMany(DetallePedido, {
+  foreignKey: 'preparado_por_usuario_id',
+  as: 'detallesPreparados',
+});
+
+DetallePedido.belongsTo(Usuario, {
+  foreignKey: 'preparado_por_usuario_id',
+  as: 'preparadoPor',
+});
+
 //
 // Pedido -> Despacho
 //
@@ -152,6 +193,16 @@ Pedido.hasMany(Despacho, {
 Despacho.belongsTo(Pedido, {
   foreignKey: 'pedido_id',
   as: 'pedido',
+});
+
+Usuario.hasMany(Despacho, {
+  foreignKey: 'cargado_por_usuario_id',
+  as: 'despachosCargados',
+});
+
+Despacho.belongsTo(Usuario, {
+  foreignKey: 'cargado_por_usuario_id',
+  as: 'cargadoPor',
 });
 
 //
@@ -278,6 +329,36 @@ JornadaReparto.belongsTo(Camion, {
   as: 'camion',
 });
 
+Usuario.hasOne(Chofer, {
+  foreignKey: 'usuario_id',
+  as: 'chofer',
+});
+
+Chofer.belongsTo(Usuario, {
+  foreignKey: 'usuario_id',
+  as: 'usuario',
+});
+
+Chofer.hasMany(JornadaReparto, {
+  foreignKey: 'chofer_id',
+  as: 'jornadas',
+});
+
+JornadaReparto.belongsTo(Chofer, {
+  foreignKey: 'chofer_id',
+  as: 'chofer',
+});
+
+Usuario.hasMany(JornadaReparto, {
+  foreignKey: 'carga_confirmada_por_usuario_id',
+  as: 'cargasConfirmadas',
+});
+
+JornadaReparto.belongsTo(Usuario, {
+  foreignKey: 'carga_confirmada_por_usuario_id',
+  as: 'cargaConfirmadaPor',
+});
+
 //
 // JornadaReparto -> Despacho
 //
@@ -320,6 +401,7 @@ const db = {
 
   Camion,
   JornadaReparto,
+  Chofer,
 };
 
 export default db;

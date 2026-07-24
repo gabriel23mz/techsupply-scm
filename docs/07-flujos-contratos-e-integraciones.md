@@ -5,14 +5,13 @@
 ```mermaid
 stateDiagram-v2
   [*] --> PENDIENTE
-  PENDIENTE --> PREPARANDO: preparar
-  PREPARANDO --> LISTO_PARA_DESPACHO: finalizar preparacion con detalles
-  LISTO_PARA_DESPACHO --> DESPACHADO: generar jornada
+  PENDIENTE --> PREPARANDO: enviar a preparacion
+  PREPARANDO --> LISTO_PARA_DESPACHO: Bodega finaliza preparacion
+  LISTO_PARA_DESPACHO --> LISTO_PARA_DESPACHO: generar jornada
+  LISTO_PARA_DESPACHO --> DESPACHADO: chofer inicia jornada con carga confirmada
   DESPACHADO --> ENTREGADO: entregar despacho
   DESPACHADO --> REPROGRAMADO: no entregado
   PENDIENTE --> CANCELADO
-  PREPARANDO --> CANCELADO
-  LISTO_PARA_DESPACHO --> CANCELADO
 ```
 
 ## Generacion de jornada
@@ -33,20 +32,26 @@ sequenceDiagram
   PY-->>BE: jornadas + pedidos_no_asignados
   BE->>BE: Validacion estricta de respuesta Python
   BE->>DB: Transaccion: revalidar y bloquear pedidos/camiones
-  BE->>DB: Transaccion: jornada, despachos, pedidos DESPACHADO
+  BE->>DB: Transaccion: jornada y despachos
   BE->>BE: Commit
   BE-->>BE: n8n jornadaCreada stub post-commit
   BE-->>FE: resumen de jornadas creadas
 ```
 
-La llamada a Python ocurre antes de abrir la transaccion. Despues de recibir el plan, el backend vuelve a consultar y bloquear los pedidos propuestos, los camiones propuestos, los despachos activos y las jornadas activas. Si alguno cambio entre la planificacion y la persistencia, no se guarda ningun dato parcial.
+La llamada a Python ocurre antes de abrir la transaccion. Despues de recibir el plan, el backend vuelve a consultar y bloquear los pedidos propuestos, los camiones propuestos, los despachos activos y las jornadas activas. Si alguno cambio entre la planificacion y la persistencia, no se guarda ningun dato parcial. La planificacion no marca pedidos como `DESPACHADO`.
+
+## Preparacion y carga
+
+Bodega prepara cantidades por detalle con `PATCH /api/bodega/detalles/:id/preparacion` y finaliza pedidos completos con `PATCH /api/bodega/pedidos/:id/finalizar-preparacion`.
+
+La carga se gestiona con `PATCH /api/bodega/despachos/:id/carga` y se confirma por jornada con `PATCH /api/bodega/jornadas/:id/confirmar-carga`. Una jornada `PLANIFICADA` no puede iniciar si no tiene todos los despachos cargados y `carga_confirmada_en`.
 
 ## Inicio, avance y finalizacion
 
 ```mermaid
 stateDiagram-v2
   [*] --> PLANIFICADA
-  PLANIFICADA --> EN_RUTA: iniciar
+  PLANIFICADA --> EN_RUTA: chofer asignado inicia con carga confirmada
   EN_RUTA --> EN_RUTA: avanzar posicion
   EN_RUTA --> FINALIZADA: finalizar
   PLANIFICADA --> CANCELADA: estado definido, flujo no expuesto como endpoint principal
@@ -59,6 +64,7 @@ Para entregar o marcar no entregado, el despacho debe:
 - Estar `EN_TRANSITO`.
 - Pertenecer a una jornada `EN_RUTA`.
 - Tener `orden_entrega` igual a `posicion_actual_orden`.
+- Ser operado por el chofer asignado a la jornada o por `ADMIN`.
 
 Entrega:
 
@@ -121,6 +127,8 @@ Endpoints usados por frontend:
 | Rutas | CRUD `/rutas`, consulta `/camiones`, `/jornadas-reparto/mapa-general` |
 | Logistica | `/despachos/pedidos-disponibles`, `/jornadas-reparto/*`, `/despachos/:id/entregar`, `/despachos/:id/no-entregado` |
 | Despachos | `GET /despachos`, `GET /despachos/:id` |
+| Bodega | `/bodega/pedidos`, `/bodega/jornadas`, `/bodega/despachos/:id/carga` |
+| Choferes | `/choferes`, `/choferes/disponibles`, `/jornadas-reparto/mis-jornadas` |
 
 ## Contrato Node-Python: ruta individual
 

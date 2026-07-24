@@ -11,7 +11,7 @@ import {
 export const obtenerTodos = asyncHandler(
   async (req, res) => {
     const pedidos =
-      await pedidoService.obtenerTodos();
+      await pedidoService.obtenerTodos(req.user);
 
     return successResponse(
       res,
@@ -26,6 +26,7 @@ export const obtenerPorId = asyncHandler(
     const pedido =
       await pedidoService.obtenerPorId(
         req.params.id,
+        req.user,
       );
 
     return successResponse(
@@ -39,7 +40,10 @@ export const obtenerPorId = asyncHandler(
 export const crear = asyncHandler(
   async (req, res) => {
     const pedido =
-      await pedidoService.crear(req.body);
+      await pedidoService.crear(
+        req.body,
+        req.user,
+      );
 
     return successResponse(
       res,
@@ -56,6 +60,7 @@ export const actualizar = asyncHandler(
       await pedidoService.actualizar(
         req.params.id,
         req.body,
+        req.user,
       );
 
     return successResponse(
@@ -81,7 +86,10 @@ export const eliminar = asyncHandler(
 export const preparar = asyncHandler(
   async (req, res) => {
     const pedido =
-      await pedidoService.preparar(req.params.id);
+      await pedidoService.preparar(
+        req.params.id,
+        req.user,
+      );
 
     return successResponse(
       res,
@@ -96,6 +104,7 @@ export const finalizarPreparacion = asyncHandler(
     const pedido =
       await pedidoService.finalizarPreparacion(
         req.params.id,
+        req.user,
       );
 
     return successResponse(
@@ -109,7 +118,10 @@ export const finalizarPreparacion = asyncHandler(
 export const cancelar = asyncHandler(
   async (req, res) => {
     const pedido =
-      await pedidoService.cancelar(req.params.id);
+      await pedidoService.cancelar(
+        req.params.id,
+        req.user,
+      );
 
     return successResponse(
       res,

@@ -208,13 +208,6 @@ test('generación revierte jornada y pedido si falla crear despacho', async (t) 
     jornadas.push(jornada);
     return jornada;
   });
-  db.Pedido.update = async (_datos, options) => {
-    options.transaction.record(pedidos[0], {
-      estado: pedidos[0].estado,
-    });
-    pedidos[0].estado = 'DESPACHADO';
-    return [1];
-  };
   db.Despacho.create = async () => {
     throw new Error('fallo simulado al crear despacho');
   };
@@ -228,7 +221,7 @@ test('generación revierte jornada y pedido si falla crear despacho', async (t) 
   assert.equal(pedidos[0].estado, 'LISTO_PARA_DESPACHO');
 });
 
-test('generación revierte si falla actualizar uno de varios pedidos', async (t) => {
+test('generación revierte si un pedido deja de estar disponible al revalidar', async (t) => {
   const { default: sequelize } = await import('../../src/config/database.js');
   const { default: db } = await import('../../src/models/index.js');
   const pedidos = [
@@ -249,19 +242,12 @@ test('generación revierte si falla actualizar uno de varios pedidos', async (t)
 
   stubManagedTransaction(t, sequelize);
   stubPreliminares(t, db, { pedidos });
-  db.Pedido.update = async (_datos, options) => {
-    const pedidoId = Number(options.where.id);
-    const item = pedidos.find((actual) => actual.id === pedidoId);
-
-    if (pedidoId === 101) {
-      return [0];
+  db.Pedido.findAll = async (options) => {
+    if (options?.lock) {
+      return [pedidos[0]];
     }
 
-    options.transaction.record(item, {
-      estado: item.estado,
-    });
-    item.estado = 'DESPACHADO';
-    return [1];
+    return pedidos;
   };
   db.Despacho.create = async (datos, options) => {
     options.transaction.record(despachos, { length: despachos.length });
@@ -272,7 +258,7 @@ test('generación revierte si falla actualizar uno de varios pedidos', async (t)
 
   await assert.rejects(
     () => service.generarJornadaReparto(),
-    /ya no está disponible para despacho/,
+    /ya no están disponibles para despacho/,
   );
 
   assert.equal(despachos.length, 0);

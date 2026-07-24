@@ -48,7 +48,7 @@ frontend/src/
 - `/pedidos/:id/workspace`
 - `/centro-logistico/jornadas/:id`
 
-La proteccion es del lado frontend. El backend aun no aplica `requireAuth` a todas las rutas operativas.
+La proteccion frontend exige sesion y tambien puede exigir permiso por ruta. El backend aplica autenticacion y autorizacion reales; el filtrado de cliente es solo UX.
 
 ## Layout
 
@@ -63,12 +63,13 @@ El layout principal usa `MainLayout`, `Sidebar` y `Topbar`. Incluye navegacion, 
 - header `Content-Type: application/json`.
 - interceptor para agregar token desde `techsupply_session`.
 - interceptor para limpiar sesion en 401.
+- manejo de 403 como acceso denegado sin cerrar la sesion.
 
 Las respuestas con relaciones incluidas se consumen mediante aliases camelCase canonicos definidos en Sequelize: `cliente`, `ubicacion`, `categoria`, `producto`, `pedido`, `detalles`, `usuario`, `jornada`, `camion` y `despachos`. El frontend activo no depende de claves PascalCase autogeneradas por Sequelize.
 
 ## Autenticacion frontend
 
-El modulo `auth` permite login, guarda sesion local y consulta `/auth/me`. La UI bloquea rutas privadas si no hay sesion valida.
+El modulo `auth` permite login, guarda sesion local y consulta `/auth/me`. La sesion conserva `user`, `token` y `permissions`; `AuthContext` expone `hasPermission`.
 
 ## Dashboard
 
@@ -81,8 +82,7 @@ El modulo de pedidos permite:
 - Listar pedidos.
 - Crear pedido.
 - Editar pedido en estados permitidos.
-- Iniciar preparacion.
-- Finalizar preparacion.
+- Enviar a preparacion.
 - Cancelar pedido.
 - Navegar al workspace de detalles.
 
@@ -94,9 +94,9 @@ El workspace gestiona productos asociados al pedido:
 - Editar cantidad.
 - Eliminar detalle.
 - Ver resumen.
-- Disparar transiciones de preparacion.
+- Enviar el pedido a preparacion.
 
-Las reglas finales las valida el backend.
+Ventas solo puede editar detalles y cancelar mientras el pedido esta `PENDIENTE`. Los estados `PREPARANDO` y posteriores se muestran en modo solo lectura. La finalizacion fisica de preparacion queda fuera del workspace de Ventas y pertenece a Bodega.
 
 ## Centro de Operaciones Logisticas
 
@@ -123,6 +123,8 @@ La pantalla de detalle de jornada permite:
 - Marcar no entregado.
 - Finalizar jornada.
 - Visualizar mapa de la ruta.
+
+El backend exige chofer asignado y carga confirmada para iniciar una jornada; Logistica planifica y supervisa, pero no inicia fisicamente la ruta salvo permiso administrativo.
 
 `JornadaMap.jsx` usa `MapContainer`, `TileLayer`, `Marker`, `Polyline`, `Popup` y `Tooltip`. Normaliza geometria como `[latitud, longitud]`, agrupa marcadores por orden y representa bodega, camion y puntos de entrega.
 
@@ -163,5 +165,6 @@ El frontend usa spinners, estados vacios, mensajes toast y confirmaciones. Las o
 
 - No existe modulo frontend dedicado a categorias/productos como CRUD completo independiente, aunque se consumen productos y categorias en backend.
 - No existe administracion de roles.
+- No existe aun interfaz completa de preparacion de Bodega, carga ni choferes.
 - No existe seguimiento GPS real.
 - No existe panel de n8n.

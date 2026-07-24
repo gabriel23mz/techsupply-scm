@@ -465,7 +465,10 @@ export const validarCrearPedido = validate([
     }
   },
   (req) => {
-    if (!isPositiveInteger(req.body.usuario_id)) {
+    if (
+      req.body.usuario_id !== undefined &&
+      !isPositiveInteger(req.body.usuario_id)
+    ) {
       throw new ValidationError(
         'Usuario no válido',
         'USUARIO_INVALIDO',
@@ -521,6 +524,141 @@ export const validarCrearDespacho = validate([
       throw new ValidationError(
         'pedido_id es obligatorio',
         'PEDIDO_ID_OBLIGATORIO',
+      );
+    }
+  },
+]);
+
+export const validarActualizarPreparacionDetalle = validate([
+  (req) => {
+    const cantidad = Number(
+      req.body.cantidad_preparada,
+    );
+
+    if (
+      !Number.isInteger(cantidad) ||
+      cantidad < 0
+    ) {
+      throw new ValidationError(
+        'Cantidad preparada inválida',
+        'CANTIDAD_PREPARADA_INVALIDA',
+      );
+    }
+  },
+]);
+
+export const validarActualizarCargaDespacho = validate([
+  (req) => {
+    if (typeof req.body.cargado !== 'boolean') {
+      throw new ValidationError(
+        'El estado de carga debe ser booleano',
+        'CARGADO_INVALIDO',
+      );
+    }
+  },
+]);
+
+export const validarAsignarChofer = validate([
+  (req) => {
+    if (!isPositiveInteger(req.body.chofer_id)) {
+      throw new ValidationError(
+        'Chofer inválido',
+        'CHOFER_INVALIDO',
+      );
+    }
+  },
+]);
+
+export const validarCrearChofer = validate([
+  (req) => {
+    if (!isPositiveInteger(req.body.usuario_id)) {
+      throw new ValidationError(
+        'Usuario inválido',
+        'USUARIO_INVALIDO',
+      );
+    }
+  },
+  (req) =>
+    requireText(
+      req.body.numero_licencia,
+      'El número de licencia es obligatorio',
+      'LICENCIA_OBLIGATORIA',
+    ),
+  (req) =>
+    requireText(
+      req.body.categoria_licencia,
+      'La categoría de licencia es obligatoria',
+      'CATEGORIA_LICENCIA_OBLIGATORIA',
+    ),
+  (req) => {
+    if (!isPresent(req.body.fecha_vencimiento_licencia)) {
+      throw new ValidationError(
+        'La fecha de vencimiento de licencia es obligatoria',
+        'FECHA_LICENCIA_OBLIGATORIA',
+      );
+    }
+  },
+]);
+
+export const validarActualizarChofer = validate([
+  (req) =>
+    optionalText(
+      req.body.numero_licencia,
+      'El número de licencia no puede estar vacío',
+      'LICENCIA_VACIA',
+    ),
+  (req) =>
+    optionalText(
+      req.body.categoria_licencia,
+      'La categoría de licencia no puede estar vacía',
+      'CATEGORIA_LICENCIA_VACIA',
+    ),
+]);
+
+export const validarCrearCamion = validate([
+  (req) =>
+    requireText(
+      req.body.codigo,
+      'El código del camión es obligatorio',
+      'CODIGO_CAMION_OBLIGATORIO',
+    ),
+  (req) =>
+    requireText(
+      req.body.placa,
+      'La placa del camión es obligatoria',
+      'PLACA_CAMION_OBLIGATORIA',
+    ),
+  (req) => {
+    if (!isPositiveInteger(req.body.capacidad)) {
+      throw new ValidationError(
+        'La capacidad del camión debe ser mayor a cero',
+        'CAPACIDAD_CAMION_INVALIDA',
+      );
+    }
+  },
+]);
+
+export const validarActualizarCamion = validate([
+  (req) =>
+    optionalText(
+      req.body.codigo,
+      'El código del camión no puede estar vacío',
+      'CODIGO_CAMION_VACIO',
+    ),
+  (req) =>
+    optionalText(
+      req.body.placa,
+      'La placa del camión no puede estar vacía',
+      'PLACA_CAMION_VACIA',
+    ),
+  (req) => {
+    if (
+      req.body.capacidad !== undefined &&
+      !isPositiveInteger(req.body.capacidad)
+    ) {
+      throw new ValidationError(
+        'La capacidad del camión debe ser mayor a cero',
+        'CAPACIDAD_CAMION_INVALIDA',
       );
     }
   },

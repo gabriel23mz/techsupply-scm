@@ -12,12 +12,18 @@ Construir un MVP academico funcional que permita administrar el flujo outbound d
 
 El alcance actual incluye:
 
-- Autenticacion frontend y endpoint backend de login.
+- Autenticacion frontend, endpoint backend de login y autenticacion obligatoria para rutas operativas.
+- Autorizacion por permisos para `ADMIN`, `VENTAS`, `BODEGA`, `LOGISTICA`, `CHOFER` y `COMPRAS`.
 - Gestion de usuarios, clientes, categorias, productos, ubicaciones y rutas.
 - Gestion de pedidos y detalles de pedido.
+- Propiedad de pedidos por vendedor y visibilidad por rol.
+- Preparacion de Bodega por cantidades.
+- Carga de despachos y confirmacion de carga de jornada.
+- Gestion de choferes y asignacion a jornadas.
 - Descuento y reintegro de stock al modificar detalles o cancelar pedidos.
 - Estados comerciales del pedido.
 - Gestion de camiones.
+- CRUD completo de camiones.
 - Generacion automatica de jornadas de reparto.
 - Asignacion automatica de camiones disponibles.
 - Agrupacion de multiples pedidos por jornada.
@@ -32,11 +38,12 @@ El alcance actual incluye:
 - Centro de Operaciones Logisticas en frontend.
 - Vista de jornadas, mapa general y detalle de jornada.
 - Gestion de despachos y seguimiento de entregas.
+- Inicio, entrega, no entrega y finalizacion por chofer asignado o `ADMIN`.
 - Integracion n8n preparada como stub.
 
 ## Funcionalidades parciales
 
-- Autenticacion: existe login, token y `ProtectedRoute` en frontend; backend solo protege `/api/auth/me`, no las rutas operativas.
+- Frontend de Bodega, carga, choferes y administracion visual de permisos: el backend ya expone los endpoints, pero las pantallas dedicadas quedan para una siguiente pasada.
 - n8n: existen funciones por evento, pero solo hacen `console.log`.
 - Recalculo de jornada: implementado para jornadas `PLANIFICADA` con despachos `PENDIENTE`, con limite de desvio del 15% para nuevos destinos.
 - Visualizacion geografica: implementada con mapas y geometria; no existe seguimiento GPS real.
@@ -44,7 +51,6 @@ El alcance actual incluye:
 
 ## Funcionalidades pendientes para completar el MVP
 
-- Proteger rutas operativas del backend con autenticacion y, si aplica, roles.
 - Formalizar contratos Node-Python con pruebas.
 - Corregir payload de evento `jornadaCreada` antes de activar webhook real.
 - Incorporar pruebas de servicios, contratos y flujos logisticos.
@@ -53,7 +59,6 @@ El alcance actual incluye:
 
 ## Fuera del alcance actual
 
-- Gestion de choferes.
 - Seguimiento GPS real.
 - Aplicacion movil.
 - Microservicios adicionales.
@@ -70,9 +75,8 @@ El MVP esta en estado funcional para demostracion academica local. El flujo prin
 
 ## Limitaciones conocidas
 
-- No hay pruebas automatizadas reales.
-- Algunas operaciones de pedido/detalle/despacho no son atomicas.
-- La disponibilidad de camiones se evalua antes de invocar Python y antes de persistir; bajo concurrencia podria requerir restricciones adicionales.
+- La suite automatizada existe, pero no usa una base PostgreSQL efimera real.
+- Algunas restricciones definitivas de concurrencia siguen pendientes a nivel PostgreSQL.
 - La metaheuristica usa aleatoriedad sin semilla configurable.
 - A* no usa heuristica geografica; con heuristica nula se comporta como Dijkstra.
 - n8n no esta integrado con webhooks reales.
@@ -86,4 +90,3 @@ El MVP esta en estado funcional para demostracion academica local. El flujo prin
 - Mantener Python como motor logistico independiente.
 - Mantener `JornadaReparto` como entidad principal del proceso logistico.
 - Mantener n8n como integracion preparada hasta estabilizar contratos y pruebas.
-

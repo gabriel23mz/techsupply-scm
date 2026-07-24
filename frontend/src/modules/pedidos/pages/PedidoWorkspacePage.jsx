@@ -28,7 +28,6 @@ import {
   cancelarPedido,
   crearDetallePedido,
   eliminarDetallePedido,
-  finalizarPreparacion,
   iniciarPreparacion,
   obtenerPedido,
   obtenerProductos,
@@ -139,10 +138,7 @@ function PedidoWorkspacePage() {
 
   const canEdit =
     pedido &&
-    [
-      'PENDIENTE',
-      'PREPARANDO',
-    ].includes(pedido.estado);
+    pedido.estado === 'PENDIENTE';
 
   const execute = async ({
     key,
@@ -242,30 +238,6 @@ function PedidoWorkspacePage() {
         iniciarPreparacion(id),
       successMessage:
         'Preparación iniciada correctamente.',
-    });
-  };
-
-  const handleFinish = async () => {
-    setConfirmAction(null);
-
-    await execute({
-      key: 'estado',
-      action: async () => {
-        if (
-          pedido.estado ===
-          'PENDIENTE'
-        ) {
-          await iniciarPreparacion(
-            id,
-          );
-        }
-
-        return finalizarPreparacion(
-          id,
-        );
-      },
-      successMessage:
-        'Pedido listo para despacho.',
     });
   };
 
@@ -379,11 +351,6 @@ function PedidoWorkspacePage() {
             'START',
           )
         }
-        onFinish={() =>
-          setConfirmAction(
-            'FINISH',
-          )
-        }
         onCancel={() =>
           setConfirmAction(
             'CANCEL',
@@ -422,28 +389,12 @@ function PedidoWorkspacePage() {
           confirmAction ===
           'START'
         }
-        title="Iniciar preparación"
-        message="El pedido pasará a PREPARANDO y continuará disponible en este Workspace."
-        confirmText="Iniciar"
+        title="Enviar a preparación"
+        message="El pedido pasará a PREPARANDO y quedará en modo solo lectura para Ventas."
+        confirmText="Enviar"
         cancelText="Cancelar"
         variant="info"
         onConfirm={handleStart}
-        onCancel={() =>
-          setConfirmAction(null)
-        }
-      />
-
-      <ConfirmDialog
-        open={
-          confirmAction ===
-          'FINISH'
-        }
-        title="Finalizar preparación"
-        message="El pedido quedará LISTO PARA DESPACHO y ya no podrá modificarse desde este Workspace."
-        confirmText="Finalizar"
-        cancelText="Cancelar"
-        variant="info"
-        onConfirm={handleFinish}
         onCancel={() =>
           setConfirmAction(null)
         }

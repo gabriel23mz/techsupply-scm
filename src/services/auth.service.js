@@ -7,6 +7,10 @@ import {
 } from '../utils/authToken.js';
 
 import {
+  getPermissionsForRole,
+} from '../constants/permissions.js';
+
+import {
   NotFoundError,
   UnauthorizedError,
 } from '../utils/errors.js';
@@ -71,6 +75,8 @@ export const login = async ({
 
   return {
     user,
+    permisos:
+      getPermissionsForRole(user.rol),
     token:
       createAuthToken(user),
     expires_in: 43200,
@@ -99,5 +105,13 @@ export const obtenerUsuarioSesion =
       );
     }
 
-    return usuario;
+    const user = usuario.toJSON
+      ? usuario.toJSON()
+      : usuario;
+
+    return {
+      user,
+      permisos:
+        getPermissionsForRole(user.rol),
+    };
   };

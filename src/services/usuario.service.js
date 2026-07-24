@@ -3,18 +3,16 @@ import bcrypt from 'bcrypt';
 import Usuario from '../models/Usuario.js';
 
 import {
+  ROLES,
+} from '../constants/permissions.js';
+
+import {
   BusinessRuleError,
   ConflictError,
   NotFoundError,
 } from '../utils/errors.js';
 
-const ROLES = [
-  'ADMIN',
-  'COMPRAS',
-  'BODEGA',
-  'VENTAS',
-  'LOGISTICA',
-];
+const ROLES_VALIDOS = Object.values(ROLES);
 
 const capitalizarTexto = (texto) =>
   texto
@@ -63,7 +61,7 @@ const normalizarDatos = async (datos) => {
 const validarRol = (rol) => {
   if (
     rol !== undefined &&
-    !ROLES.includes(rol)
+    !ROLES_VALIDOS.includes(rol)
   ) {
     throw new BusinessRuleError(
       'Rol inválido',

@@ -126,6 +126,14 @@ npm run db:seed:undo
 
 Tambien existen scripts de reset demo. Deben usarse con cuidado porque modifican la base de datos.
 
+Las migraciones creadas para rol `CHOFER`, tabla `choferes`, trazabilidad, preparacion, carga y asignacion de chofer no fueron ejecutadas contra una base real durante la implementacion. Tras revisar los cambios, el comando operativo seria:
+
+```bash
+npm run db:migrate
+```
+
+Debe ejecutarse solo contra una base aislada o real autorizada.
+
 ## Orden recomendado de arranque
 
 1. Verificar `DATABASE_URL` y conexion a PostgreSQL/Supabase.
@@ -230,5 +238,5 @@ Escenarios incluidos:
 | Frontend no carga datos | `VITE_API_URL` incorrecta o backend apagado |
 | Generar jornada falla | Python apagado, sin rutas activas, sin camiones o sin bodega valida |
 | Mapa sin geometria real | OSRM no disponible o coordenadas invalidas |
-| Login funciona pero API queda abierta | Limitacion actual: backend no protege rutas operativas |
+| Login funciona pero un endpoint responde 403 | El usuario esta autenticado pero no tiene permiso |
 | `npm run test:python` falla | Falta `python/.venv` o sus dependencias |

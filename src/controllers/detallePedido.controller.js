@@ -39,7 +39,10 @@ export const obtenerPorId = asyncHandler(
 export const crear = asyncHandler(
   async (req, res) => {
     const detalle =
-      await detallePedidoService.crear(req.body);
+      await detallePedidoService.crear(
+        req.body,
+        req.user,
+      );
 
     return successResponse(
       res,
@@ -56,6 +59,7 @@ export const actualizar = asyncHandler(
       await detallePedidoService.actualizar(
         req.params.id,
         req.body,
+        req.user,
       );
 
     return successResponse(
@@ -69,8 +73,9 @@ export const actualizar = asyncHandler(
 export const eliminar = asyncHandler(
   async (req, res) => {
     await detallePedidoService.eliminar(
-      req.params.id,
-    );
+        req.params.id,
+        req.user,
+      );
 
     return successResponse(
       res,

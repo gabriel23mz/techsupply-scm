@@ -6,8 +6,13 @@ import { BODEGA_CENTRAL_ID } from '../constants/logistica.js';
 import * as logisticaService from './logistica.service.js';
 import {
   BusinessRuleError,
+  ForbiddenError,
   NotFoundError,
 } from '../utils/errors.js';
+import {
+  ROLES,
+  isAdmin,
+} from '../constants/permissions.js';
 
 
 const {
@@ -18,11 +23,17 @@ const {
   Camion,
   JornadaReparto,
   Despacho,
+  Chofer,
+  Usuario,
 } = db;
 
 
 
 const MAX_DESVIO_PORCENTAJE = 15;
+const ESTADOS_JORNADA_ACTIVA = [
+  'PLANIFICADA',
+  'EN_RUTA',
+];
 
 const obtenerDestinoPedido = (pedido) =>
   Number(pedido.cliente.ubicacion.id);
@@ -37,6 +48,43 @@ const obtenerCapacidadCamion = (camion) => {
   }
 
   return capacidad;
+};
+
+const licenciaVencida = (fecha) => {
+  const vencimiento = new Date(`${fecha}T23:59:59`);
+
+  return Number.isNaN(vencimiento.getTime()) ||
+    vencimiento < new Date();
+};
+
+const assertChoferAsignado = (
+  jornada,
+  user,
+) => {
+  if (isAdmin(user)) {
+    return;
+  }
+
+  if (user?.rol !== ROLES.CHOFER) {
+    throw new ForbiddenError(
+      'Solo el chofer asignado puede operar la jornada',
+      'JORNADA_OPERACION_DENEGADA',
+    );
+  }
+
+  const usuarioChoferId =
+    jornada.chofer?.usuario_id ??
+    jornada.chofer?.usuario?.id;
+
+  if (
+    Number(usuarioChoferId) !==
+    Number(user.id)
+  ) {
+    throw new ForbiddenError(
+      'No puede operar una jornada asignada a otro chofer',
+      'JORNADA_AJENA',
+    );
+  }
 };
 
 const calcularDesvioPorcentaje = (
@@ -275,6 +323,7 @@ export const generarJornadaReparto = async () => {
   const pedidos = await Pedido.findAll({
     where: {
       estado: 'LISTO_PARA_DESPACHO',
+      '$despachos.id$': null,
     },
     include: [
       {
@@ -286,6 +335,20 @@ export const generarJornadaReparto = async () => {
           as: 'ubicacion',
           },
         ],
+      },
+      {
+        model: Despacho,
+        as: 'despachos',
+        required: false,
+        where: {
+          estado: {
+            [Op.in]: [
+              'PENDIENTE',
+              'EN_TRANSITO',
+            ],
+          },
+        },
+        attributes: ['id'],
       },
     ],
     order: [['id', 'ASC']],
@@ -549,28 +612,10 @@ export const generarJornadaReparto = async () => {
           const pedidoId = Number(entrega.pedido_id);
 
           /*
-         * Bloqueo lógico adicional:
-         * solo cambia un pedido todavía disponible.
-         */
-          const [cantidadActualizada] =
-          await Pedido.update(
-            {
-              estado: 'DESPACHADO',
-            },
-            {
-              where: {
-                id: pedidoId,
-                estado: 'LISTO_PARA_DESPACHO',
-              },
-              transaction,
-            },
-          );
-
-          if (cantidadActualizada !== 1) {
-            throw new BusinessRuleError(
-              `El pedido ${pedidoId} ya no está disponible para despacho`,
-            );
-          }
+           * Invariante:
+           * Un pedido planificado continúa LISTO_PARA_DESPACHO
+           * hasta que el chofer inicia físicamente la jornada.
+           */
 
           const despacho = await Despacho.create(
             {
@@ -649,7 +694,10 @@ export const generarJornadaReparto = async () => {
   };
 };
 
-export const iniciarJornada = async (id) => {
+export const iniciarJornada = async (
+  id,
+  user,
+) => {
   const jornadaId = await sequelize.transaction(
     async (transaction) => {
       const jornada = await JornadaReparto.findByPk(id, {
@@ -667,6 +715,94 @@ export const iniciarJornada = async (id) => {
       if (jornada.estado !== 'PLANIFICADA') {
         throw new BusinessRuleError(
           'Solo se puede iniciar una jornada en estado PLANIFICADA',
+        );
+      }
+
+      const chofer = jornada.chofer_id
+        ? await Chofer.findByPk(
+          jornada.chofer_id,
+          {
+            include: [
+              {
+                model: Usuario,
+                as: 'usuario',
+              },
+            ],
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          },
+        )
+        : null;
+
+      if (!chofer) {
+        throw new BusinessRuleError(
+          'La jornada no tiene chofer asignado',
+          'JORNADA_SIN_CHOFER',
+        );
+      }
+
+      if (!chofer.activo) {
+        throw new BusinessRuleError(
+          'El chofer asignado está inactivo',
+          'CHOFER_INACTIVO',
+        );
+      }
+
+      if (
+        chofer.usuario?.rol !== ROLES.CHOFER ||
+        chofer.usuario?.estado === false
+      ) {
+        throw new BusinessRuleError(
+          'El usuario del chofer no está activo como CHOFER',
+          'USUARIO_CHOFER_INVALIDO',
+        );
+      }
+
+      if (
+        licenciaVencida(
+          chofer.fecha_vencimiento_licencia,
+        )
+      ) {
+        throw new BusinessRuleError(
+          'La licencia del chofer está vencida',
+          'LICENCIA_VENCIDA',
+        );
+      }
+
+      assertChoferAsignado(
+        {
+          ...jornada.toJSON(),
+          chofer,
+        },
+        user,
+      );
+
+      const jornadaActivaChofer =
+        await JornadaReparto.findOne({
+          where: {
+            id: {
+              [Op.ne]: jornada.id,
+            },
+            chofer_id: chofer.id,
+            estado: {
+              [Op.in]: ESTADOS_JORNADA_ACTIVA,
+            },
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+      if (jornadaActivaChofer) {
+        throw new BusinessRuleError(
+          'El chofer ya posee otra jornada activa',
+          'CHOFER_CON_JORNADA_ACTIVA',
+        );
+      }
+
+      if (!jornada.carga_confirmada_en) {
+        throw new BusinessRuleError(
+          'La jornada requiere carga confirmada antes de iniciar',
+          'JORNADA_CARGA_NO_CONFIRMADA',
         );
       }
 
@@ -701,6 +837,17 @@ export const iniciarJornada = async (id) => {
       if (!despachos.length) {
         throw new BusinessRuleError(
           'La jornada no posee despachos asignados',
+        );
+      }
+
+      const despachoNoCargado = despachos.find(
+        (despacho) => !despacho.cargado,
+      );
+
+      if (despachoNoCargado) {
+        throw new BusinessRuleError(
+          'Todos los despachos deben estar cargados antes de iniciar la jornada',
+          'DESPACHOS_CARGA_INCOMPLETA',
         );
       }
 
@@ -773,6 +920,46 @@ export const iniciarJornada = async (id) => {
       ) {
         throw new BusinessRuleError(
           'No fue posible iniciar todos los despachos de la jornada',
+        );
+      }
+
+      const pedidoIds = despachos.map(
+        (despacho) => despacho.pedido_id,
+      );
+
+      /*
+       * Invariante:
+       * DESPACHADO representa salida física de la ruta,
+       * no la planificación logística.
+       */
+      const [pedidosActualizados] =
+        await Pedido.update(
+          {
+            estado: 'DESPACHADO',
+          },
+          {
+            where: {
+              id: {
+                [Op.in]: pedidoIds,
+              },
+              estado: {
+                [Op.in]: [
+                  'LISTO_PARA_DESPACHO',
+                  'DESPACHADO',
+                ],
+              },
+            },
+            transaction,
+          },
+        );
+
+      if (
+        pedidosActualizados !==
+        pedidoIds.length
+      ) {
+        throw new BusinessRuleError(
+          'Uno o más pedidos no están listos para iniciar la ruta',
+          'PEDIDOS_ESTADO_INVALIDO_INICIO',
         );
       }
 
@@ -924,7 +1111,120 @@ export const avanzarJornada = async (id) => {
   });
 };
 
-export const finalizarJornada = async (id) => {
+export const asignarChofer = async (
+  id,
+  choferId,
+) => {
+  const jornadaId = await sequelize.transaction(
+    async (transaction) => {
+      const jornada = await JornadaReparto.findByPk(
+        id,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
+
+      if (!jornada) {
+        throw new NotFoundError(
+          'Jornada de reparto no encontrada',
+          'JORNADA_NO_ENCONTRADA',
+        );
+      }
+
+      if (jornada.estado !== 'PLANIFICADA') {
+        throw new BusinessRuleError(
+          'Solo se puede asignar chofer a una jornada PLANIFICADA',
+          'JORNADA_ESTADO_INVALIDO_CHOFER',
+        );
+      }
+
+      const chofer = await Chofer.findByPk(
+        choferId,
+        {
+          include: [
+            {
+              model: Usuario,
+              as: 'usuario',
+            },
+          ],
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
+
+      if (!chofer) {
+        throw new NotFoundError(
+          'Chofer no encontrado',
+          'CHOFER_NO_ENCONTRADO',
+        );
+      }
+
+      if (
+        !chofer.activo ||
+        chofer.usuario?.rol !== ROLES.CHOFER ||
+        chofer.usuario?.estado === false
+      ) {
+        throw new BusinessRuleError(
+          'El chofer no está activo o no tiene rol CHOFER',
+          'CHOFER_NO_ASIGNABLE',
+        );
+      }
+
+      if (
+        licenciaVencida(
+          chofer.fecha_vencimiento_licencia,
+        )
+      ) {
+        throw new BusinessRuleError(
+          'La licencia del chofer está vencida',
+          'LICENCIA_VENCIDA',
+        );
+      }
+
+      const jornadaActiva =
+        await JornadaReparto.findOne({
+          where: {
+            id: {
+              [Op.ne]: jornada.id,
+            },
+            chofer_id: chofer.id,
+            estado: {
+              [Op.in]:
+                ESTADOS_JORNADA_ACTIVA,
+            },
+          },
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+      if (jornadaActiva) {
+        throw new BusinessRuleError(
+          'El chofer ya tiene una jornada activa',
+          'CHOFER_CON_JORNADA_ACTIVA',
+        );
+      }
+
+      await jornada.update(
+        {
+          chofer_id: chofer.id,
+        },
+        {
+          transaction,
+        },
+      );
+
+      return jornada.id;
+    },
+  );
+
+  return obtenerJornadaPorId(jornadaId);
+};
+
+export const finalizarJornada = async (
+  id,
+  user,
+) => {
   const jornadaId = await sequelize.transaction(
     async (transaction) => {
       const jornada = await JornadaReparto.findByPk(id, {
@@ -944,6 +1244,30 @@ export const finalizarJornada = async (id) => {
           'Solo se puede finalizar una jornada en estado EN_RUTA',
         );
       }
+
+      const chofer = jornada.chofer_id
+        ? await Chofer.findByPk(
+          jornada.chofer_id,
+          {
+            include: [
+              {
+                model: Usuario,
+                as: 'usuario',
+              },
+            ],
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          },
+        )
+        : null;
+
+      assertChoferAsignado(
+        {
+          ...jornada.toJSON(),
+          chofer,
+        },
+        user,
+      );
 
       const camion = await Camion.findByPk(
         jornada.camion_id,
@@ -1137,11 +1461,26 @@ export const finalizarJornada = async (id) => {
   return jornadaFinalizada;
 };
 
-export const obtenerJornadas = async () => {
+export const obtenerJornadas = async (user) => {
+  const where = {};
+
+  if (user?.rol === ROLES.CHOFER) {
+    const chofer = await Chofer.findOne({
+      where: {
+        usuario_id: user.id,
+      },
+    });
+
+    where.chofer_id = chofer?.id ?? null;
+  }
+
   const jornadas = await JornadaReparto.findAll({
+    where,
     attributes: [
       'id',
       'camion_id',
+      'chofer_id',
+      'carga_confirmada_en',
       'fecha',
       'fecha_salida',
       'fecha_finalizacion',
@@ -1167,6 +1506,24 @@ export const obtenerJornadas = async () => {
         ],
       },
       {
+        model: Chofer,
+        as: 'chofer',
+        required: false,
+        include: [
+          {
+            model: Usuario,
+            as: 'usuario',
+            attributes: [
+              'id',
+              'nombre',
+              'apellido',
+              'correo',
+              'rol',
+            ],
+          },
+        ],
+      },
+      {
         model: Despacho,
         as: 'despachos',
         attributes: [
@@ -1174,6 +1531,7 @@ export const obtenerJornadas = async () => {
           'pedido_id',
           'orden_entrega',
           'estado',
+          'cargado',
           'fecha_estimada_entrega',
         ],
         required: false,
@@ -1244,6 +1602,9 @@ export const obtenerJornadas = async () => {
       ),
 
       camion: plain.camion,
+      chofer: plain.chofer,
+      carga_confirmada:
+        Boolean(plain.carga_confirmada_en),
 
       resumen: {
         total_despachos: despachos.length,
@@ -1256,12 +1617,33 @@ export const obtenerJornadas = async () => {
   });
 };
 
-export const obtenerJornadaPorId = async (id) => {
+export const obtenerJornadaPorId = async (
+  id,
+  user,
+) => {
   const jornada = await JornadaReparto.findByPk(id, {
     include: [
       {
         model: Camion,
         as: 'camion',
+      },
+      {
+        model: Chofer,
+        as: 'chofer',
+        required: false,
+        include: [
+          {
+            model: Usuario,
+            as: 'usuario',
+            attributes: [
+              'id',
+              'nombre',
+              'apellido',
+              'correo',
+              'rol',
+            ],
+          },
+        ],
       },
       {
         model: Despacho,
@@ -1306,6 +1688,10 @@ export const obtenerJornadaPorId = async (id) => {
       'Jornada de reparto no encontrada',
       'JORNADA_NO_ENCONTRADA',
     );
+  }
+
+  if (user?.rol === ROLES.CHOFER) {
+    assertChoferAsignado(jornada.toJSON(), user);
   }
 
   const jornadaJson = jornada.toJSON();
@@ -1898,33 +2284,28 @@ export const recalcularJornada = async (id) => {
           entrega.pedido_id,
         );
 
-        /*
-         * Los pedidos antiguos ya están DESPACHADO.
-         * Los nuevos deben seguir LISTO_PARA_DESPACHO.
-         */
         const estadosPermitidos =
           pedidosActualesIds.has(pedidoId)
-            ? ['DESPACHADO']
+            ? [
+              'LISTO_PARA_DESPACHO',
+              'DESPACHADO',
+            ]
             : ['LISTO_PARA_DESPACHO'];
 
-        const [cantidadActualizada] =
-          await Pedido.update(
-            {
-              estado: 'DESPACHADO',
-            },
-            {
-              where: {
-                id: pedidoId,
-                estado: {
-                  [Op.in]:
-                    estadosPermitidos,
-                },
+        const pedidoVigente =
+          await Pedido.findOne({
+            where: {
+              id: pedidoId,
+              estado: {
+                [Op.in]:
+                  estadosPermitidos,
               },
-              transaction,
             },
-          );
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          });
 
-        if (cantidadActualizada !== 1) {
+        if (!pedidoVigente) {
           throw new BusinessRuleError(
             `El pedido ${pedidoId} cambió de estado durante la recalculación`,
           );
@@ -1982,22 +2363,18 @@ export const recalcularJornada = async (id) => {
             ? structuredClone(despachoReferencia.ruta_json)
             : null;
 
-        const [cantidadActualizada] =
-          await Pedido.update(
-            {
-              estado: 'DESPACHADO',
+        const pedidoVigente =
+          await Pedido.findOne({
+            where: {
+              id: pedido.id,
+              estado:
+                'LISTO_PARA_DESPACHO',
             },
-            {
-              where: {
-                id: pedido.id,
-                estado:
-                  'LISTO_PARA_DESPACHO',
-              },
-              transaction,
-            },
-          );
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          });
 
-        if (cantidadActualizada !== 1) {
+        if (!pedidoVigente) {
           throw new BusinessRuleError(
             `El pedido ${pedido.id} ya no está disponible para despacho`,
           );

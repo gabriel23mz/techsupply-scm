@@ -11,6 +11,10 @@ import {
 import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialog';
 
 import {
+  useAuth,
+} from '../../../shared/contexts/AuthContext';
+
+import {
   showError,
   showSuccess,
 } from '../../../shared/utils/toast';
@@ -21,18 +25,17 @@ import PedidoProcessStepper from '../components/PedidoProcessStepper';
 import {
   crearPedido,
   obtenerClientes,
-  obtenerUsuarios,
 } from '../services/pedido.service';
 
 import '../pedidos.css';
 
 function NuevoPedidoPage() {
   const navigate = useNavigate();
+  const {
+    user,
+  } = useAuth();
 
   const [clientes, setClientes] =
-    useState([]);
-
-  const [usuarios, setUsuarios] =
     useState([]);
 
   const [isLoading, setIsLoading] =
@@ -51,13 +54,8 @@ function NuevoPedidoPage() {
       try {
         setIsLoading(true);
 
-        const [
-          clientesData,
-          usuariosData,
-        ] = await Promise.all([
-          obtenerClientes(),
-          obtenerUsuarios(),
-        ]);
+        const clientesData =
+          await obtenerClientes();
 
         setClientes(
           Array.isArray(clientesData)
@@ -69,15 +67,6 @@ function NuevoPedidoPage() {
             : [],
         );
 
-        setUsuarios(
-          Array.isArray(usuariosData)
-            ? usuariosData.filter(
-              (usuario) =>
-                usuario.estado !==
-                false,
-            )
-            : [],
-        );
       } catch (error) {
         console.error(
           'Error al cargar catálogos:',
@@ -166,7 +155,7 @@ function NuevoPedidoPage() {
         <div className="nuevo-pedido-grid">
           <NuevoPedidoForm
             clientes={clientes}
-            usuarios={usuarios}
+            user={user}
             isSaving={isSaving}
             onSubmit={handleSubmit}
             onCancel={() =>

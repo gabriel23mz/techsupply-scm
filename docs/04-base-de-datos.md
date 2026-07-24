@@ -10,6 +10,13 @@ El proyecto tuvo referencias antiguas a MySQL durante etapas iniciales, pero no 
 
 La migracion inicial crea el esquema principal con tablas, claves foraneas, enums, indices y restricciones. Una migracion posterior transforma `ruta_json` de `jornadas_reparto` y `despachos` a JSONB.
 
+Las migraciones de seguridad/logistica agregadas en la fase integral estan creadas pero no ejecutadas contra una base real:
+
+- `20260724000100-add-chofer-role-and-table.js`: agrega rol `CHOFER` al enum real `enum_usuarios_rol` y crea `choferes`.
+- `20260724000200-add-pedido-ownership-traceability.js`: agrega propiedad y trazabilidad de preparacion en `pedidos`.
+- `20260724000300-add-detalle-preparacion.js`: agrega cantidades preparadas, trazabilidad y check en `detalle_pedido`.
+- `20260724000400-add-carga-and-chofer-to-jornadas.js`: agrega carga de despachos, confirmacion de carga y `chofer_id`.
+
 No se usa `sequelize.sync` en el arranque del servidor; `server.js` autentica la conexion con `sequelize.authenticate()`.
 
 ## Entidades principales
@@ -25,6 +32,7 @@ No se usa `sequelize.sync` en el arranque del servidor; `server.js` autentica la
 | Pedido | `pedidos` | Cliente, usuario, estado, total, fecha entrega |
 | DetallePedido | `detalle_pedido` | Pedido-producto unico |
 | Camion | `camiones` | Codigo y placa unicos, capacidad, estado |
+| Chofer | `choferes` | Usuario `CHOFER`, licencia, vigencia y activo |
 | JornadaReparto | `jornadas_reparto` | Camion, estado, posicion, ruta JSONB |
 | Despacho | `despachos` | Pedido, jornada, orden, ruta JSONB |
 
@@ -52,6 +60,8 @@ erDiagram
   PRODUCTO ||--o{ DETALLE_PEDIDO : incluido
   PEDIDO ||--o{ DESPACHO : genera
   CAMION ||--o{ JORNADA_REPARTO : asignado
+  USUARIO ||--o| CHOFER : perfil
+  CHOFER ||--o{ JORNADA_REPARTO : asignado
   JORNADA_REPARTO ||--o{ DESPACHO : agrupa
   UBICACION ||--o{ RUTA : origen
   UBICACION ||--o{ RUTA : destino
@@ -101,6 +111,16 @@ Los aliases pertenecen al mapeo ORM y no cambian tablas, columnas ni claves fora
 | `DetalleIngreso.belongsTo(IngresoInventario)` | `ingresoInventario` |
 | `Producto.hasMany(DetalleIngreso)` | `detallesIngreso` |
 | `DetalleIngreso.belongsTo(Producto)` | `producto` |
+| `Usuario.hasOne(Chofer)` | `chofer` |
+| `Chofer.belongsTo(Usuario)` | `usuario` |
+| `Chofer.hasMany(JornadaReparto)` | `jornadas` |
+| `JornadaReparto.belongsTo(Chofer)` | `chofer` |
+| `Pedido.belongsTo(Usuario)` por `creado_por_usuario_id` | `creadoPor` |
+| `Pedido.belongsTo(Usuario)` por `enviado_preparacion_por_usuario_id` | `enviadoPreparacionPor` |
+| `Pedido.belongsTo(Usuario)` por `preparacion_finalizada_por_usuario_id` | `preparacionFinalizadaPor` |
+| `DetallePedido.belongsTo(Usuario)` por `preparado_por_usuario_id` | `preparadoPor` |
+| `Despacho.belongsTo(Usuario)` por `cargado_por_usuario_id` | `cargadoPor` |
+| `JornadaReparto.belongsTo(Usuario)` por `carga_confirmada_por_usuario_id` | `cargaConfirmadaPor` |
 
 ## Tipos importantes
 
@@ -175,8 +195,13 @@ Los aliases pertenecen al mapeo ORM y no cambian tablas, columnas ni claves fora
 - `detalle_pedido`: indice unico por `pedido_id` y `producto_id`.
 - `rutas`: indice unico por `origen_id` y `destino_id`.
 - `pedidos`: indices por `estado`, `fecha_entrega` y `cliente_id`.
+- `pedidos`: indice por `creado_por_usuario_id`.
 - `jornadas_reparto`: indices por `camion_id`, `estado` y `fecha`.
+- `jornadas_reparto`: indice por `chofer_id` y `estado`.
 - `despachos`: indice por `jornada_reparto_id` y `orden_entrega`.
+- `despachos`: indice compuesto por `jornada_reparto_id` y `cargado`.
+- `choferes`: unique por `usuario_id` y `numero_licencia`.
+- `detalle_pedido`: check `0 <= cantidad_preparada <= cantidad`.
 - Checks para capacidad positiva, distancias positivas/no negativas, stock no negativo, precios coherentes y coordenadas validas.
 
 ## Dependencia de la bodega central

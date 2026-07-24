@@ -4,14 +4,58 @@ import Cliente from '../models/Cliente.js';
 import Usuario from '../models/Usuario.js';
 import Ubicacion from '../models/Ubicacion.js';
 import JornadaReparto from '../models/JornadaReparto.js';
+import Chofer from '../models/Chofer.js';
 import sequelize from '../config/database.js';
 
 import * as n8nService from './n8n.service.js';
 
 import {
   BusinessRuleError,
+  ForbiddenError,
   NotFoundError,
 } from '../utils/errors.js';
+import {
+  ROLES,
+  isAdmin,
+} from '../constants/permissions.js';
+
+const assertChoferAsignado = async (
+  jornada,
+  user,
+  options = {},
+) => {
+  if (isAdmin(user)) {
+    return;
+  }
+
+  if (user?.rol !== ROLES.CHOFER) {
+    throw new ForbiddenError(
+      'Solo el chofer asignado puede operar el despacho',
+      'DESPACHO_OPERACION_DENEGADA',
+    );
+  }
+
+  const chofer = jornada.chofer_id
+    ? await Chofer.findByPk(
+      jornada.chofer_id,
+      {
+        transaction: options.transaction,
+        lock: options.lock,
+      },
+    )
+    : null;
+
+  if (
+    !chofer ||
+    Number(chofer.usuario_id) !==
+      Number(user.id)
+  ) {
+    throw new ForbiddenError(
+      'No puede operar un despacho de una jornada ajena',
+      'DESPACHO_AJENO',
+    );
+  }
+};
 
 function normalizeRouteJson(value) {
   if (!value) {
@@ -479,7 +523,10 @@ export const existeDespachoActivo = async (
   });
 };
 
-export const entregarDespacho = async (id) => {
+export const entregarDespacho = async (
+  id,
+  user,
+) => {
   /*
    * Invariante:
    * Un despacho solo puede entregarse cuando corresponde
@@ -540,6 +587,15 @@ export const entregarDespacho = async (id) => {
         );
       }
 
+      await assertChoferAsignado(
+        jornada,
+        user,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
+
       if (despacho.estado !== 'EN_TRANSITO') {
         throw new BusinessRuleError(
           'Solo se pueden entregar despachos en estado EN_TRANSITO',
@@ -598,7 +654,10 @@ export const entregarDespacho = async (id) => {
   return resultado;
 };
 
-export const marcarNoEntregado = async (id) => {
+export const marcarNoEntregado = async (
+  id,
+  user,
+) => {
   /*
    * Invariante:
    * La no entrega avanza la jornada y reprograma el pedido
@@ -658,6 +717,15 @@ export const marcarNoEntregado = async (id) => {
           'JORNADA_NO_EN_RUTA',
         );
       }
+
+      await assertChoferAsignado(
+        jornada,
+        user,
+        {
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        },
+      );
 
       if (despacho.estado !== 'EN_TRANSITO') {
         throw new BusinessRuleError(

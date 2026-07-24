@@ -35,3 +35,48 @@ export const obtenerPorId = asyncHandler(
     );
   },
 );
+
+export const crear = asyncHandler(
+  async (req, res) => {
+    const camion =
+      await camionService.crear(req.body);
+
+    return successResponse(
+      res,
+      camion,
+      'Camión creado correctamente',
+      201,
+    );
+  },
+);
+
+export const actualizar = asyncHandler(
+  async (req, res) => {
+    const camion =
+      await camionService.actualizar(
+        req.params.id,
+        req.body,
+      );
+
+    return successResponse(
+      res,
+      camion,
+      'Camión actualizado correctamente',
+    );
+  },
+);
+
+export const eliminar = asyncHandler(
+  async (req, res) => {
+    const camion =
+      await camionService.eliminar(
+        req.params.id,
+      );
+
+    return successResponse(
+      res,
+      camion,
+      'Camión desactivado correctamente',
+    );
+  },
+);

@@ -18,6 +18,7 @@ export const navigation = [
     label: 'Dashboard',
     description: 'Vista operativa del módulo Outbound',
     icon: 'bi-grid-1x2-fill',
+    permission: 'PEDIDOS_LEER',
     element: <DashboardPage />,
   },
   {
@@ -25,6 +26,7 @@ export const navigation = [
     label: 'Clientes',
     description: 'Gestión de clientes registrados',
     icon: 'bi-people',
+    permission: 'CLIENTES_LEER',
     element: <ClientesPage />,
   },
   {
@@ -32,6 +34,7 @@ export const navigation = [
     label: 'Pedidos',
     description: 'Gestión y seguimiento de pedidos',
     icon: 'bi-receipt',
+    permission: 'PEDIDOS_LEER',
     element: <PedidosPage />,
   },
   {
@@ -39,6 +42,7 @@ export const navigation = [
     label: 'Ubicaciones',
     description: 'Gestión de ubicaciones operativas',
     icon: 'bi-geo-alt',
+    permission: 'UBICACIONES_LEER',
     element: <UbicacionesPage />,
   },
   {
@@ -46,6 +50,7 @@ export const navigation = [
     label: 'Rutas',
     description: 'Gestión, configuración y control de rutas logísticas',
     icon: 'bi-signpost-split',
+    permission: 'RUTAS_LEER',
     element: <RutasPage />,
   },
   {
@@ -53,6 +58,7 @@ export const navigation = [
     label: 'Centro Logístico',
     description: 'Centro de operaciones logísticas',
     icon: 'bi-box-seam',
+    permission: 'JORNADAS_LEER',
     element: <CentroLogisticoPage />,
   },
   {
@@ -60,6 +66,7 @@ export const navigation = [
     label: 'Despachos',
     description: 'Gestión y control de despachos',
     icon: 'bi-truck',
+    permission: 'DESPACHOS_LEER',
     element: <DespachosPage />,
   },
   {
@@ -67,6 +74,7 @@ export const navigation = [
     label: 'Nuevo Pedido',
     description: 'Registro inicial del pedido antes de agregar productos.',
     icon: 'bi-plus-circle',
+    permission: 'PEDIDOS_CREAR',
     element: <NuevoPedidoPage />,
     hidden: true,
   },
@@ -75,6 +83,7 @@ export const navigation = [
     label: 'Workspace de Detalles',
     description: 'Gestión de productos asociados al pedido.',
     icon: 'bi-layout-text-window-reverse',
+    permission: 'PEDIDOS_LEER',
     element: <PedidoWorkspacePage />,
     hidden: true,
   },
@@ -83,6 +92,7 @@ export const navigation = [
     label: 'Detalle de Jornada',
     description: 'Seguimiento operativo de la jornada y sus entregas.',
     icon: 'bi-calendar2-event-fill',
+    permission: 'JORNADAS_LEER',
     element: <JornadaDetallePage />,
     hidden: true,
   }

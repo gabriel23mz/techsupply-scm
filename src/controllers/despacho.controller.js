@@ -116,6 +116,7 @@ export const entregarDespacho = asyncHandler(
     const resultado =
       await despachoService.entregarDespacho(
         req.params.id,
+        req.user,
       );
 
     return successResponse(
@@ -131,6 +132,7 @@ export const marcarNoEntregado = asyncHandler(
     const resultado =
       await despachoService.marcarNoEntregado(
         req.params.id,
+        req.user,
       );
 
     return successResponse(

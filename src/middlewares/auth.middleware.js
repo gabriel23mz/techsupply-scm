@@ -2,11 +2,13 @@ import {
   verifyAuthToken,
 } from '../utils/authToken.js';
 
+import Usuario from '../models/Usuario.js';
+
 import {
   UnauthorizedError,
 } from '../utils/errors.js';
 
-export function requireAuth(
+export async function requireAuth(
   req,
   res,
   next,
@@ -31,8 +33,35 @@ export function requireAuth(
       );
     }
 
-    req.auth =
+    const auth =
       verifyAuthToken(token);
+
+    const usuario =
+      await Usuario.findOne({
+        where: {
+          id: auth.sub,
+          estado: true,
+        },
+        attributes: {
+          exclude: ['password_hash'],
+        },
+      });
+
+    if (!usuario) {
+      throw new UnauthorizedError(
+        'Usuario autenticado no disponible',
+        'USUARIO_SESION_INVALIDO',
+      );
+    }
+
+    req.auth = {
+      ...auth,
+      rol: usuario.rol,
+    };
+
+    req.user = usuario.toJSON
+      ? usuario.toJSON()
+      : usuario;
 
     return next();
   } catch (error) {

@@ -5,8 +5,29 @@ import sequelize from '../config/database.js';
 
 import {
   BusinessRuleError,
+  ForbiddenError,
   NotFoundError,
 } from '../utils/errors.js';
+
+import {
+  ROLES,
+} from '../constants/permissions.js';
+
+const assertPedidoPropioVentas = (
+  pedido,
+  user,
+) => {
+  if (
+    user?.rol === ROLES.VENTAS &&
+    Number(pedido.creado_por_usuario_id) !==
+      Number(user.id)
+  ) {
+    throw new ForbiddenError(
+      'No puede modificar un pedido de otro vendedor',
+      'PEDIDO_AJENO',
+    );
+  }
+};
 
 const recalcularTotalPedido = async (
   pedidoId,
@@ -84,7 +105,7 @@ export const crear = async ({
   pedido_id,
   producto_id,
   cantidad,
-}) => {
+}, user) => {
   /*
    * Invariante:
    * El ajuste de stock, el detalle y el total del pedido
@@ -107,10 +128,9 @@ export const crear = async ({
         );
       }
 
-      if (
-        pedido.estado !== 'PENDIENTE' &&
-        pedido.estado !== 'PREPARANDO'
-      ) {
+      assertPedidoPropioVentas(pedido, user);
+
+      if (pedido.estado !== 'PENDIENTE') {
         throw new BusinessRuleError(
           'No se pueden agregar productos a este pedido',
           'PEDIDO_NO_MODIFICABLE',
@@ -185,6 +205,7 @@ export const crear = async ({
 export const actualizar = async (
   id,
   datos,
+  user,
 ) => {
   /*
    * Invariante:
@@ -224,10 +245,9 @@ export const actualizar = async (
         );
       }
 
-      if (
-        pedido.estado !== 'PENDIENTE' &&
-        pedido.estado !== 'PREPARANDO'
-      ) {
+      assertPedidoPropioVentas(pedido, user);
+
+      if (pedido.estado !== 'PENDIENTE') {
         throw new BusinessRuleError(
           'No se puede modificar este pedido',
           'PEDIDO_NO_MODIFICABLE',
@@ -323,7 +343,10 @@ export const actualizar = async (
   return await obtenerPorId(detalleId);
 };
 
-export const eliminar = async (id) => {
+export const eliminar = async (
+  id,
+  user,
+) => {
   /*
    * Invariante:
    * La devolución de stock y la eliminación del detalle
@@ -362,10 +385,9 @@ export const eliminar = async (id) => {
         );
       }
 
-      if (
-        pedido.estado !== 'PENDIENTE' &&
-        pedido.estado !== 'PREPARANDO'
-      ) {
+      assertPedidoPropioVentas(pedido, user);
+
+      if (pedido.estado !== 'PENDIENTE') {
         throw new BusinessRuleError(
           'No se puede modificar este pedido',
           'PEDIDO_NO_MODIFICABLE',

@@ -2,8 +2,8 @@ import {
   Router,
 } from 'express';
 
-import * as pedidoController
-  from '../controllers/pedido.controller.js';
+import * as bodegaController
+  from '../controllers/bodega.controller.js';
 
 import * as requestValidators
   from '../middlewares/requestValidators.js';
@@ -25,74 +25,75 @@ router.use(
 );
 
 router.get(
-  '/',
+  '/pedidos',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.PEDIDOS_LEER,
+    PERMISSIONS.PEDIDOS_PREPARAR,
   ),
-  pedidoController.obtenerTodos,
+  bodegaController.obtenerPedidosPreparacion,
 );
 
 router.get(
-  '/:id',
+  '/pedidos/:id',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.PEDIDOS_LEER,
+    PERMISSIONS.PEDIDOS_PREPARAR,
   ),
   requestValidators.validarIdParam,
-  pedidoController.obtenerPorId,
-);
-
-router.post(
-  '/',
-  authorizationMiddleware.requirePermission(
-    PERMISSIONS.PEDIDOS_CREAR,
-  ),
-  requestValidators.validarCrearPedido,
-  pedidoController.crear,
-);
-
-router.put(
-  '/:id',
-  authorizationMiddleware.requirePermission(
-    PERMISSIONS.PEDIDOS_EDITAR,
-  ),
-  requestValidators.validarIdParam,
-  pedidoController.actualizar,
-);
-
-router.delete(
-  '/:id',
-  authorizationMiddleware.requirePermission(
-    PERMISSIONS.PEDIDOS_CANCELAR,
-  ),
-  requestValidators.validarIdParam,
-  pedidoController.eliminar,
+  bodegaController.obtenerPedidoPreparacion,
 );
 
 router.patch(
-  '/:id/preparar',
+  '/detalles/:id/preparacion',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.PEDIDOS_ENVIAR_PREPARACION,
+    PERMISSIONS.PEDIDOS_PREPARAR,
   ),
   requestValidators.validarIdParam,
-  pedidoController.preparar,
+  requestValidators.validarActualizarPreparacionDetalle,
+  bodegaController.actualizarPreparacionDetalle,
 );
 
 router.patch(
-  '/:id/finalizar-preparacion',
+  '/pedidos/:id/finalizar-preparacion',
   authorizationMiddleware.requirePermission(
     PERMISSIONS.PEDIDOS_FINALIZAR_PREPARACION,
   ),
   requestValidators.validarIdParam,
-  pedidoController.finalizarPreparacion,
+  bodegaController.finalizarPreparacion,
+);
+
+router.get(
+  '/jornadas',
+  authorizationMiddleware.requirePermission(
+    PERMISSIONS.CARGAS_LEER,
+  ),
+  bodegaController.obtenerJornadasCarga,
+);
+
+router.get(
+  '/jornadas/:id/carga',
+  authorizationMiddleware.requirePermission(
+    PERMISSIONS.CARGAS_LEER,
+  ),
+  requestValidators.validarIdParam,
+  bodegaController.obtenerJornadaCarga,
 );
 
 router.patch(
-  '/:id/cancelar',
+  '/despachos/:id/carga',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.PEDIDOS_CANCELAR,
+    PERMISSIONS.CARGAS_ACTUALIZAR,
   ),
   requestValidators.validarIdParam,
-  pedidoController.cancelar,
+  requestValidators.validarActualizarCargaDespacho,
+  bodegaController.actualizarCargaDespacho,
+);
+
+router.patch(
+  '/jornadas/:id/confirmar-carga',
+  authorizationMiddleware.requirePermission(
+    PERMISSIONS.CARGAS_CONFIRMAR,
+  ),
+  requestValidators.validarIdParam,
+  bodegaController.confirmarCargaJornada,
 );
 
 export default router;

@@ -44,6 +44,7 @@ function Sidebar() {
   const navigate = useNavigate();
 
   const {
+    hasPermission,
     user,
   } = useAuth();
 
@@ -152,7 +153,10 @@ function Sidebar() {
         {navigation
           .filter(
             (item) =>
-              !item.hidden,
+              !item.hidden &&
+              hasPermission(
+                item.permission,
+              ),
           )
           .map((item) => (
             <NavLink

@@ -19,6 +19,8 @@ import detallePedidoRoutes from './src/routes/detallePedido.routes.js';
 import despachoRoutes from './src/routes/despacho.routes.js';
 import jornadaRepartoRoutes from './src/routes/jornadaReparto.routes.js';
 import camionRoutes from './src/routes/camion.routes.js';
+import bodegaRoutes from './src/routes/bodega.routes.js';
+import choferRoutes from './src/routes/chofer.routes.js';
 
 import notFound from './src/middlewares/notFound.js';
 import errorHandler from './src/middlewares/errorHandler.js';
@@ -46,6 +48,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+
 app.use('/api/ubicaciones', ubicacionRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/rutas', rutaRoutes);
@@ -57,6 +60,8 @@ app.use('/api/detalles-pedido', detallePedidoRoutes);
 app.use('/api/despachos', despachoRoutes);
 app.use('/api/jornadas-reparto', jornadaRepartoRoutes);
 app.use('/api/camiones', camionRoutes);
+app.use('/api/bodega', bodegaRoutes);
+app.use('/api/choferes', choferRoutes);
 
 
 app.use(notFound);

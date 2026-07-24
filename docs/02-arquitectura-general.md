@@ -55,7 +55,7 @@ src/
 └── utils/
 ```
 
-El archivo `server.js` registra rutas bajo `/api`, configura CORS para el frontend local y autentica la conexion Sequelize.
+El archivo `server.js` registra rutas bajo `/api`, configura CORS para el frontend local y autentica la conexion Sequelize. `POST /api/auth/login` permanece publico; las rutas operativas declaran `authMiddleware.requireAuth` dentro de cada router y luego aplican `authorizationMiddleware.requirePermission` con permisos centralizados.
 
 ## Flujo interno backend
 
@@ -63,6 +63,8 @@ Los modulos activos del backend siguen este flujo:
 
 ```text
 Ruta Express
+  -> Middleware de autenticacion
+  -> Middleware de autorizacion por permiso
   -> Middleware de validacion HTTP
   -> Controlador HTTP delgado
   -> Servicio de caso de uso
@@ -71,7 +73,7 @@ Ruta Express
 
 Responsabilidades:
 
-- `routes`: conservan URLs y metodos HTTP, y conectan validadores por endpoint.
+- `routes`: conservan URLs y metodos HTTP, autentican, autorizan y conectan validadores por endpoint.
 - `middlewares/requestValidators.js`: valida estructura de entrada, campos obligatorios, IDs, formatos y rangos basicos.
 - `controllers`: leen `params`, `body` o sesion autenticada, llaman una vez al servicio principal y devuelven `successResponse`.
 - `services`: concentran normalizacion, reglas de negocio, consultas Sequelize, transacciones, locks, calculos e integraciones.
@@ -83,7 +85,7 @@ Las asociaciones Sequelize activas declaran alias explicito con `as`. Los servic
 
 ## Base de datos
 
-La base activa es PostgreSQL, conectada mediante `DATABASE_URL`. Las migraciones crean tablas, claves foraneas, indices, enums y checks. La columna `ruta_json` de jornadas y despachos fue migrada a JSONB.
+La base activa es PostgreSQL, conectada mediante `DATABASE_URL`. Las migraciones crean tablas, claves foraneas, indices, enums y checks. La columna `ruta_json` de jornadas y despachos fue migrada a JSONB. Las migraciones nuevas agregan `CHOFER`, `choferes`, trazabilidad de pedidos, preparacion por detalle, carga y asignacion de chofer; estan creadas para revision y no deben ejecutarse contra Supabase real sin aprobacion.
 
 ## Python
 
@@ -106,7 +108,7 @@ El frontend usa:
 - React Toastify.
 - Leaflet y React Leaflet.
 
-La estructura esta organizada por `app`, `shared` y `modules`. El layout principal incluye sidebar, topbar y rutas protegidas en cliente.
+La estructura esta organizada por `app`, `shared` y `modules`. El layout principal incluye sidebar, topbar y rutas protegidas en cliente. La sesion local conserva permisos y la navegacion se filtra como mejora de UX; la autoridad real permanece en backend.
 
 ## Flujo de comunicacion
 
@@ -126,9 +128,11 @@ sequenceDiagram
   PY->>OS: Solicita geometria vial final
   OS-->>PY: GeoJSON de ruta
   PY-->>BE: Jornadas, entregas, distancias, tiempos, ruta_json
-  BE->>DB: Transaccion: crea jornadas, despachos y actualiza pedidos
+  BE->>DB: Transaccion: crea jornadas y despachos
   BE-->>FE: Resultado de planificacion
 ```
+
+El pedido permanece `LISTO_PARA_DESPACHO` al planificar. Solo pasa a `DESPACHADO` cuando el chofer asignado inicia fisicamente la jornada con carga confirmada.
 
 ## Separacion de responsabilidades
 

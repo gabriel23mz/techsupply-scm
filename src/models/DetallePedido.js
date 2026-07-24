@@ -34,6 +34,31 @@ const DetallePedido = sequelize.define(
       },
     },
 
+    cantidad_preparada: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        isInt: {
+          msg: 'La cantidad preparada debe ser un número entero',
+        },
+        min: {
+          args: [0],
+          msg: 'La cantidad preparada no puede ser negativa',
+        },
+      },
+    },
+
+    preparado_por_usuario_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+
+    fecha_preparacion: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+
     precio_unitario: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,

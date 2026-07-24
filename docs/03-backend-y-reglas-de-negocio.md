@@ -10,7 +10,7 @@ El backend esta dividido en:
 - `services`: casos de uso, reglas de negocio, normalizacion, consultas Sequelize, transacciones y orquestacion.
 - `middlewares`: validacion HTTP, autenticacion, 404 y errores.
 - `utils`: respuestas, token de autenticacion y errores tipados.
-- `constants`: constantes logisticas.
+- `constants`: constantes logisticas y matriz central de permisos.
 
 ## Modelos principales
 
@@ -25,6 +25,7 @@ El backend esta dividido en:
 | `Pedido` | `pedidos` | Solicitud comercial |
 | `DetallePedido` | `detalle_pedido` | Productos del pedido |
 | `Camion` | `camiones` | Vehiculos disponibles |
+| `Chofer` | `choferes` | Perfil operativo vinculado a un usuario `CHOFER` |
 | `JornadaReparto` | `jornadas_reparto` | Entidad principal de la operacion logistica |
 | `Despacho` | `despachos` | Entrega individual asociada a un pedido dentro de una jornada |
 
@@ -56,6 +57,16 @@ Todas las asociaciones declaradas en `src/models/index.js` usan alias explicito 
 | JornadaReparto -> Camion | `camion` |
 | JornadaReparto -> Despacho | `despachos` |
 | Despacho -> JornadaReparto | `jornada` |
+| Usuario -> Chofer | `chofer` |
+| Chofer -> Usuario | `usuario` |
+| Chofer -> JornadaReparto | `jornadas` |
+| JornadaReparto -> Chofer | `chofer` |
+| Pedido -> Usuario creador | `creadoPor` |
+| Pedido -> Usuario que envio a preparacion | `enviadoPreparacionPor` |
+| Pedido -> Usuario que finalizo preparacion | `preparacionFinalizadaPor` |
+| DetallePedido -> Usuario preparador | `preparadoPor` |
+| Despacho -> Usuario cargador | `cargadoPor` |
+| JornadaReparto -> Usuario que confirmo carga | `cargaConfirmadaPor` |
 
 Las asociaciones inbound usan la misma regla: `ordenesCompra`, `proveedor`, `detalles`, `ordenCompra`, `detallesOrdenCompra`, `ingresosInventario`, `usuario`, `detalles`, `ingresoInventario`, `detallesIngreso` y `producto`, segun la cardinalidad. La pluralizacion del alias refleja colecciones en `hasMany`; los `belongsTo` usan singular.
 
@@ -98,15 +109,18 @@ Las asociaciones inbound usan la misma regla: `ordenesCompra`, `proveedor`, `det
 - Solo pedidos `PENDIENTE` pueden pasar a `PREPARANDO`.
 - Solo pedidos `PREPARANDO` pueden finalizar preparacion.
 - Para quedar `LISTO_PARA_DESPACHO`, el pedido debe tener al menos un detalle.
-- Los pedidos `PENDIENTE`, `PREPARANDO` o `LISTO_PARA_DESPACHO` pueden cancelarse.
+- Ventas solo puede operar pedidos propios.
+- Ventas solo puede editar o cancelar pedidos `PENDIENTE`.
+- `ADMIN` puede cancelar excepcionalmente si el pedido no esta despachado, entregado ni vinculado a un despacho activo.
 - Al cancelar un pedido se reintegra stock de sus detalles.
-- Cuando una jornada crea despachos, el pedido pasa a `DESPACHADO`.
+- Cuando una jornada crea despachos, el pedido permanece `LISTO_PARA_DESPACHO`.
+- Al iniciar la jornada con chofer y carga confirmada, el pedido pasa a `DESPACHADO`.
 - Al entregar un despacho, el pedido pasa a `ENTREGADO`.
 - Al marcar no entregado, el pedido pasa a `REPROGRAMADO`.
 
 ## Reglas de detalles de pedido
 
-- Solo se pueden agregar, modificar o eliminar detalles si el pedido esta `PENDIENTE` o `PREPARANDO`.
+- Solo se pueden agregar, modificar o eliminar detalles comerciales si el pedido esta `PENDIENTE`.
 - El producto debe existir y estar activo.
 - La cantidad debe ser positiva y no superar el stock disponible.
 - El stock se descuenta al crear o aumentar cantidad.
@@ -120,12 +134,13 @@ Las operaciones crear, actualizar y eliminar detalle usan una transaccion admini
 La generacion de jornadas:
 
 - Toma pedidos `LISTO_PARA_DESPACHO`.
+- Excluye pedidos con despacho activo.
 - Busca camiones `EN_BODEGA` con capacidad positiva.
 - Excluye camiones con jornadas `PLANIFICADA` o `EN_RUTA`.
 - Usa la bodega central `BODEGA_CENTRAL_ID = 1`.
 - Envia pedidos, camiones, bodega y rutas activas a Python.
 - Persiste jornadas y despachos en una transaccion administrada.
-- Cambia pedidos asignados a `DESPACHADO`.
+- No cambia pedidos asignados a `DESPACHADO` durante la planificacion.
 - Despues de la respuesta de Python, vuelve a bloquear y validar pedidos, camiones, jornadas activas y despachos activos antes de persistir.
 - Python se invoca antes de abrir la transaccion. n8n se invoca despues del commit.
 
@@ -133,9 +148,13 @@ El inicio de jornada:
 
 - Requiere jornada `PLANIFICADA`.
 - Requiere camion `EN_BODEGA`.
+- Requiere chofer asignado, activo, usuario con rol `CHOFER` y licencia vigente.
+- Requiere carga confirmada por Bodega y todos los despachos cargados.
+- Solo puede iniciarla el chofer asignado o `ADMIN`.
 - Requiere despachos `PENDIENTE`.
 - Cambia jornada y camion a `EN_RUTA`.
 - Cambia despachos a `EN_TRANSITO`.
+- Cambia pedidos asociados a `DESPACHADO`.
 - Define `posicion_actual_orden` con el primer orden.
 
 El avance de jornada:
@@ -161,6 +180,7 @@ Para entregar o marcar como no entregado:
 
 - El despacho debe estar asociado a una jornada.
 - La jornada debe estar `EN_RUTA`.
+- El usuario debe ser el chofer asignado o `ADMIN`.
 - El despacho debe estar `EN_TRANSITO`.
 - El `orden_entrega` debe coincidir con `posicion_actual_orden`.
 - Despacho, pedido y jornada se bloquean y actualizan dentro de una misma transaccion.
@@ -174,6 +194,8 @@ Si falla la actualizacion del pedido o de la jornada, el despacho no queda entre
 | -------- | --------------- |
 | `pedido.service.js` | Ciclo comercial del pedido |
 | `detallePedido.service.js` | Detalles, stock y total |
+| `bodega.service.js` | Preparacion por detalle, carga de despachos y confirmacion de carga |
+| `chofer.service.js` | CRUD de choferes, disponibilidad y jornadas propias |
 | `jornadaReparto.service.js` | Generacion, inicio, avance, recalculo, finalizacion y mapas de jornadas |
 | `despacho.service.js` | Consulta, enriquecimiento y operacion de despachos |
 | `logistica.service.js` | Adaptador de planificacion y notificaciones; conserva flujo heredado de despacho individual |
@@ -196,6 +218,8 @@ Si falla la actualizacion del pedido o de la jornada, el despacho no queda entre
 | `/api/despachos` | Despachos |
 | `/api/jornadas-reparto` | Jornadas |
 | `/api/camiones` | Camiones |
+| `/api/bodega` | Preparacion y carga |
+| `/api/choferes` | Choferes |
 
 ## Manejo de errores
 
@@ -248,13 +272,15 @@ Se usan transacciones administradas y bloqueos de fila en:
 - Recalculo de jornada.
 - Entrega y no entrega de despachos asociados a jornadas.
 
-## Operaciones todavia no atomicas
+## Operaciones todavia no atomicas o con riesgo residual
 
-- Cancelar pedido y reintegrar stock.
 - Avanzar jornada.
+- Restricciones parciales de base para jornadas/despachos activos.
 
 Riesgo pendiente: no existen restricciones de base de datos que impidan de forma definitiva dos jornadas activas para un mismo camion o dos despachos activos para un mismo pedido. La fase transaccional agrega bloqueos y revalidaciones de servicio, pero una restriccion parcial futura en PostgreSQL seria la proteccion mas fuerte.
 
 ## Seguridad actual
 
-Existe autenticacion con token HMAC y bcrypt para contrasenas. El frontend usa `ProtectedRoute` y guarda sesion local. En backend, `requireAuth` se aplica a `/api/auth/me`, pero las rutas operativas no estan protegidas todavia. Esto es una limitacion importante si el MVP se expone fuera de un entorno controlado.
+Existe autenticacion con token HMAC y bcrypt para contrasenas. `requireAuth` valida el token, consulta el usuario vigente en base, exige `estado = true`, excluye `password_hash` y adjunta `req.user`. Un token ausente, invalido, expirado o con usuario inexistente/inactivo responde `401`.
+
+La autorizacion usa `authorization.middleware.js` y la matriz central de `permissions.js`. Un usuario autenticado sin permiso recibe `403`. `ADMIN` tiene permiso total; las reglas de propiedad y visibilidad permanecen en servicios.

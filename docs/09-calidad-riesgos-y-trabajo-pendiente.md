@@ -14,6 +14,8 @@
 - Controladores backend activos adelgazados y errores centralizados.
 - Errores operacionales tipados con normalizacion de errores Sequelize y externos.
 - Asociaciones Sequelize normalizadas con aliases explicitos y consumidores activos alineados al contrato camelCase.
+- Autenticacion y autorizacion por permisos en rutas operativas.
+- Flujo de Bodega, carga, chofer asignado y momento correcto de `DESPACHADO`.
 
 ## Deuda tecnica
 
@@ -28,17 +30,17 @@
 
 ## Riesgos de seguridad
 
-- Las rutas operativas del backend no aplican `requireAuth`.
-- No hay autorizacion por roles en endpoints.
+- Las rutas operativas aplican `requireAuth` y autorizacion por permisos.
+- El frontend filtra por permisos, pero no es autoridad de seguridad.
 - Los errores internos inesperados ya no exponen mensajes en produccion.
 - El servicio n8n imprime objetos completos en consola.
 - Los secretos reales deben mantenerse fuera de Git y de la documentacion.
 
 ## Riesgos de integridad
 
-- Cancelar pedido reintegra stock sin transaccion propia.
 - No hay restriccion de base para impedir dos jornadas activas del mismo camion.
 - No hay restriccion parcial para impedir dos despachos activos del mismo pedido.
+- No hay restriccion parcial definitiva para impedir dos jornadas activas del mismo chofer.
 - `ruta_json` puede quedar desactualizado si se modifican ubicaciones despues de generar jornadas.
 
 ## Riesgos de concurrencia pendientes
@@ -69,7 +71,7 @@ npm run test:frontend
 
 Resultado de linea base:
 
-- Backend: 38 pruebas aprobadas.
+- Backend: 39 pruebas aprobadas.
 - Python: 24 pruebas aprobadas.
 - Frontend: 1 prueba aprobada.
 - Fallos omitidos intencionalmente: ninguno.
@@ -79,7 +81,8 @@ Resultado de linea base:
 
 - `detallePedido.service.js` quedo protegido con rollback para creacion, actualizacion, eliminacion y recalculo de total.
 - `despacho.service.js` quedo protegido con rollback para entrega, no entrega y avance de jornada asociado.
-- `jornadaReparto.service.js` revalida recursos despues de Python y revierte la persistencia si falla crear jornadas, actualizar pedidos o crear despachos.
+- `jornadaReparto.service.js` revalida recursos despues de Python y no marca pedidos como `DESPACHADO` hasta el inicio fisico de la jornada.
+- Las rutas operativas activas declaran autenticacion antes de autorizacion.
 - `jornadaCreada` ahora usa jornada y despachos reales despues del commit.
 - Las asociaciones Sequelize activas declaran `as`, los includes de servicios usan alias y los consumidores activos no leen relaciones PascalCase.
 - A* ya no filtra `KeyError` por nodo inexistente; devuelve errores de dominio.
@@ -92,7 +95,7 @@ Resultado de linea base:
 
 | Modulo | Nivel | Cobertura actual | Pendiente |
 | ------ | ----- | ---------------- | --------- |
-| Autenticacion | A | Login valido, credenciales invalidas, token y exclusion de `password_hash` | Pruebas HTTP completas de `/api/auth/me` |
+| Autenticacion | A | Login valido, credenciales invalidas, token, exclusion de `password_hash` y rutas operativas protegidas estructuralmente | Pruebas HTTP completas de `/api/auth/me` |
 | Usuarios | B | Listado sin `password_hash`, eliminacion logica | Validaciones completas de controlador |
 | Clientes | B | Listado activo e include de ubicacion | Duplicados, relaciones y errores HTTP |
 | Categorias | B | CRUD de servicio, duplicado indirecto y eliminacion logica | Relaciones con productos |
@@ -107,7 +110,7 @@ Resultado de linea base:
 | Node-Python | A | Ruta valida, timeout, errores estructurados, respuesta invalida y validacion estricta de jornadas | Validacion HTTP end-to-end con servidor real aislado |
 | n8n | C | Stub local sin webhook real | Cliente real con timeout, reintentos e idempotencia |
 | Dashboard | C | No hay endpoints backend propios detectados | Caracterizar si se agrega controlador dedicado |
-| Frontend | C | Smoke test de rutas principales | Renderizado React y flujos de usuario |
+| Frontend | C | Smoke test de rutas principales y build Vite | Renderizado React y flujos de usuario |
 | Modelos inbound | C | Inventariados por asociaciones, sin rutas activas outbound | No requieren CRUD artificial en esta fase |
 
 ## Automatizaciones recomendadas
@@ -195,14 +198,13 @@ Estado: implementada para modulos activos outbound.
 
 ### Fase 6 - Correcciones funcionales
 
-- Proteger rutas backend.
 - Agregar transaccion a cancelacion de pedido y avance de jornada si se mantiene como endpoint separado.
-- Agregar restricciones parciales de base para jornadas/despachos activos.
+- Agregar restricciones parciales de base para jornadas/despachos/choferes activos.
 - Actualizar variables de entorno de ejemplo.
 
 ## Mejoras que pertenecen al MVP
 
-- Seguridad backend minima.
+- Seguridad backend minima implementada; queda auditoria HTTP amplia.
 - Pruebas de flujo logistico principal.
 - Contratos Node-Python documentados y verificables.
 - n8n documentado como pendiente hasta completarse.
@@ -210,7 +212,7 @@ Estado: implementada para modulos activos outbound.
 
 ## Mejoras futuras opcionales
 
-- Roles finos por modulo.
+- Pantallas completas de Bodega, carga y choferes.
 - Paginacion backend.
 - Semilla configurable de metaheuristica.
 - Metricas logisticas historicas.
@@ -219,7 +221,6 @@ Estado: implementada para modulos activos outbound.
 
 ## Elementos fuera del alcance
 
-- Gestion de choferes.
 - Seguimiento GPS real.
 - Microservicios adicionales.
 - Kubernetes.

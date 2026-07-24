@@ -13,6 +13,21 @@ const JornadaReparto = sequelize.define('JornadaReparto', {
     allowNull: false,
   },
 
+  chofer_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+
+  carga_confirmada_por_usuario_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+
+  carga_confirmada_en: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+
   fecha: {
     type: DataTypes.DATEONLY,
     allowNull: false,
@@ -83,6 +98,10 @@ const JornadaReparto = sequelize.define('JornadaReparto', {
     {
       fields: ['fecha'],
       name: 'jornadas_reparto_fecha_idx',
+    },
+    {
+      fields: ['chofer_id', 'estado'],
+      name: 'jornadas_reparto_chofer_estado_idx',
     },
   ],
 });

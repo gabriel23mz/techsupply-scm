@@ -3,24 +3,13 @@ function PedidoWorkspaceActions({
   isWorking,
   onBack,
   onStart,
-  onFinish,
   onCancel,
 }) {
   const canStart =
     pedido.estado === 'PENDIENTE';
 
-  const canFinish =
-    [
-      'PENDIENTE',
-      'PREPARANDO',
-    ].includes(pedido.estado);
-
   const canCancel =
-    [
-      'PENDIENTE',
-      'PREPARANDO',
-      'LISTO_PARA_DESPACHO',
-    ].includes(pedido.estado);
+    pedido.estado === 'PENDIENTE';
 
   return (
     <section className="pedido-workspace-actions">
@@ -55,30 +44,14 @@ function PedidoWorkspaceActions({
               onClick={onStart}
             >
               <i className="bi bi-play-circle me-2" />
-              Iniciar preparación
-            </button>
-          )}
-
-          {canFinish && (
-            <button
-              type="button"
-              className="btn btn-primary pedido-finish-btn"
-              disabled={isWorking}
-              onClick={onFinish}
-            >
-              <i className="bi bi-check2-circle me-2" />
-              Finalizar preparación
+              Enviar a preparación
             </button>
           )}
         </div>
 
-        {canFinish && (
+        {!canStart && (
           <small>
-            El pedido quedará como{' '}
-            <strong>
-              LISTO PARA DESPACHO
-            </strong>
-            .
+            El pedido está en modo solo lectura para Ventas.
           </small>
         )}
       </div>
