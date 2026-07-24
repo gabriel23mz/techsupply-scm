@@ -73,6 +73,7 @@ test('clientes, ubicaciones, productos y rutas mantienen filtros activos e inclu
     findAll: async (query) => {
       assert.deepEqual(query.where, { estado: true });
       assert.equal(query.include[0].model, Ubicacion);
+      assert.equal(query.include[0].as, 'ubicacion');
       return [];
     },
     findOne: async () => null,
@@ -90,6 +91,7 @@ test('clientes, ubicaciones, productos y rutas mantienen filtros activos e inclu
     findAll: async (query) => {
       assert.deepEqual(query.where, { estado: true });
       assert.equal(query.include[0].model, Categoria);
+      assert.equal(query.include[0].as, 'categoria');
       return [];
     },
     findOne: async () => null,

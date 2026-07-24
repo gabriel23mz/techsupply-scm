@@ -13,6 +13,7 @@
 - n8n desacoplado de la operacion principal.
 - Controladores backend activos adelgazados y errores centralizados.
 - Errores operacionales tipados con normalizacion de errores Sequelize y externos.
+- Asociaciones Sequelize normalizadas con aliases explicitos y consumidores activos alineados al contrato camelCase.
 
 ## Deuda tecnica
 
@@ -68,7 +69,7 @@ npm run test:frontend
 
 Resultado de linea base:
 
-- Backend: 35 pruebas aprobadas.
+- Backend: 38 pruebas aprobadas.
 - Python: 24 pruebas aprobadas.
 - Frontend: 1 prueba aprobada.
 - Fallos omitidos intencionalmente: ninguno.
@@ -80,6 +81,7 @@ Resultado de linea base:
 - `despacho.service.js` quedo protegido con rollback para entrega, no entrega y avance de jornada asociado.
 - `jornadaReparto.service.js` revalida recursos despues de Python y revierte la persistencia si falla crear jornadas, actualizar pedidos o crear despachos.
 - `jornadaCreada` ahora usa jornada y despachos reales despues del commit.
+- Las asociaciones Sequelize activas declaran `as`, los includes de servicios usan alias y los consumidores activos no leen relaciones PascalCase.
 - A* ya no filtra `KeyError` por nodo inexistente; devuelve errores de dominio.
 - El grafo y A* rechazan distancias no positivas o no finitas.
 - Los contratos Pydantic rechazan coordenadas fuera de rango, duplicados, capacidades invalidas y velocidad no positiva.

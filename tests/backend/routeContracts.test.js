@@ -20,6 +20,24 @@ const activeRouteFiles = [
   'camion.routes.js',
 ];
 
+const readFiles = (directory, extensions) => {
+  const entries = fs.readdirSync(directory, {
+    withFileTypes: true,
+  });
+
+  return entries.flatMap((entry) => {
+    const fullPath = path.join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      return readFiles(fullPath, extensions);
+    }
+
+    return extensions.includes(path.extname(entry.name))
+      ? [fullPath]
+      : [];
+  });
+};
+
 function getRoutes(router) {
   return router.stack
     .filter((layer) => layer.route)
@@ -142,19 +160,185 @@ test('rutas Express activas conservan método, URL y orden observable', async ()
   ]);
 });
 
-test('asociaciones Sequelize usadas por includes conservan aliases actuales', async () => {
+test('asociaciones Sequelize declaran aliases canónicos explícitos', async () => {
   const { default: db } = await import('../../src/models/index.js');
 
-  assert.equal(db.Ubicacion.associations.rutasOrigen.as, 'rutasOrigen');
-  assert.equal(db.Ubicacion.associations.rutasDestino.as, 'rutasDestino');
-  assert.equal(db.Ruta.associations.origen.as, 'origen');
-  assert.equal(db.Ruta.associations.destino.as, 'destino');
-  assert.equal(db.Camion.associations.jornadas.as, 'jornadas');
-  assert.equal(db.JornadaReparto.associations.camion.as, 'camion');
-  assert.equal(db.JornadaReparto.associations.despachos.as, 'despachos');
-  assert.equal(db.Despacho.associations.jornada.as, 'jornada');
+  const expected = [
+    ['Categoria', 'HasMany', 'Producto', 'categoria_id', 'productos'],
+    ['Producto', 'BelongsTo', 'Categoria', 'categoria_id', 'categoria'],
+    ['Ubicacion', 'HasMany', 'Cliente', 'ubicacion_id', 'clientes'],
+    ['Cliente', 'BelongsTo', 'Ubicacion', 'ubicacion_id', 'ubicacion'],
+    ['Ubicacion', 'HasMany', 'Ruta', 'origen_id', 'rutasOrigen'],
+    ['Ubicacion', 'HasMany', 'Ruta', 'destino_id', 'rutasDestino'],
+    ['Ruta', 'BelongsTo', 'Ubicacion', 'origen_id', 'origen'],
+    ['Ruta', 'BelongsTo', 'Ubicacion', 'destino_id', 'destino'],
+    ['Cliente', 'HasMany', 'Pedido', 'cliente_id', 'pedidos'],
+    ['Pedido', 'BelongsTo', 'Cliente', 'cliente_id', 'cliente'],
+    ['Usuario', 'HasMany', 'Pedido', 'usuario_id', 'pedidos'],
+    ['Pedido', 'BelongsTo', 'Usuario', 'usuario_id', 'usuario'],
+    ['Pedido', 'HasMany', 'DetallePedido', 'pedido_id', 'detalles'],
+    ['DetallePedido', 'BelongsTo', 'Pedido', 'pedido_id', 'pedido'],
+    ['Producto', 'HasMany', 'DetallePedido', 'producto_id', 'detallesPedido'],
+    ['DetallePedido', 'BelongsTo', 'Producto', 'producto_id', 'producto'],
+    ['Pedido', 'HasMany', 'Despacho', 'pedido_id', 'despachos'],
+    ['Despacho', 'BelongsTo', 'Pedido', 'pedido_id', 'pedido'],
+    ['Proveedor', 'HasMany', 'OrdenCompra', 'proveedor_id', 'ordenesCompra'],
+    ['OrdenCompra', 'BelongsTo', 'Proveedor', 'proveedor_id', 'proveedor'],
+    ['Usuario', 'HasMany', 'OrdenCompra', 'usuario_id', 'ordenesCompra'],
+    ['OrdenCompra', 'BelongsTo', 'Usuario', 'usuario_id', 'usuario'],
+    ['OrdenCompra', 'HasMany', 'DetalleOrdenCompra', 'orden_compra_id', 'detalles'],
+    ['DetalleOrdenCompra', 'BelongsTo', 'OrdenCompra', 'orden_compra_id', 'ordenCompra'],
+    ['Producto', 'HasMany', 'DetalleOrdenCompra', 'producto_id', 'detallesOrdenCompra'],
+    ['DetalleOrdenCompra', 'BelongsTo', 'Producto', 'producto_id', 'producto'],
+    ['OrdenCompra', 'HasMany', 'IngresoInventario', 'orden_compra_id', 'ingresosInventario'],
+    ['IngresoInventario', 'BelongsTo', 'OrdenCompra', 'orden_compra_id', 'ordenCompra'],
+    ['Usuario', 'HasMany', 'IngresoInventario', 'usuario_id', 'ingresosInventario'],
+    ['IngresoInventario', 'BelongsTo', 'Usuario', 'usuario_id', 'usuario'],
+    ['IngresoInventario', 'HasMany', 'DetalleIngreso', 'ingreso_inventario_id', 'detalles'],
+    ['DetalleIngreso', 'BelongsTo', 'IngresoInventario', 'ingreso_inventario_id', 'ingresoInventario'],
+    ['Producto', 'HasMany', 'DetalleIngreso', 'producto_id', 'detallesIngreso'],
+    ['DetalleIngreso', 'BelongsTo', 'Producto', 'producto_id', 'producto'],
+    ['Camion', 'HasMany', 'JornadaReparto', 'camion_id', 'jornadas'],
+    ['JornadaReparto', 'BelongsTo', 'Camion', 'camion_id', 'camion'],
+    ['JornadaReparto', 'HasMany', 'Despacho', 'jornada_reparto_id', 'despachos'],
+    ['Despacho', 'BelongsTo', 'JornadaReparto', 'jornada_reparto_id', 'jornada'],
+  ];
 
-  assert.equal(db.Pedido.associations.Cliente.as, 'Cliente');
-  assert.equal(db.Pedido.associations.Usuario.as, 'Usuario');
-  assert.equal(db.DetallePedido.associations.Producto.as, 'Producto');
+  const totalAssociations = Object.values(db)
+    .filter((model) => model?.associations)
+    .reduce(
+      (total, model) =>
+        total + Object.keys(model.associations).length,
+      0,
+    );
+
+  assert.equal(totalAssociations, expected.length);
+
+  for (const [
+    source,
+    type,
+    target,
+    foreignKey,
+    alias,
+  ] of expected) {
+    const association = db[source].associations[alias];
+
+    assert.ok(
+      association,
+      `${source}.${alias} debe existir`,
+    );
+    assert.equal(association.as, alias);
+    assert.equal(association.associationType, type);
+    assert.equal(association.target.name, target);
+    assert.equal(association.foreignKey, foreignKey);
+    assert.match(alias, /^[a-z][A-Za-z0-9]*$/);
+  }
+
+  for (const [source, model] of Object.entries(db)) {
+    if (!model?.associations) continue;
+
+    const aliases = Object.values(model.associations).map(
+      (association) => association.as,
+    );
+
+    assert.equal(
+      aliases.length,
+      new Set(aliases).size,
+      `${source} no debe repetir aliases`,
+    );
+  }
+
+  assert.notEqual(
+    db.Ubicacion.associations.rutasOrigen.as,
+    db.Ubicacion.associations.rutasDestino.as,
+  );
+});
+
+test('aliases respetan singular/plural según cardinalidad', async () => {
+  const { default: db } = await import('../../src/models/index.js');
+  const singularAliases = new Set([
+    'categoria',
+    'ubicacion',
+    'origen',
+    'destino',
+    'cliente',
+    'usuario',
+    'pedido',
+    'producto',
+    'jornada',
+    'camion',
+    'proveedor',
+    'ordenCompra',
+    'ingresoInventario',
+  ]);
+  const collectionAliases = new Set([
+    'productos',
+    'clientes',
+    'rutasOrigen',
+    'rutasDestino',
+    'pedidos',
+    'detalles',
+    'detallesPedido',
+    'despachos',
+    'ordenesCompra',
+    'detallesOrdenCompra',
+    'ingresosInventario',
+    'detallesIngreso',
+    'jornadas',
+  ]);
+
+  for (const model of Object.values(db)) {
+    if (!model?.associations) continue;
+
+    for (const association of Object.values(model.associations)) {
+      if (association.associationType === 'BelongsTo') {
+        assert.ok(
+          singularAliases.has(association.as),
+          `${association.as} debe ser singular`,
+        );
+      }
+
+      if (association.associationType === 'HasMany') {
+        assert.ok(
+          collectionAliases.has(association.as),
+          `${association.as} debe representar colección`,
+        );
+      }
+    }
+  }
+});
+
+test('includes activos usan as y consumidores no usan relaciones PascalCase', () => {
+  const sourceFiles = [
+    ...readFiles(
+      path.join(process.cwd(), 'src', 'services'),
+      ['.js'],
+    ),
+    ...readFiles(
+      path.join(process.cwd(), 'frontend', 'src'),
+      ['.js', '.jsx'],
+    ),
+  ];
+
+  const includeWithoutAlias =
+    /model:\s+(Cliente|Usuario|Categoria|Producto|Ubicacion|Pedido|DetallePedido|Despacho|Camion|JornadaReparto),[^\S\r\n]*\r?\n(?![^\S\r\n]*as:)/;
+
+  const pascalRelationAccess =
+    /\.(Cliente|Usuario|Categoria|Producto|Ubicacion|Pedido|DetallePedido|Despacho|Camion|JornadaReparto)\b|\[['"](Cliente|Pedido|Ubicacion|Producto|Usuario)['"]\]/;
+
+  for (const file of sourceFiles) {
+    const source = fs.readFileSync(file, 'utf8');
+
+    assert.doesNotMatch(
+      source,
+      includeWithoutAlias,
+      file,
+    );
+
+    assert.doesNotMatch(
+      source,
+      pascalRelationAccess,
+      file,
+    );
+  }
 });

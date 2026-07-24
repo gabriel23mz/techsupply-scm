@@ -30,6 +30,35 @@ El backend esta dividido en:
 
 Tambien existen modelos inbound (`Proveedor`, `OrdenCompra`, `DetalleOrdenCompra`, `IngresoInventario`, `DetalleIngreso`) definidos y asociados, pero no expuestos como modulos operativos outbound.
 
+## Convencion de asociaciones Sequelize
+
+Todas las asociaciones declaradas en `src/models/index.js` usan alias explicito con `as`. Los servicios deben incluir modelos asociados indicando el mismo alias, y los consumidores deben leer relaciones con nombres camelCase contextuales:
+
+| Relacion | Alias publico |
+| -------- | ------------- |
+| Categoria -> Producto | `productos` |
+| Producto -> Categoria | `categoria` |
+| Ubicacion -> Cliente | `clientes` |
+| Cliente -> Ubicacion | `ubicacion` |
+| Ubicacion -> Ruta | `rutasOrigen`, `rutasDestino` |
+| Ruta -> Ubicacion | `origen`, `destino` |
+| Cliente -> Pedido | `pedidos` |
+| Pedido -> Cliente | `cliente` |
+| Usuario -> Pedido | `pedidos` |
+| Pedido -> Usuario | `usuario` |
+| Pedido -> DetallePedido | `detalles` |
+| DetallePedido -> Pedido | `pedido` |
+| Producto -> DetallePedido | `detallesPedido` |
+| DetallePedido -> Producto | `producto` |
+| Pedido -> Despacho | `despachos` |
+| Despacho -> Pedido | `pedido` |
+| Camion -> JornadaReparto | `jornadas` |
+| JornadaReparto -> Camion | `camion` |
+| JornadaReparto -> Despacho | `despachos` |
+| Despacho -> JornadaReparto | `jornada` |
+
+Las asociaciones inbound usan la misma regla: `ordenesCompra`, `proveedor`, `detalles`, `ordenCompra`, `detallesOrdenCompra`, `ingresosInventario`, `usuario`, `detalles`, `ingresoInventario`, `detallesIngreso` y `producto`, segun la cardinalidad. La pluralizacion del alias refleja colecciones en `hasMany`; los `belongsTo` usan singular.
+
 ## Estados reales
 
 ### Pedido

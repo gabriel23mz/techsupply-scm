@@ -43,7 +43,6 @@ function formatJourneyCode(jornada) {
 
 function getCliente(pedido) {
   return (
-    pedido?.Cliente ??
     pedido?.cliente ??
     null
   );
@@ -51,7 +50,6 @@ function getCliente(pedido) {
 
 function getUbicacion(cliente) {
   return (
-    cliente?.Ubicacion ??
     cliente?.ubicacion ??
     null
   );

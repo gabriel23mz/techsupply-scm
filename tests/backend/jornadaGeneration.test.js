@@ -28,9 +28,9 @@ function pedido(id = 100) {
     id,
     cliente_id: 20,
     estado: 'LISTO_PARA_DESPACHO',
-    Cliente: {
+    cliente: {
       nombre: 'Cliente Demo',
-      Ubicacion: {
+      ubicacion: {
         id: 3,
         nombre: 'Sucursal Norte',
         latitud: -2.08,

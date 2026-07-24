@@ -2,7 +2,6 @@ import PedidoStatusBadge from '../PedidoStatusBadge';
 
 function getCliente(pedido) {
   return (
-    pedido?.Cliente ??
     pedido?.cliente ??
     null
   );
@@ -10,7 +9,6 @@ function getCliente(pedido) {
 
 function getUsuario(pedido) {
   return (
-    pedido?.Usuario ??
     pedido?.usuario ??
     null
   );

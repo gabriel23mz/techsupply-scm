@@ -34,15 +34,15 @@ function formatDate(value) {
 }
 
 function getCliente(pedido) {
-  return pedido.Cliente ?? pedido.cliente ?? null;
+  return pedido.cliente ?? null;
 }
 
 function getUsuario(pedido) {
-  return pedido.Usuario ?? pedido.usuario ?? null;
+  return pedido.usuario ?? null;
 }
 
 function getUbicacion(cliente) {
-  return cliente?.Ubicacion ?? cliente?.ubicacion ?? null;
+  return cliente?.ubicacion ?? null;
 }
 
 function PedidosDisponiblesTable({ pedidos }) {

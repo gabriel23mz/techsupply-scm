@@ -3,17 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import DespachoStatusBadge from './DespachoStatusBadge';
 
 function getPedido(despacho) {
-  return despacho?.Pedido ?? despacho?.pedido ?? null;
+  return despacho?.pedido ?? null;
 }
 
 function getCliente(despacho) {
   const pedido = getPedido(despacho);
 
-  return pedido?.Cliente ?? pedido?.cliente ?? null;
+  return pedido?.cliente ?? null;
 }
 
 function getJornada(despacho) {
-  return despacho?.jornada ?? despacho?.JornadaReparto ?? null;
+  return despacho?.jornada ?? null;
 }
 
 function formatCode(prefix, id, length = 5) {
@@ -81,7 +81,6 @@ function getRouteSummary(despacho) {
     summary.destino ??
     route.hasta?.nombre ??
     route.destino?.nombre ??
-    getCliente(despacho)?.Ubicacion?.nombre ??
     getCliente(despacho)?.ubicacion?.nombre ??
     null;
 

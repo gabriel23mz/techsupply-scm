@@ -79,6 +79,8 @@ Responsabilidades:
 
 Los controladores activos no importan modelos Sequelize, no cifran contrasenas, no gestionan transacciones y no invocan Python ni n8n directamente.
 
+Las asociaciones Sequelize activas declaran alias explicito con `as`. Los servicios usan esos alias en cada `include` y las respuestas consumidas por frontend exponen relaciones en camelCase contextual, por ejemplo `pedido.cliente`, `pedido.detalles`, `detalle.producto`, `cliente.ubicacion`, `despacho.jornada` y `jornada.despachos`. No se usa el nombre PascalCase autogenerado por Sequelize como contrato de lectura.
+
 ## Base de datos
 
 La base activa es PostgreSQL, conectada mediante `DATABASE_URL`. Las migraciones crean tablas, claves foraneas, indices, enums y checks. La columna `ruta_json` de jornadas y despachos fue migrada a JSONB.

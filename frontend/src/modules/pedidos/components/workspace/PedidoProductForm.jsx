@@ -6,7 +6,6 @@ import {
 
 function getProduct(detalle) {
   return (
-    detalle?.Producto ??
     detalle?.producto ??
     null
   );

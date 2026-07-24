@@ -25,7 +25,7 @@ const {
 const MAX_DESVIO_PORCENTAJE = 15;
 
 const obtenerDestinoPedido = (pedido) =>
-  Number(pedido.Cliente.Ubicacion.id);
+  Number(pedido.cliente.ubicacion.id);
 
 const obtenerCapacidadCamion = (camion) => {
   const capacidad = Number(camion.capacidad);
@@ -103,9 +103,9 @@ const construirMapaJornada = (jornada) => {
   );
 
   const puntosEntrega = despachosOrdenados.map((despacho) => {
-    const pedido = despacho.Pedido;
-    const cliente = pedido?.Cliente;
-    const ubicacion = cliente?.Ubicacion;
+    const pedido = despacho.pedido;
+    const cliente = pedido?.cliente;
+    const ubicacion = cliente?.ubicacion;
 
     return {
       despacho_id: despacho.id,
@@ -279,9 +279,11 @@ export const generarJornadaReparto = async () => {
     include: [
       {
         model: Cliente,
+        as: 'cliente',
         include: [
           {
             model: Ubicacion,
+          as: 'ubicacion',
           },
         ],
       },
@@ -795,12 +797,15 @@ export const iniciarJornada = async (id) => {
           include: [
             {
               model: Pedido,
+              as: 'pedido',
               include: [
                 {
                   model: Cliente,
+                  as: 'cliente',
                   include: [
                     {
                       model: Ubicacion,
+                    as: 'ubicacion',
                     },
                   ],
                 },
@@ -1079,12 +1084,15 @@ export const finalizarJornada = async (id) => {
           include: [
             {
               model: Pedido,
+              as: 'pedido',
               include: [
                 {
                   model: Cliente,
+                  as: 'cliente',
                   include: [
                     {
                       model: Ubicacion,
+                    as: 'ubicacion',
                     },
                   ],
                 },
@@ -1261,12 +1269,15 @@ export const obtenerJornadaPorId = async (id) => {
         include: [
           {
             model: Pedido,
+            as: 'pedido',
             include: [
               {
                 model: Cliente,
+                as: 'cliente',
                 include: [
                   {
                     model: Ubicacion,
+                  as: 'ubicacion',
                   },
                 ],
               },
@@ -1331,12 +1342,15 @@ export const recalcularJornada = async (id) => {
         include: [
           {
             model: Pedido,
+            as: 'pedido',
             include: [
               {
                 model: Cliente,
+                as: 'cliente',
                 include: [
                   {
                     model: Ubicacion,
+                  as: 'ubicacion',
                   },
                 ],
               },
@@ -1441,9 +1455,11 @@ export const recalcularJornada = async (id) => {
     include: [
       {
         model: Cliente,
+        as: 'cliente',
         include: [
           {
             model: Ubicacion,
+          as: 'ubicacion',
           },
         ],
       },
@@ -1477,7 +1493,7 @@ export const recalcularJornada = async (id) => {
    */
 
   const pedidosActuales = jornada.despachos.map(
-    (despacho) => despacho.Pedido,
+    (despacho) => despacho.pedido,
   );
 
   const pedidosActualesIds = new Set(
@@ -1489,12 +1505,12 @@ export const recalcularJornada = async (id) => {
   const destinosActuales = new Map();
 
   for (const despacho of jornada.despachos) {
-    const pedido = despacho.Pedido;
+    const pedido = despacho.pedido;
 
     if (
       !pedido ||
-      !pedido.Cliente ||
-      !pedido.Cliente.Ubicacion
+      !pedido.cliente ||
+      !pedido.cliente.ubicacion
     ) {
       throw new BusinessRuleError(
         `El despacho ${despacho.id} no posee una ubicación válida`,
@@ -1536,8 +1552,8 @@ export const recalcularJornada = async (id) => {
 
   for (const pedido of pedidosCandidatos) {
     if (
-      !pedido.Cliente ||
-      !pedido.Cliente.Ubicacion
+      !pedido.cliente ||
+      !pedido.cliente.ubicacion
     ) {
       rechazados.push({
         pedido_id: pedido.id,
@@ -2012,18 +2028,18 @@ export const recalcularJornada = async (id) => {
           cliente_id:
             pedido.cliente_id,
           cliente:
-            pedido.Cliente.nombre,
+            pedido.cliente.nombre,
           destino_id:
-            pedido.Cliente.Ubicacion.id,
+            pedido.cliente.ubicacion.id,
           ubicacion:
-            pedido.Cliente.Ubicacion
+            pedido.cliente.ubicacion
               .nombre,
           latitud: Number(
-            pedido.Cliente.Ubicacion
+            pedido.cliente.ubicacion
               .latitud,
           ),
           longitud: Number(
-            pedido.Cliente.Ubicacion
+            pedido.cliente.ubicacion
               .longitud,
           ),
           estado: 'PENDIENTE',
@@ -2133,6 +2149,7 @@ export const obtenerMapaGeneral = async () => {
         include: [
           {
             model: Pedido,
+            as: 'pedido',
             attributes: [
               'id',
               'cliente_id',
@@ -2143,6 +2160,7 @@ export const obtenerMapaGeneral = async () => {
             include: [
               {
                 model: Cliente,
+                as: 'cliente',
                 attributes: [
                   'id',
                   'nombre',
@@ -2152,6 +2170,7 @@ export const obtenerMapaGeneral = async () => {
                 include: [
                   {
                     model: Ubicacion,
+                    as: 'ubicacion',
                     attributes: [
                       'id',
                       'nombre',

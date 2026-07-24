@@ -47,7 +47,6 @@ function RecentActivity({
           pedido.id,
         ),
         detail:
-          pedido?.Cliente?.nombre ??
           pedido?.cliente?.nombre ??
           'Pedido registrado',
         date:

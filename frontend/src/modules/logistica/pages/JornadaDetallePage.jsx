@@ -102,7 +102,6 @@ function formatStatus(status) {
 
 function getPedido(despacho) {
   return (
-    despacho?.Pedido ??
     despacho?.pedido ??
     null
   );
@@ -110,7 +109,6 @@ function getPedido(despacho) {
 
 function getCliente(pedido) {
   return (
-    pedido?.Cliente ??
     pedido?.cliente ??
     null
   );
@@ -118,7 +116,6 @@ function getCliente(pedido) {
 
 function getUbicacion(cliente) {
   return (
-    cliente?.Ubicacion ??
     cliente?.ubicacion ??
     null
   );

@@ -34,7 +34,7 @@ const rutaDetalle = despacho.ruta_detalle || [];
 
           <div>
             <span>Cliente</span>
-            <strong>{despacho.Pedido?.Cliente?.nombre}</strong>
+            <strong>{despacho.pedido?.cliente?.nombre}</strong>
           </div>
 
           <div>

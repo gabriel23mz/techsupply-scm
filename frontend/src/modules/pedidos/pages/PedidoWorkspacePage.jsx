@@ -51,7 +51,6 @@ function getDetails(pedido) {
 
 function getProduct(detalle) {
   return (
-    detalle?.Producto ??
     detalle?.producto ??
     null
   );

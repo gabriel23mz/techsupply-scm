@@ -24,7 +24,7 @@ function formatDate(value) {
 }
 
 function getClienteName(despacho) {
-  return despacho.Pedido?.Cliente?.nombre || 'Cliente no disponible';
+  return despacho.pedido?.cliente?.nombre || 'Cliente no disponible';
 }
 
 function DespachosGeneradosTable({ despachos, onRefresh }) {

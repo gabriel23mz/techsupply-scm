@@ -193,7 +193,7 @@ function buildRouteSummary(
     routeJson.hasta?.nombre ??
     routeJson.destino?.nombre ??
     routeDetail.at(-1)?.nombre ??
-    plainDispatch?.Pedido?.Cliente?.Ubicacion?.nombre ??
+    plainDispatch?.pedido?.cliente?.ubicacion?.nombre ??
     null;
 
   return {
@@ -326,9 +326,11 @@ const includeRelations = [
   },
   {
     model: Pedido,
+    as: 'pedido',
     include: [
       {
         model: Cliente,
+        as: 'cliente',
         attributes: [
           'id',
           'nombre',
@@ -341,6 +343,7 @@ const includeRelations = [
         include: [
           {
             model: Ubicacion,
+            as: 'ubicacion',
             attributes: [
               'id',
               'nombre',
@@ -353,6 +356,7 @@ const includeRelations = [
       },
       {
         model: Usuario,
+        as: 'usuario',
         attributes: [
           'id',
           'nombre',

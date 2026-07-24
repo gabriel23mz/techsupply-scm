@@ -26,17 +26,17 @@ import '../despachos.css';
 const PAGE_SIZE = 10;
 
 function getPedido(despacho) {
-  return despacho?.Pedido ?? despacho?.pedido ?? null;
+  return despacho?.pedido ?? null;
 }
 
 function getCliente(despacho) {
   const pedido = getPedido(despacho);
 
-  return pedido?.Cliente ?? pedido?.cliente ?? null;
+  return pedido?.cliente ?? null;
 }
 
 function getJornada(despacho) {
-  return despacho?.jornada ?? despacho?.JornadaReparto ?? null;
+  return despacho?.jornada ?? null;
 }
 
 function normalizeText(value) {
@@ -168,8 +168,8 @@ function DespachosPage() {
           `DSP-${String(despacho.id).padStart(5, '0')}`,
           `PED-${String(despacho.pedido_id).padStart(5, '0')}`,
           cliente?.nombre,
-          pedido?.Usuario?.nombre,
-          pedido?.Usuario?.apellido,
+          pedido?.usuario?.nombre,
+          pedido?.usuario?.apellido,
           jornada?.id,
           jornada?.id
             ? `JR-${String(jornada.id).padStart(5, '0')}`

@@ -34,7 +34,7 @@ const PAGE_SIZE = 10;
 const BODEGA_CENTRAL_ID = 1;
 
 function getLocation(cliente) {
-  return cliente?.Ubicacion ?? cliente?.ubicacion ?? null;
+  return cliente?.ubicacion ?? null;
 }
 
 function normalizeText(value) {

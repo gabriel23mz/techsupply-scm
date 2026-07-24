@@ -57,6 +57,51 @@ erDiagram
   UBICACION ||--o{ RUTA : destino
 ```
 
+## Aliases Sequelize canonicos
+
+Los aliases pertenecen al mapeo ORM y no cambian tablas, columnas ni claves foraneas. La matriz activa es:
+
+| Asociacion | Alias |
+| ---------- | ----- |
+| `Categoria.hasMany(Producto)` | `productos` |
+| `Producto.belongsTo(Categoria)` | `categoria` |
+| `Ubicacion.hasMany(Cliente)` | `clientes` |
+| `Cliente.belongsTo(Ubicacion)` | `ubicacion` |
+| `Ubicacion.hasMany(Ruta)` por `origen_id` | `rutasOrigen` |
+| `Ubicacion.hasMany(Ruta)` por `destino_id` | `rutasDestino` |
+| `Ruta.belongsTo(Ubicacion)` por `origen_id` | `origen` |
+| `Ruta.belongsTo(Ubicacion)` por `destino_id` | `destino` |
+| `Cliente.hasMany(Pedido)` | `pedidos` |
+| `Pedido.belongsTo(Cliente)` | `cliente` |
+| `Usuario.hasMany(Pedido)` | `pedidos` |
+| `Pedido.belongsTo(Usuario)` | `usuario` |
+| `Pedido.hasMany(DetallePedido)` | `detalles` |
+| `DetallePedido.belongsTo(Pedido)` | `pedido` |
+| `Producto.hasMany(DetallePedido)` | `detallesPedido` |
+| `DetallePedido.belongsTo(Producto)` | `producto` |
+| `Pedido.hasMany(Despacho)` | `despachos` |
+| `Despacho.belongsTo(Pedido)` | `pedido` |
+| `Camion.hasMany(JornadaReparto)` | `jornadas` |
+| `JornadaReparto.belongsTo(Camion)` | `camion` |
+| `JornadaReparto.hasMany(Despacho)` | `despachos` |
+| `Despacho.belongsTo(JornadaReparto)` | `jornada` |
+| `Proveedor.hasMany(OrdenCompra)` | `ordenesCompra` |
+| `OrdenCompra.belongsTo(Proveedor)` | `proveedor` |
+| `Usuario.hasMany(OrdenCompra)` | `ordenesCompra` |
+| `OrdenCompra.belongsTo(Usuario)` | `usuario` |
+| `OrdenCompra.hasMany(DetalleOrdenCompra)` | `detalles` |
+| `DetalleOrdenCompra.belongsTo(OrdenCompra)` | `ordenCompra` |
+| `Producto.hasMany(DetalleOrdenCompra)` | `detallesOrdenCompra` |
+| `DetalleOrdenCompra.belongsTo(Producto)` | `producto` |
+| `OrdenCompra.hasMany(IngresoInventario)` | `ingresosInventario` |
+| `IngresoInventario.belongsTo(OrdenCompra)` | `ordenCompra` |
+| `Usuario.hasMany(IngresoInventario)` | `ingresosInventario` |
+| `IngresoInventario.belongsTo(Usuario)` | `usuario` |
+| `IngresoInventario.hasMany(DetalleIngreso)` | `detalles` |
+| `DetalleIngreso.belongsTo(IngresoInventario)` | `ingresoInventario` |
+| `Producto.hasMany(DetalleIngreso)` | `detallesIngreso` |
+| `DetalleIngreso.belongsTo(Producto)` | `producto` |
+
 ## Tipos importantes
 
 - Coordenadas: `DECIMAL(10,8)` para latitud y `DECIMAL(11,8)` para longitud.
@@ -144,4 +189,3 @@ El backend usa `BODEGA_CENTRAL_ID = 1`. La base debe contener una ubicacion con 
 - No existe restriccion parcial para impedir multiples despachos activos por pedido.
 - Algunas reglas de consistencia viven solo en servicios.
 - El `ruta_json` puede desactualizarse si se modifican ubicaciones despues de generar jornadas.
-

@@ -78,6 +78,7 @@ export const obtenerTodos = async () => {
     include: [
       {
         model: Ubicacion,
+        as: 'ubicacion',
         attributes: ['id', 'nombre'],
       },
     ],
@@ -94,6 +95,7 @@ export const obtenerPorId = async (id) => {
     include: [
       {
         model: Ubicacion,
+        as: 'ubicacion',
         attributes: ['id', 'nombre'],
       },
     ],

@@ -14,7 +14,7 @@ const INITIAL_FORM = {
 };
 
 function getLocation(cliente) {
-  return cliente?.Ubicacion ?? cliente?.ubicacion ?? null;
+  return cliente?.ubicacion ?? null;
 }
 
 function ClienteFormModal({

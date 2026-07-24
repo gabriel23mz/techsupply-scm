@@ -119,6 +119,7 @@ export const obtenerTodos = async () => {
     include: [
       {
         model: Categoria,
+        as: 'categoria',
         attributes: ['id', 'nombre'],
       },
     ],
@@ -135,6 +136,7 @@ export const obtenerPorId = async (id) => {
     include: [
       {
         model: Categoria,
+        as: 'categoria',
         attributes: ['id', 'nombre'],
       },
     ],

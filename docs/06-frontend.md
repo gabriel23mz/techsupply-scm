@@ -64,6 +64,8 @@ El layout principal usa `MainLayout`, `Sidebar` y `Topbar`. Incluye navegacion, 
 - interceptor para agregar token desde `techsupply_session`.
 - interceptor para limpiar sesion en 401.
 
+Las respuestas con relaciones incluidas se consumen mediante aliases camelCase canonicos definidos en Sequelize: `cliente`, `ubicacion`, `categoria`, `producto`, `pedido`, `detalles`, `usuario`, `jornada`, `camion` y `despachos`. El frontend activo no depende de claves PascalCase autogeneradas por Sequelize.
+
 ## Autenticacion frontend
 
 El modulo `auth` permite login, guarda sesion local y consulta `/auth/me`. La UI bloquea rutas privadas si no hay sesion valida.
@@ -163,4 +165,3 @@ El frontend usa spinners, estados vacios, mensajes toast y confirmaciones. Las o
 - No existe administracion de roles.
 - No existe seguimiento GPS real.
 - No existe panel de n8n.
-

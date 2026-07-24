@@ -12,6 +12,7 @@ import {
 const pedidoRelations = [
   {
     model: Cliente,
+    as: 'cliente',
     attributes: [
       'id',
       'nombre',
@@ -20,6 +21,7 @@ const pedidoRelations = [
   },
   {
     model: Usuario,
+    as: 'usuario',
     attributes: [
       'id',
       'nombre',
@@ -34,9 +36,11 @@ const pedidoRelationsDetalle = [
   ...pedidoRelations,
   {
     model: DetallePedido,
+    as: 'detalles',
     include: [
       {
         model: Producto,
+        as: 'producto',
         attributes: [
           'id',
           'nombre',

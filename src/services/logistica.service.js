@@ -46,11 +46,11 @@ export const generarPlanJornada = async ({
     pedidos: pedidos.map((pedido) => ({
       pedido_id: pedido.id,
       cliente_id: pedido.cliente_id,
-      cliente: pedido.Cliente.nombre,
-      destino_id: pedido.Cliente.Ubicacion.id,
-      ubicacion: pedido.Cliente.Ubicacion.nombre,
-      latitud: Number(pedido.Cliente.Ubicacion.latitud),
-      longitud: Number(pedido.Cliente.Ubicacion.longitud),
+      cliente: pedido.cliente.nombre,
+      destino_id: pedido.cliente.ubicacion.id,
+      ubicacion: pedido.cliente.ubicacion.nombre,
+      latitud: Number(pedido.cliente.ubicacion.latitud),
+      longitud: Number(pedido.cliente.ubicacion.longitud),
       fecha_entrega: pedido.fecha_entrega,
     })),
 
@@ -184,7 +184,7 @@ export const crearDespacho = async (
   // Obtener ubicación destino
   //---------------------------------------------------------
 
-  const cliente = pedido.Cliente;
+  const cliente = pedido.cliente;
 
   if (!cliente) {
     throw new BusinessRuleError(

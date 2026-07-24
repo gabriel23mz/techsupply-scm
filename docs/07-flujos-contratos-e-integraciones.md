@@ -92,6 +92,23 @@ Las respuestas del backend usan:
 
 El frontend normalmente lee `response.data.data`.
 
+Las relaciones incluidas por Sequelize forman parte del contrato JSON con aliases camelCase explicitos. Ejemplos de lectura vigentes:
+
+| Antes implicito por Sequelize | Contrato actual |
+| ----------------------------- | --------------- |
+| `Pedido.Cliente` | `pedido.cliente` |
+| `Pedido.Usuario` | `pedido.usuario` |
+| `Pedido.DetallePedidos` | `pedido.detalles` |
+| `DetallePedido.Producto` | `detalle.producto` |
+| `Cliente.Ubicacion` | `cliente.ubicacion` |
+| `Producto.Categoria` | `producto.categoria` |
+| `Despacho.Pedido` | `despacho.pedido` |
+| `Despacho.JornadaReparto` | `despacho.jornada` |
+| `JornadaReparto.Camion` | `jornada.camion` |
+| `JornadaReparto.Despachos` | `jornada.despachos` |
+
+Los cambios de alias no modifican endpoints, estados, reglas de transicion, payloads Node-Python, `ruta_json` ni integraciones n8n.
+
 Endpoints usados por frontend:
 
 | Modulo | Endpoint |

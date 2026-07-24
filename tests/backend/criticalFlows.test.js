@@ -416,7 +416,7 @@ test('jornada rechaza generación sin pedidos o sin camiones disponibles', async
     {
       id: 1,
       cliente_id: 2,
-      Cliente: { nombre: 'Cliente', Ubicacion: { id: 3 } },
+      cliente: { nombre: 'Cliente', ubicacion: { id: 3 } },
     },
   ];
   stubMethods(t, db.JornadaReparto, {

@@ -71,11 +71,13 @@ export const obtenerTodas = async () => {
     include: [
       {
         model: Ubicacion,
+       as: 'ubicacion',
         as: 'origen',
         attributes: ['id', 'nombre'],
       },
       {
         model: Ubicacion,
+       as: 'ubicacion',
         as: 'destino',
         attributes: ['id', 'nombre'],
       },
@@ -93,11 +95,13 @@ export const obtenerPorId = async (id) => {
     include: [
       {
         model: Ubicacion,
+       as: 'ubicacion',
         as: 'origen',
         attributes: ['id', 'nombre'],
       },
       {
         model: Ubicacion,
+       as: 'ubicacion',
         as: 'destino',
         attributes: ['id', 'nombre'],
       },

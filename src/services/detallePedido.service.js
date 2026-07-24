@@ -42,14 +42,32 @@ const recalcularTotalPedido = async (
 
 export const obtenerTodos = async () => {
   return await DetallePedido.findAll({
-    include: [Pedido, Producto],
+    include: [
+      {
+        model: Pedido,
+        as: 'pedido',
+      },
+      {
+        model: Producto,
+        as: 'producto',
+      },
+    ],
     order: [['id', 'ASC']],
   });
 };
 
 export const obtenerPorId = async (id) => {
   const detalle = await DetallePedido.findByPk(id, {
-    include: [Pedido, Producto],
+    include: [
+      {
+        model: Pedido,
+        as: 'pedido',
+      },
+      {
+        model: Producto,
+        as: 'producto',
+      },
+    ],
   });
 
   if (!detalle) {

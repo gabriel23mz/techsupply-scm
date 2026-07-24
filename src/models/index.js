@@ -32,10 +32,12 @@ import JornadaReparto from './JornadaReparto.js';
 //
 Categoria.hasMany(Producto, {
   foreignKey: 'categoria_id',
+  as: 'productos',
 });
 
 Producto.belongsTo(Categoria, {
   foreignKey: 'categoria_id',
+  as: 'categoria',
 });
 
 //
@@ -49,10 +51,12 @@ Producto.belongsTo(Categoria, {
 //
 Ubicacion.hasMany(Cliente, {
   foreignKey: 'ubicacion_id',
+  as: 'clientes',
 });
 
 Cliente.belongsTo(Ubicacion, {
   foreignKey: 'ubicacion_id',
+  as: 'ubicacion',
 });
 
 //
@@ -90,10 +94,12 @@ Ruta.belongsTo(Ubicacion, {
 //
 Cliente.hasMany(Pedido, {
   foreignKey: 'cliente_id',
+  as: 'pedidos',
 });
 
 Pedido.belongsTo(Cliente, {
   foreignKey: 'cliente_id',
+  as: 'cliente',
 });
 
 //
@@ -101,10 +107,12 @@ Pedido.belongsTo(Cliente, {
 //
 Usuario.hasMany(Pedido, {
   foreignKey: 'usuario_id',
+  as: 'pedidos',
 });
 
 Pedido.belongsTo(Usuario, {
   foreignKey: 'usuario_id',
+  as: 'usuario',
 });
 
 //
@@ -112,10 +120,12 @@ Pedido.belongsTo(Usuario, {
 //
 Pedido.hasMany(DetallePedido, {
   foreignKey: 'pedido_id',
+  as: 'detalles',
 });
 
 DetallePedido.belongsTo(Pedido, {
   foreignKey: 'pedido_id',
+  as: 'pedido',
 });
 
 //
@@ -123,10 +133,12 @@ DetallePedido.belongsTo(Pedido, {
 //
 Producto.hasMany(DetallePedido, {
   foreignKey: 'producto_id',
+  as: 'detallesPedido',
 });
 
 DetallePedido.belongsTo(Producto, {
   foreignKey: 'producto_id',
+  as: 'producto',
 });
 
 //
@@ -134,10 +146,12 @@ DetallePedido.belongsTo(Producto, {
 //
 Pedido.hasMany(Despacho, {
   foreignKey: 'pedido_id',
+  as: 'despachos',
 });
 
 Despacho.belongsTo(Pedido, {
   foreignKey: 'pedido_id',
+  as: 'pedido',
 });
 
 //
@@ -152,10 +166,12 @@ Despacho.belongsTo(Pedido, {
 //
 Proveedor.hasMany(OrdenCompra, {
   foreignKey: 'proveedor_id',
+  as: 'ordenesCompra',
 });
 
 OrdenCompra.belongsTo(Proveedor, {
   foreignKey: 'proveedor_id',
+  as: 'proveedor',
 });
 
 //
@@ -163,10 +179,12 @@ OrdenCompra.belongsTo(Proveedor, {
 //
 Usuario.hasMany(OrdenCompra, {
   foreignKey: 'usuario_id',
+  as: 'ordenesCompra',
 });
 
 OrdenCompra.belongsTo(Usuario, {
   foreignKey: 'usuario_id',
+  as: 'usuario',
 });
 
 //
@@ -174,10 +192,12 @@ OrdenCompra.belongsTo(Usuario, {
 //
 OrdenCompra.hasMany(DetalleOrdenCompra, {
   foreignKey: 'orden_compra_id',
+  as: 'detalles',
 });
 
 DetalleOrdenCompra.belongsTo(OrdenCompra, {
   foreignKey: 'orden_compra_id',
+  as: 'ordenCompra',
 });
 
 //
@@ -185,10 +205,12 @@ DetalleOrdenCompra.belongsTo(OrdenCompra, {
 //
 Producto.hasMany(DetalleOrdenCompra, {
   foreignKey: 'producto_id',
+  as: 'detallesOrdenCompra',
 });
 
 DetalleOrdenCompra.belongsTo(Producto, {
   foreignKey: 'producto_id',
+  as: 'producto',
 });
 
 //
@@ -196,10 +218,12 @@ DetalleOrdenCompra.belongsTo(Producto, {
 //
 OrdenCompra.hasMany(IngresoInventario, {
   foreignKey: 'orden_compra_id',
+  as: 'ingresosInventario',
 });
 
 IngresoInventario.belongsTo(OrdenCompra, {
   foreignKey: 'orden_compra_id',
+  as: 'ordenCompra',
 });
 
 //
@@ -207,10 +231,12 @@ IngresoInventario.belongsTo(OrdenCompra, {
 //
 Usuario.hasMany(IngresoInventario, {
   foreignKey: 'usuario_id',
+  as: 'ingresosInventario',
 });
 
 IngresoInventario.belongsTo(Usuario, {
   foreignKey: 'usuario_id',
+  as: 'usuario',
 });
 
 //
@@ -218,10 +244,12 @@ IngresoInventario.belongsTo(Usuario, {
 //
 IngresoInventario.hasMany(DetalleIngreso, {
   foreignKey: 'ingreso_inventario_id',
+  as: 'detalles',
 });
 
 DetalleIngreso.belongsTo(IngresoInventario, {
   foreignKey: 'ingreso_inventario_id',
+  as: 'ingresoInventario',
 });
 
 //
@@ -229,10 +257,12 @@ DetalleIngreso.belongsTo(IngresoInventario, {
 //
 Producto.hasMany(DetalleIngreso, {
   foreignKey: 'producto_id',
+  as: 'detallesIngreso',
 });
 
 DetalleIngreso.belongsTo(Producto, {
   foreignKey: 'producto_id',
+  as: 'producto',
 });
 
 //
