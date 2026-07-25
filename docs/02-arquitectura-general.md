@@ -132,13 +132,18 @@ sequenceDiagram
   BE-->>FE: Resultado de planificacion
 ```
 
-El pedido permanece `LISTO_PARA_DESPACHO` al planificar. Solo pasa a `DESPACHADO` cuando el chofer asignado inicia fisicamente la jornada con carga confirmada.
+El pedido permanece `LISTO_PARA_DESPACHO` al planificar. Solo pasa a `DESPACHADO` cuando el chofer asignado inicia fisicamente la jornada con carga confirmada. La generacion representa rutas operables del dia en `APP_TIMEZONE`: usa pedidos listos, camiones `EN_BODEGA`, choferes disponibles y la fecha operativa actual. El flujo de despacho individual heredado fue retirado: no existen endpoints para crear, iniciar o cancelar despachos fuera de una jornada.
+
+Una jornada puede durar mas de un dia. `fecha` es el dia planificado de salida, `inicio_estimado_en` y `retorno_estimado_en` son previsiones, `fecha_salida` y `fecha_finalizacion` son eventos reales. El cambio de dia o el retorno estimado no liberan recursos; el camion vuelve a estar disponible cuando la jornada finaliza y retorna a `EN_BODEGA`.
 
 ## Separacion de responsabilidades
 
 - Frontend no calcula reglas logisticas; presenta datos y dispara acciones.
 - Backend no implementa la metaheuristica; prepara datos, valida reglas y persiste resultados.
 - Python no accede a la base de datos; recibe todo por JSON.
+- `logistica.service.js` queda limitado a construir payloads, llamar Python y emitir eventos tecnicos post-commit.
+- `jornadaReparto.service.js` conserva reglas, persistencia, asignacion automatica de chofer, disponibilidad fisica, estimaciones, estados y transacciones de jornadas.
+- `despacho.service.js` conserva consulta, entrega y no entrega de despachos asociados a jornadas.
 - n8n no debe bloquear la operacion principal cuando se active.
 - La bodega central se identifica por `BODEGA_CENTRAL_ID = 1`.
 - Los errores operacionales del backend se representan con clases tipadas y se responden desde un unico middleware central.

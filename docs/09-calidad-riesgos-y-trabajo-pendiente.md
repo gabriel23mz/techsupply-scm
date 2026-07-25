@@ -16,11 +16,12 @@
 - Asociaciones Sequelize normalizadas con aliases explicitos y consumidores activos alineados al contrato camelCase.
 - Autenticacion y autorizacion por permisos en rutas operativas.
 - Flujo de Bodega, carga, chofer asignado y momento correcto de `DESPACHADO`.
+- Flujo heredado de despacho individual retirado de rutas, controladores, servicios y frontend.
 
 ## Deuda tecnica
 
 - Estados repetidos como literales en modelos, servicios y frontend.
-- Flujo heredado de despacho individual convive con el flujo actual por jornadas.
+- Flujo heredado de despacho individual retirado; la operacion vigente usa jornadas y despachos asociados.
 - `.env.example` no refleja la configuracion activa.
 - n8n es stub.
 - Dashboard carga multiples colecciones completas.
@@ -38,14 +39,13 @@
 
 ## Riesgos de integridad
 
-- No hay restriccion de base para impedir dos jornadas activas del mismo camion.
-- No hay restriccion parcial para impedir dos despachos activos del mismo pedido.
-- No hay restriccion parcial definitiva para impedir dos jornadas activas del mismo chofer.
+- Las restricciones parciales de integridad logistica estan creadas como migracion, pero aun no ejecutadas contra una base real.
+- Puede haber datos historicos incompatibles; la migracion falla con diagnostico en lugar de corregir silenciosamente.
 - `ruta_json` puede quedar desactualizado si se modifican ubicaciones despues de generar jornadas.
 
 ## Riesgos de concurrencia pendientes
 
-- Generar jornadas en paralelo ahora revalida y bloquea pedidos/camiones antes de persistir, pero la proteccion definitiva requiere restricciones parciales de base de datos.
+- Generar jornadas en paralelo ahora revalida y bloquea pedidos, camiones y choferes antes de persistir; la proteccion definitiva queda reforzada por migraciones parciales pendientes de ejecucion real.
 - Doble clic o reintento HTTP podria repetir operaciones sensibles.
 - Avanzar jornada no usa transaccion.
 - El tiempo de red de OSRM real sigue dependiendo del servicio externo aunque las llamadas ahora estan acotadas a la solucion final.
@@ -71,7 +71,7 @@ npm run test:frontend
 
 Resultado de linea base:
 
-- Backend: 39 pruebas aprobadas.
+- Backend: 67 pruebas aprobadas.
 - Python: 24 pruebas aprobadas.
 - Frontend: 1 prueba aprobada.
 - Fallos omitidos intencionalmente: ninguno.
@@ -81,8 +81,10 @@ Resultado de linea base:
 
 - `detallePedido.service.js` quedo protegido con rollback para creacion, actualizacion, eliminacion y recalculo de total.
 - `despacho.service.js` quedo protegido con rollback para entrega, no entrega y avance de jornada asociado.
-- `jornadaReparto.service.js` revalida recursos despues de Python y no marca pedidos como `DESPACHADO` hasta el inicio fisico de la jornada.
+- `jornadaReparto.service.js` revalida recursos despues de Python, asigna choferes disponibles, calcula estimaciones y no marca pedidos como `DESPACHADO` hasta el inicio fisico de la jornada.
 - Las rutas operativas activas declaran autenticacion antes de autorizacion.
+- El flujo heredado de despacho individual queda fuera de backend y frontend.
+- La migracion de integridad logistica es reversible y contiene diagnosticos de duplicados.
 - `jornadaCreada` ahora usa jornada y despachos reales despues del commit.
 - Las asociaciones Sequelize activas declaran `as`, los includes de servicios usan alias y los consumidores activos no leen relaciones PascalCase.
 - A* ya no filtra `KeyError` por nodo inexistente; devuelve errores de dominio.
@@ -136,12 +138,12 @@ Antes de activar webhooks reales:
 - Manejar reintentos.
 - Agregar idempotencia.
 - Evitar logs con datos personales completos.
-- Corregir el payload de `jornadaCreada`.
+- Mantener versionado y auditado el payload de `jornadaCreada`.
 - Registrar eventos enviados o fallidos.
 
 ## Flujos heredados
 
-`logistica.service.js` conserva funciones de despacho individual (`crearDespacho`, `iniciarDespacho`, `entregarDespacho`, `cancelarDespacho`). El flujo actual mas importante es el de jornadas mediante `jornadaReparto.service.js`. No se debe eliminar nada sin revisar dependencias, pero la documentacion oficial debe priorizar jornadas.
+El flujo heredado de despacho individual fue retirado. `logistica.service.js` queda como adaptador tecnico de planificacion y notificaciones; `jornadaReparto.service.js` gobierna jornadas y `despacho.service.js` gobierna entrega/no entrega asociada a jornadas.
 
 ## Archivos candidatos a revision futura
 
@@ -199,7 +201,7 @@ Estado: implementada para modulos activos outbound.
 ### Fase 6 - Correcciones funcionales
 
 - Agregar transaccion a cancelacion de pedido y avance de jornada si se mantiene como endpoint separado.
-- Agregar restricciones parciales de base para jornadas/despachos/choferes activos.
+- Ejecutar y auditar las restricciones parciales de base en una base aislada antes de aplicarlas a Supabase real.
 - Actualizar variables de entorno de ejemplo.
 
 ## Mejoras que pertenecen al MVP

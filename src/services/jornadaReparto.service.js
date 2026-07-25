@@ -5,6 +5,15 @@ import sequelize from '../config/database.js';
 import { BODEGA_CENTRAL_ID } from '../constants/logistica.js';
 import * as logisticaService from './logistica.service.js';
 import {
+  agregarMinutosOperativos,
+  calcularDuracionOperativaMin,
+  calcularEntregaEstimada,
+  derivarAtrasoJornada,
+  getLogisticTimeConfig,
+  getOperationalDate,
+  resolveInicioEstimado,
+} from '../utils/logisticTime.js';
+import {
   BusinessRuleError,
   ForbiddenError,
   NotFoundError,
@@ -25,6 +34,7 @@ const {
   Despacho,
   Chofer,
   Usuario,
+  DetallePedido,
 } = db;
 
 
@@ -34,6 +44,282 @@ const ESTADOS_JORNADA_ACTIVA = [
   'PLANIFICADA',
   'EN_RUTA',
 ];
+
+const formatearFechaLocal = (
+  fecha = new Date(),
+) => {
+  if (typeof fecha === 'string') {
+    return fecha.slice(0, 10);
+  }
+
+  const valor = fecha instanceof Date
+    ? fecha
+    : new Date(fecha);
+
+  const year = valor.getFullYear();
+  const month = String(
+    valor.getMonth() + 1,
+  ).padStart(2, '0');
+  const day = String(
+    valor.getDate(),
+  ).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const construirWhereJornadaActiva = ({
+  fecha,
+  camionId,
+  choferId,
+  excluirJornadaId,
+}) => {
+  const where = {
+    fecha: formatearFechaLocal(fecha),
+    estado: {
+      [Op.in]: ESTADOS_JORNADA_ACTIVA,
+    },
+  };
+
+  if (camionId !== undefined) {
+    where.camion_id = camionId;
+  }
+
+  if (choferId !== undefined) {
+    where.chofer_id = choferId;
+  }
+
+  if (excluirJornadaId !== undefined) {
+    where.id = {
+      [Op.ne]: excluirJornadaId,
+    };
+  }
+
+  return where;
+};
+
+const construirWhereConflictoRecurso = ({
+  fecha,
+  camionId,
+  choferId,
+  excluirJornadaId,
+}) => {
+  const where = {
+    [Op.or]: [
+      {
+        fecha: formatearFechaLocal(fecha),
+        estado: {
+          [Op.in]: ESTADOS_JORNADA_ACTIVA,
+        },
+      },
+      {
+        estado: 'EN_RUTA',
+      },
+    ],
+  };
+
+  if (camionId !== undefined) {
+    where.camion_id = camionId;
+  }
+
+  if (choferId !== undefined) {
+    where.chofer_id = choferId;
+  }
+
+  if (excluirJornadaId !== undefined) {
+    where.id = {
+      [Op.ne]: excluirJornadaId,
+    };
+  }
+
+  return where;
+};
+
+const validarFechaOperativa = ({
+  fechaSolicitada,
+  now,
+  timezone,
+}) => {
+  const fechaOperativa =
+    getOperationalDate(now, timezone);
+
+  if (
+    fechaSolicitada &&
+    formatearFechaLocal(fechaSolicitada) !==
+      fechaOperativa
+  ) {
+    throw new BusinessRuleError(
+      'La generación solo puede ejecutarse para la fecha operativa actual',
+      'GENERACION_FUERA_DE_FECHA_OPERATIVA',
+    );
+  }
+
+  return fechaOperativa;
+};
+
+const validarInicioEstimadoSolicitado = ({
+  inicioEstimadoEn,
+  fechaOperativa,
+  now,
+  timezone,
+}) => {
+  if (!inicioEstimadoEn) {
+    return;
+  }
+
+  const inicio = new Date(inicioEstimadoEn);
+
+  if (
+    Number.isNaN(inicio.getTime()) ||
+    getOperationalDate(inicio, timezone) !==
+      fechaOperativa ||
+    inicio < now
+  ) {
+    throw new BusinessRuleError(
+      'El inicio estimado debe pertenecer a la fecha operativa actual y no puede estar en el pasado',
+      'INICIO_ESTIMADO_INVALIDO',
+    );
+  }
+};
+
+const calcularEstimacionesPlan = ({
+  plan,
+  inicioEstimadoEn,
+  config,
+}) => {
+  const totalEntregas = Array.isArray(plan.entregas)
+    ? plan.entregas.length
+    : 0;
+  const duracionOperativaMin =
+    calcularDuracionOperativaMin({
+      tiempoViajeMin: plan.tiempo_estimado_min,
+      totalEntregas,
+      tiempoServicioPorEntregaMin:
+        config.tiempoServicioPorEntregaMin,
+      margenOperativoPorcentaje:
+        config.margenOperativoPorcentaje,
+    });
+  const retornoEstimadoEn =
+    agregarMinutosOperativos(
+      inicioEstimadoEn,
+      duracionOperativaMin,
+      config.minutosMaximosOperacionDia,
+      {
+        timezone: config.timezone,
+        horaInicioOperacion:
+          config.horaInicioOperacion,
+      },
+    );
+  const entregasEstimadas = new Map(
+    (plan.entregas || []).map((entrega) => [
+      Number(entrega.pedido_id),
+      calcularEntregaEstimada({
+        inicio: inicioEstimadoEn,
+        tiempoAcumuladoMin:
+          entrega.tiempo_acumulado_min,
+        ordenEntrega: entrega.orden_entrega,
+        tiempoServicioPorEntregaMin:
+          config.tiempoServicioPorEntregaMin,
+        margenOperativoPorcentaje:
+          config.margenOperativoPorcentaje,
+        minutosMaximosOperacionDia:
+          config.minutosMaximosOperacionDia,
+        timezone: config.timezone,
+        horaInicioOperacion:
+          config.horaInicioOperacion,
+      }),
+    ]),
+  );
+
+  return {
+    duracionOperativaMin,
+    retornoEstimadoEn,
+    entregasEstimadas,
+  };
+};
+
+const validarChoferDisponible = (
+  chofer,
+) => {
+  if (
+    !chofer ||
+    !chofer.activo ||
+    chofer.usuario?.rol !== ROLES.CHOFER ||
+    chofer.usuario?.estado === false
+  ) {
+    throw new BusinessRuleError(
+      'El chofer no está disponible para planificación',
+      'CHOFER_NO_DISPONIBLE',
+    );
+  }
+
+  if (
+    licenciaVencida(
+      chofer.fecha_vencimiento_licencia,
+    )
+  ) {
+    throw new BusinessRuleError(
+      'La licencia del chofer está vencida',
+      'CHOFER_NO_DISPONIBLE',
+    );
+  }
+};
+
+const obtenerChoferesDisponibles = async ({
+  fechaOperativa,
+}) => {
+  const jornadasOcupantes =
+    await JornadaReparto.findAll({
+      where: {
+        chofer_id: {
+          [Op.ne]: null,
+        },
+        [Op.or]: [
+          {
+            fecha: fechaOperativa,
+            estado: {
+              [Op.in]: ESTADOS_JORNADA_ACTIVA,
+            },
+          },
+          {
+            estado: 'EN_RUTA',
+          },
+        ],
+      },
+      attributes: ['chofer_id'],
+    });
+  const ocupados = jornadasOcupantes.map(
+    (jornada) => Number(jornada.chofer_id),
+  );
+  const where = {
+    activo: true,
+  };
+
+  if (ocupados.length) {
+    where.id = {
+      [Op.notIn]: ocupados,
+    };
+  }
+
+  const choferes = await Chofer.findAll({
+    where,
+    include: [
+      {
+        model: Usuario,
+        as: 'usuario',
+      },
+    ],
+    order: [['id', 'ASC']],
+  });
+
+  return choferes.filter((chofer) => {
+    try {
+      validarChoferDisponible(chofer);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+};
 
 const obtenerDestinoPedido = (pedido) =>
   Number(pedido.cliente.ubicacion.id);
@@ -285,7 +571,12 @@ const resumirJornadaGenerada = ({
     id: jornada.id,
     codigo: `JR-${String(jornada.id).padStart(5, '0')}`,
     camion_id: jornada.camion_id,
+    chofer_id: jornada.chofer_id,
     fecha: jornada.fecha,
+    inicio_estimado_en:
+      jornada.inicio_estimado_en,
+    retorno_estimado_en:
+      jornada.retorno_estimado_en,
     estado: jornada.estado,
 
     total_despachos: despachos.length,
@@ -319,7 +610,35 @@ const resumirJornadaGenerada = ({
 };
 
 
-export const generarJornadaReparto = async () => {
+export const generarJornadaReparto = async (
+  options = {},
+) => {
+  const config = getLogisticTimeConfig();
+  const now = options.now || new Date();
+  const fechaJornada = validarFechaOperativa({
+    fechaSolicitada: options.fecha,
+    now,
+    timezone: config.timezone,
+  });
+
+  validarInicioEstimadoSolicitado({
+    inicioEstimadoEn: options.inicio_estimado_en,
+    fechaOperativa: fechaJornada,
+    now,
+    timezone: config.timezone,
+  });
+
+  const inicioEstimadoEn =
+    resolveInicioEstimado({
+      fechaOperativa: fechaJornada,
+      now,
+      inicioEstimadoEn:
+        options.inicio_estimado_en,
+      timezone: config.timezone,
+      horaInicioOperacion:
+        config.horaInicioOperacion,
+    });
+
   const pedidos = await Pedido.findAll({
     where: {
       estado: 'LISTO_PARA_DESPACHO',
@@ -329,12 +648,20 @@ export const generarJornadaReparto = async () => {
       {
         model: Cliente,
         as: 'cliente',
+        required: true,
         include: [
           {
             model: Ubicacion,
-          as: 'ubicacion',
+            as: 'ubicacion',
+            required: true,
           },
         ],
+      },
+      {
+        model: DetallePedido,
+        as: 'detalles',
+        required: true,
+        attributes: ['id'],
       },
       {
         model: Despacho,
@@ -357,18 +684,42 @@ export const generarJornadaReparto = async () => {
   if (!pedidos.length) {
     throw new BusinessRuleError(
       'No existen pedidos listos para despacho',
+      'PEDIDOS_NO_DISPONIBLES',
+    );
+  }
+
+  const pedidosElegibles = pedidos.filter(
+    (pedido) =>
+      pedido.cliente?.ubicacion?.latitud !== null &&
+      pedido.cliente?.ubicacion?.latitud !== undefined &&
+      pedido.cliente?.ubicacion?.longitud !== null &&
+      pedido.cliente?.ubicacion?.longitud !== undefined,
+  );
+
+  if (!pedidosElegibles.length) {
+    throw new BusinessRuleError(
+      'No existen pedidos elegibles con ubicación y coordenadas válidas',
+      'PEDIDOS_NO_DISPONIBLES',
     );
   }
 
   /*
    * Un camión EN_BODEGA no necesariamente está disponible:
-   * puede tener una jornada PLANIFICADA.
+   * puede tener una jornada PLANIFICADA en la misma fecha.
    */
   const jornadasActivas = await JornadaReparto.findAll({
     where: {
-      estado: {
-        [Op.in]: ['PLANIFICADA', 'EN_RUTA'],
-      },
+      [Op.or]: [
+        {
+          fecha: fechaJornada,
+          estado: {
+            [Op.in]: ESTADOS_JORNADA_ACTIVA,
+          },
+        },
+        {
+          estado: 'EN_RUTA',
+        },
+      ],
     },
     attributes: ['camion_id'],
   });
@@ -401,8 +752,26 @@ export const generarJornadaReparto = async () => {
   if (!camiones.length) {
     throw new BusinessRuleError(
       'No existen camiones disponibles con capacidad válida',
+      'CAMIONES_NO_DISPONIBLES',
     );
   }
+
+  const choferesDisponibles =
+    await obtenerChoferesDisponibles({
+      fechaOperativa: fechaJornada,
+    });
+
+  if (!choferesDisponibles.length) {
+    throw new BusinessRuleError(
+      'No existen choferes disponibles para generar jornadas',
+      'CHOFERES_NO_DISPONIBLES',
+    );
+  }
+
+  const camionesSeleccionados = camiones.slice(
+    0,
+    choferesDisponibles.length,
+  );
 
   const bodega = await Ubicacion.findByPk(
     BODEGA_CENTRAL_ID,
@@ -441,8 +810,8 @@ export const generarJornadaReparto = async () => {
    */
   const resultado =
     await logisticaService.generarPlanJornada({
-      pedidos,
-      camiones,
+      pedidos: pedidosElegibles,
+      camiones: camionesSeleccionados,
       bodega,
       rutas,
     });
@@ -472,6 +841,18 @@ export const generarJornadaReparto = async () => {
 
   await sequelize.transaction(
     async (transaction) => {
+      if (
+        getOperationalDate(
+          new Date(),
+          config.timezone,
+        ) !== fechaJornada
+      ) {
+        throw new BusinessRuleError(
+          'La fecha operativa cambió durante la generación de jornadas',
+          'GENERACION_FUERA_DE_FECHA_OPERATIVA',
+        );
+      }
+
       const pedidosProcesados = new Set();
       const camionesProcesados = new Set();
 
@@ -486,10 +867,21 @@ export const generarJornadaReparto = async () => {
         }
 
         const camionId = Number(plan.camion_id);
+        const choferAsignado =
+          choferesDisponibles[
+            camionesProcesados.size
+          ];
 
         if (camionesProcesados.has(camionId)) {
           throw new BusinessRuleError(
             `El camión ${camionId} fue asignado a más de una jornada`,
+          );
+        }
+
+        if (!choferAsignado) {
+          throw new BusinessRuleError(
+            'No existen choferes suficientes para persistir todas las jornadas planificadas',
+            'CHOFERES_NO_DISPONIBLES',
           );
         }
 
@@ -498,11 +890,15 @@ export const generarJornadaReparto = async () => {
         /*
        * Evita que Python asigne accidentalmente
        * el mismo pedido a dos jornadas.
-       */
+        */
         const pedidoIdsPlan = [];
+        const ordenesPlan = new Set();
 
         for (const entrega of plan.entregas) {
           const pedidoId = Number(entrega.pedido_id);
+          const ordenEntrega = Number(
+            entrega.orden_entrega,
+          );
 
           if (pedidosProcesados.has(pedidoId)) {
             throw new BusinessRuleError(
@@ -510,7 +906,15 @@ export const generarJornadaReparto = async () => {
             );
           }
 
+          if (ordenesPlan.has(ordenEntrega)) {
+            throw new BusinessRuleError(
+              `La jornada del camión ${camionId} contiene órdenes de entrega duplicados`,
+              'ORDEN_ENTREGA_DUPLICADO',
+            );
+          }
+
           pedidosProcesados.add(pedidoId);
+          ordenesPlan.add(ordenEntrega);
           pedidoIdsPlan.push(pedidoId);
         }
 
@@ -570,29 +974,70 @@ export const generarJornadaReparto = async () => {
 
         const jornadaActivaCamion =
         await JornadaReparto.findOne({
-          where: {
-            camion_id: camionId,
-            estado: {
-              [Op.in]: [
-                'PLANIFICADA',
-                'EN_RUTA',
-              ],
-            },
-          },
+          where: construirWhereConflictoRecurso({
+            fecha: fechaJornada,
+            camionId,
+          }),
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
 
         if (jornadaActivaCamion) {
           throw new BusinessRuleError(
-            `El camión ${camionId} ya posee una jornada activa`,
+            `El camión ${camionId} ya posee una jornada activa para la fecha ${fechaJornada}`,
+            'CAMION_NO_DISPONIBLE',
           );
         }
+
+        const chofer = await Chofer.findByPk(
+          choferAsignado.id,
+          {
+            include: [
+              {
+                model: Usuario,
+                as: 'usuario',
+              },
+            ],
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          },
+        );
+
+        validarChoferDisponible(chofer);
+
+        const jornadaActivaChofer =
+          await JornadaReparto.findOne({
+            where: construirWhereConflictoRecurso({
+              fecha: fechaJornada,
+              choferId: chofer.id,
+            }),
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          });
+
+        if (jornadaActivaChofer) {
+          throw new BusinessRuleError(
+            `El chofer ${chofer.id} ya posee una jornada activa o en ruta`,
+            'CHOFER_NO_DISPONIBLE',
+          );
+        }
+
+        const estimaciones =
+          calcularEstimacionesPlan({
+            plan,
+            inicioEstimadoEn,
+            config,
+          });
 
         const jornada = await JornadaReparto.create(
           {
             camion_id: plan.camion_id,
-            fecha: new Date(),
+            chofer_id: chofer.id,
+            fecha: fechaJornada,
+            inicio_estimado_en:
+              inicioEstimadoEn,
+            retorno_estimado_en:
+              estimaciones.retornoEstimadoEn,
             estado: 'PLANIFICADA',
             posicion_actual_orden: 0,
             ruta_json: plan.ruta_general,
@@ -630,8 +1075,11 @@ export const generarJornadaReparto = async () => {
               tiempo_estimado:
               entrega.tiempo_acumulado_min,
               fecha_estimada_entrega:
-              entrega.fecha_estimada_entrega ||
-              null,
+                estimaciones.entregasEstimadas.get(
+                  pedidoId,
+                ) ||
+                entrega.fecha_estimada_entrega ||
+                null,
             },
             {
               transaction,
@@ -698,6 +1146,8 @@ export const iniciarJornada = async (
   id,
   user,
 ) => {
+  const config = getLogisticTimeConfig();
+
   const jornadaId = await sequelize.transaction(
     async (transaction) => {
       const jornada = await JornadaReparto.findByPk(id, {
@@ -715,6 +1165,9 @@ export const iniciarJornada = async (
       if (jornada.estado !== 'PLANIFICADA') {
         throw new BusinessRuleError(
           'Solo se puede iniciar una jornada en estado PLANIFICADA',
+          jornada.estado === 'EN_RUTA'
+            ? 'JORNADA_YA_INICIADA'
+            : 'JORNADA_ESTADO_INVALIDO_INICIO',
         );
       }
 
@@ -779,30 +1232,44 @@ export const iniciarJornada = async (
 
       const jornadaActivaChofer =
         await JornadaReparto.findOne({
-          where: {
-            id: {
-              [Op.ne]: jornada.id,
-            },
-            chofer_id: chofer.id,
-            estado: {
-              [Op.in]: ESTADOS_JORNADA_ACTIVA,
-            },
-          },
+          where: construirWhereConflictoRecurso({
+            fecha: jornada.fecha,
+            excluirJornadaId: jornada.id,
+            choferId: chofer.id,
+          }),
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
 
       if (jornadaActivaChofer) {
         throw new BusinessRuleError(
-          'El chofer ya posee otra jornada activa',
-          'CHOFER_CON_JORNADA_ACTIVA',
+          'El chofer ya posee otra jornada activa en la misma fecha',
+          'CHOFER_NO_DISPONIBLE',
+        );
+      }
+
+      const jornadaActivaCamion =
+        await JornadaReparto.findOne({
+          where: construirWhereConflictoRecurso({
+            fecha: jornada.fecha,
+            excluirJornadaId: jornada.id,
+            camionId: jornada.camion_id,
+          }),
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+
+      if (jornadaActivaCamion) {
+        throw new BusinessRuleError(
+          'El camión ya posee otra jornada activa en la misma fecha',
+          'CAMION_NO_DISPONIBLE',
         );
       }
 
       if (!jornada.carga_confirmada_en) {
         throw new BusinessRuleError(
           'La jornada requiere carga confirmada antes de iniciar',
-          'JORNADA_CARGA_NO_CONFIRMADA',
+          'JORNADA_SIN_CARGA_CONFIRMADA',
         );
       }
 
@@ -878,11 +1345,32 @@ export const iniciarJornada = async (
 
       const primerOrden = Math.min(...ordenes);
       const fechaSalida = new Date();
+      const estimacionesInicio =
+        calcularEstimacionesPlan({
+          plan: {
+            tiempo_estimado_min:
+              jornada.tiempo_estimado,
+            entregas: despachos.map(
+              (despacho) => ({
+                pedido_id: despacho.pedido_id,
+                orden_entrega:
+                  despacho.orden_entrega,
+                tiempo_acumulado_min:
+                  despacho.tiempo_estimado,
+              }),
+            ),
+          },
+          inicioEstimadoEn: fechaSalida,
+          config,
+        });
 
       await jornada.update(
         {
           estado: 'EN_RUTA',
           fecha_salida: fechaSalida,
+          retorno_estimado_en:
+            estimacionesInicio
+              .retornoEstimadoEn,
           posicion_actual_orden: primerOrden,
         },
         {
@@ -921,6 +1409,25 @@ export const iniciarJornada = async (
         throw new BusinessRuleError(
           'No fue posible iniciar todos los despachos de la jornada',
         );
+      }
+
+      for (const despacho of despachos) {
+        const fechaEstimadaEntrega =
+          estimacionesInicio
+            .entregasEstimadas
+            .get(Number(despacho.pedido_id));
+
+        if (fechaEstimadaEntrega) {
+          await despacho.update(
+            {
+              fecha_estimada_entrega:
+                fechaEstimadaEntrega,
+            },
+            {
+              transaction,
+            },
+          );
+        }
       }
 
       const pedidoIds = despachos.map(
@@ -1184,24 +1691,19 @@ export const asignarChofer = async (
 
       const jornadaActiva =
         await JornadaReparto.findOne({
-          where: {
-            id: {
-              [Op.ne]: jornada.id,
-            },
-            chofer_id: chofer.id,
-            estado: {
-              [Op.in]:
-                ESTADOS_JORNADA_ACTIVA,
-            },
-          },
+          where: construirWhereConflictoRecurso({
+            fecha: jornada.fecha,
+            excluirJornadaId: jornada.id,
+            choferId: chofer.id,
+          }),
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
 
       if (jornadaActiva) {
         throw new BusinessRuleError(
-          'El chofer ya tiene una jornada activa',
-          'CHOFER_CON_JORNADA_ACTIVA',
+          'El chofer ya tiene una jornada activa en la misma fecha',
+          'CHOFER_NO_DISPONIBLE',
         );
       }
 
@@ -1482,6 +1984,8 @@ export const obtenerJornadas = async (user) => {
       'chofer_id',
       'carga_confirmada_en',
       'fecha',
+      'inicio_estimado_en',
+      'retorno_estimado_en',
       'fecha_salida',
       'fecha_finalizacion',
       'estado',
@@ -1556,6 +2060,9 @@ export const obtenerJornadas = async (user) => {
   return jornadas.map((jornada) => {
     const plain = jornada.toJSON();
     const despachos = plain.despachos || [];
+    const atraso = derivarAtrasoJornada(
+      plain,
+    );
 
     const totalEntregados = despachos.filter(
       (despacho) =>
@@ -1586,9 +2093,16 @@ export const obtenerJornadas = async (user) => {
       id: plain.id,
       codigo: `JR-${String(plain.id).padStart(5, '0')}`,
       fecha: plain.fecha,
+      inicio_estimado_en:
+        plain.inicio_estimado_en,
+      retorno_estimado_en:
+        plain.retorno_estimado_en,
       fecha_salida: plain.fecha_salida,
       fecha_finalizacion:
         plain.fecha_finalizacion,
+      atrasada: atraso.atrasada,
+      minutos_retraso:
+        atraso.minutos_retraso,
       estado: plain.estado,
       posicion_actual_orden:
         plain.posicion_actual_orden,
@@ -1705,6 +2219,7 @@ export const obtenerJornadaPorId = async (
   return {
     ...jornadaJson,
     codigo: `JR-${String(jornada.id).padStart(5, '0')}`,
+    ...derivarAtrasoJornada(jornadaJson),
     mapa: construirMapaJornada(jornada),
   };
 };
@@ -1889,6 +2404,7 @@ export const recalcularJornada = async (id) => {
   );
 
   const destinosActuales = new Map();
+  const ordenesUsadas = new Set();
 
   for (const despacho of jornada.despachos) {
     const pedido = despacho.pedido;
@@ -1906,10 +2422,18 @@ export const recalcularJornada = async (id) => {
     const destinoId = obtenerDestinoPedido(
       pedido,
     );
+    const ordenEntrega = Number(
+      despacho.orden_entrega,
+    );
+
+    if (Number.isFinite(ordenEntrega)) {
+      ordenesUsadas.add(ordenEntrega);
+    }
 
     /*
      * Guardamos un despacho como referencia del punto.
-     * Todos los pedidos del mismo destino comparten orden.
+     * La fase de integridad impide compartir orden dentro
+     * de la misma jornada; se valida antes de persistir.
      */
     if (!destinosActuales.has(destinoId)) {
       destinosActuales.set(
@@ -1957,6 +2481,21 @@ export const recalcularJornada = async (id) => {
       destinosActuales.get(destinoId);
 
     if (despachoReferencia) {
+      const ordenReferencia = Number(
+        despachoReferencia.orden_entrega,
+      );
+
+      if (
+        !Number.isInteger(ordenReferencia) ||
+        ordenReferencia <= 0 ||
+        ordenesUsadas.has(ordenReferencia)
+      ) {
+        throw new BusinessRuleError(
+          'La recalculación produciría un orden de entrega duplicado',
+          'ORDEN_ENTREGA_DUPLICADO',
+        );
+      }
+
       /*
        * Caso A:
        * El camión ya pasa por esa ubicación.
@@ -1965,6 +2504,7 @@ export const recalcularJornada = async (id) => {
         pedido,
         despachoReferencia,
       });
+      ordenesUsadas.add(ordenReferencia);
     } else {
       /*
        * Caso B:
@@ -2239,6 +2779,27 @@ export const recalcularJornada = async (id) => {
     };
   }
 
+  const config = getLogisticTimeConfig();
+  const inicioBaseEstimacion =
+    jornada.inicio_estimado_en
+      ? new Date(jornada.inicio_estimado_en)
+      : resolveInicioEstimado({
+        fechaOperativa: jornada.fecha,
+        now: new Date(),
+        timezone: config.timezone,
+        horaInicioOperacion:
+          config.horaInicioOperacion,
+      });
+  const estimacionesRecalculo =
+    resultadoPlanificado
+      ? calcularEstimacionesPlan({
+        plan: resultadoPlanificado,
+        inicioEstimadoEn:
+          inicioBaseEstimacion,
+        config,
+      })
+      : null;
+
   /*
    * =====================================================
    * 10. Persistencia atómica
@@ -2269,6 +2830,11 @@ export const recalcularJornada = async (id) => {
           ruta_json: resultadoPlanificado.ruta_general,
           distancia_total: resultadoPlanificado.distancia_total_km,
           tiempo_estimado: resultadoPlanificado.tiempo_estimado_min,
+          inicio_estimado_en:
+            inicioBaseEstimacion,
+          retorno_estimado_en:
+            estimacionesRecalculo
+              .retornoEstimadoEn,
           posicion_actual_orden: 0,
         },
         {
@@ -2320,7 +2886,12 @@ export const recalcularJornada = async (id) => {
             ruta_json: entrega.ruta_parcial,
             distancia_total: entrega.distancia_acumulada_km,
             tiempo_estimado: entrega.tiempo_acumulado_min,
-            fecha_estimada_entrega: entrega.fecha_estimada_entrega || null,
+            fecha_estimada_entrega:
+              estimacionesRecalculo
+                .entregasEstimadas
+                .get(pedidoId) ||
+              entrega.fecha_estimada_entrega ||
+              null,
           },
           {
             transaction,
@@ -2434,6 +3005,31 @@ export const recalcularJornada = async (id) => {
       await jornada.update(
         {
           ruta_json: rutaJson,
+          inicio_estimado_en:
+            inicioBaseEstimacion,
+          retorno_estimado_en:
+            agregarMinutosOperativos(
+              inicioBaseEstimacion,
+              calcularDuracionOperativaMin({
+                tiempoViajeMin:
+                  jornada.tiempo_estimado,
+                totalEntregas:
+                  jornada.despachos.length +
+                  incorporadosDirectos.length,
+                tiempoServicioPorEntregaMin:
+                  config
+                    .tiempoServicioPorEntregaMin,
+                margenOperativoPorcentaje:
+                  config
+                    .margenOperativoPorcentaje,
+              }),
+              config.minutosMaximosOperacionDia,
+              {
+                timezone: config.timezone,
+                horaInicioOperacion:
+                  config.horaInicioOperacion,
+              },
+            ),
         },
         {
           transaction,

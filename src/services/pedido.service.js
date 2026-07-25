@@ -222,7 +222,7 @@ export const crear = async (
     usuario_id: usuarioId,
     creado_por_usuario_id: usuarioId,
     fecha: datos.fecha || new Date(),
-    fecha_entrega: datos.fecha_entrega ?? null,
+    fecha_entrega: null,
     estado: 'PENDIENTE',
     total: 0,
   });
@@ -523,53 +523,6 @@ export const pedidoTieneDetalles = async (pedidoId) => {
     });
 
   return cantidad > 0;
-};
-
-export const sincronizarEstadoConDespacho = async (
-  pedidoId,
-  evento,
-) => {
-  const pedido = await Pedido.findByPk(
-    pedidoId,
-  );
-
-  if (!pedido) {
-    throw new NotFoundError(
-      'Pedido no encontrado',
-      'PEDIDO_NO_ENCONTRADO',
-    );
-  }
-
-  let nuevoEstado;
-
-  switch (evento) {
-  case 'DESPACHO_CREADO':
-    nuevoEstado = 'DESPACHADO';
-    break;
-
-  case 'DESPACHO_ENTREGADO':
-    nuevoEstado = 'ENTREGADO';
-    break;
-
-  case 'DESPACHO_CANCELADO':
-    nuevoEstado =
-        'LISTO_PARA_DESPACHO';
-    break;
-
-  default:
-    throw new BusinessRuleError(
-      'Evento de despacho no válido',
-      'EVENTO_DESPACHO_INVALIDO',
-    );
-  }
-
-  await pedido.update({
-    estado: nuevoEstado,
-  });
-
-  return await obtenerPorId(
-    pedidoId,
-  );
 };
 
 export const obtenerPedidosDisponibles = async () => {

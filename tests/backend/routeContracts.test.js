@@ -153,11 +153,8 @@ test('rutas Express activas conservan método, URL y orden observable', async ()
     [['get'], '/'],
     [['get'], '/pedidos-disponibles'],
     [['get'], '/:id'],
-    [['post'], '/'],
-    [['patch'], '/:id/iniciar'],
     [['patch'], '/:id/entregar'],
     [['patch'], '/:id/no-entregado'],
-    [['patch'], '/:id/cancelar'],
   ]);
 
   assert.deepEqual(actual.camiones.map((route) => [route.methods, route.path]), [

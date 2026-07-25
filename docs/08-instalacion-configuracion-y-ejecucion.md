@@ -32,6 +32,18 @@ No se deben documentar ni copiar secretos reales. El archivo `.env` local no deb
 
 Limitacion conocida: `.env.example` conserva variables heredadas de MySQL (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) y no representa por completo la configuracion PostgreSQL/Supabase activa.
 
+Variables backend de temporalidad logistica del MVP:
+
+```env
+APP_TIMEZONE=America/Guayaquil
+HORA_INICIO_OPERACION=08:00
+TIEMPO_SERVICIO_POR_ENTREGA_MIN=10
+MARGEN_OPERATIVO_PORCENTAJE=15
+MINUTOS_MAXIMOS_OPERACION_DIA=600
+```
+
+Estos valores son parametros tecnicos de simulacion: definen la fecha operativa local, el inicio estimado por defecto, el tiempo de servicio por entrega, el margen y el maximo de minutos operativos por dia. No representan reglas laborales ni legales.
+
 ## Variables de entorno frontend
 
 ```env
@@ -126,7 +138,7 @@ npm run db:seed:undo
 
 Tambien existen scripts de reset demo. Deben usarse con cuidado porque modifican la base de datos.
 
-Las migraciones creadas para rol `CHOFER`, tabla `choferes`, trazabilidad, preparacion, carga y asignacion de chofer no fueron ejecutadas contra una base real durante la implementacion. Tras revisar los cambios, el comando operativo seria:
+Las migraciones creadas para rol `CHOFER`, tabla `choferes`, trazabilidad, preparacion, carga, asignacion de chofer, restricciones logisticas y estimaciones temporales no fueron ejecutadas contra una base real durante la implementacion. Tras revisar los cambios, el comando operativo seria:
 
 ```bash
 npm run db:migrate
@@ -211,7 +223,7 @@ Limitaciones:
 - No se prueba frontend con renderizado React.
 - Algunos riesgos se caracterizan con mocks para demostrar efectos parciales actuales sin corregirlos todavia.
 - Las pruebas de Node importan modulos que cargan `dotenv`; esto no implica conexion a la base ni envio de datos.
-- La linea base posterior a Fase 4 es 35 pruebas backend, 24 pruebas Python y 1 prueba frontend.
+- La linea base actual es 67 pruebas backend, 24 pruebas Python y 1 prueba frontend.
 
 ## Benchmark logistico Python
 

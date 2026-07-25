@@ -16,6 +16,8 @@ Las migraciones de seguridad/logistica agregadas en la fase integral estan cread
 - `20260724000200-add-pedido-ownership-traceability.js`: agrega propiedad y trazabilidad de preparacion en `pedidos`.
 - `20260724000300-add-detalle-preparacion.js`: agrega cantidades preparadas, trazabilidad y check en `detalle_pedido`.
 - `20260724000400-add-carga-and-chofer-to-jornadas.js`: agrega carga de despachos, confirmacion de carga y `chofer_id`.
+- `20260724000500-add-logistic-integrity-constraints.js`: agrega indices unicos parciales para despacho activo por pedido, jornada activa por camion/chofer en la misma fecha, ocupacion global `EN_RUTA`, orden unico y pedido unico por jornada.
+- `20260724000600-add-logistic-temporal-estimates.js`: agrega `inicio_estimado_en` y `retorno_estimado_en` a jornadas y cambia `pedidos.fecha_entrega` a `DATE` para representar el momento real de entrega.
 
 No se usa `sequelize.sync` en el arranque del servidor; `server.js` autentica la conexion con `sequelize.authenticate()`.
 
@@ -128,6 +130,11 @@ Los aliases pertenecen al mapeo ORM y no cambian tablas, columnas ni claves fora
 - Distancias: `DECIMAL(10,2)`.
 - Tiempos: enteros en minutos.
 - Fechas: `DATE` o `DATEONLY` segun el uso.
+- `JornadaReparto.fecha`: `DATEONLY`, fecha operativa planificada de salida.
+- `JornadaReparto.inicio_estimado_en` y `retorno_estimado_en`: `DATE`, estimaciones.
+- `JornadaReparto.fecha_salida` y `fecha_finalizacion`: `DATE`, eventos reales.
+- `Despacho.fecha_estimada_entrega`: `DATE`, estimacion del intento.
+- `Despacho.fecha_entrega` y `Pedido.fecha_entrega`: `DATE`, entrega real.
 - `ruta_json`: JSONB en jornadas y despachos.
 
 ## JSONB
@@ -202,15 +209,69 @@ Los aliases pertenecen al mapeo ORM y no cambian tablas, columnas ni claves fora
 - `despachos`: indice compuesto por `jornada_reparto_id` y `cargado`.
 - `choferes`: unique por `usuario_id` y `numero_licencia`.
 - `detalle_pedido`: check `0 <= cantidad_preparada <= cantidad`.
+
+Los indices parciales de integridad logistica no se ejecutaron contra una base real. La migracion valida duplicados antes de crear indices y falla con una consulta de diagnostico si detecta conflictos; no borra ni actualiza datos operativos automaticamente.
+
+Consultas de diagnostico previas:
+
+```sql
+SELECT pedido_id
+FROM despachos
+WHERE estado IN ('PENDIENTE', 'EN_TRANSITO')
+GROUP BY pedido_id
+HAVING COUNT(*) > 1;
+
+SELECT camion_id, fecha
+FROM jornadas_reparto
+WHERE estado IN ('PLANIFICADA', 'EN_RUTA')
+  AND camion_id IS NOT NULL
+GROUP BY camion_id, fecha
+HAVING COUNT(*) > 1;
+
+SELECT chofer_id, fecha
+FROM jornadas_reparto
+WHERE estado IN ('PLANIFICADA', 'EN_RUTA')
+  AND chofer_id IS NOT NULL
+GROUP BY chofer_id, fecha
+HAVING COUNT(*) > 1;
+
+SELECT camion_id
+FROM jornadas_reparto
+WHERE estado = 'EN_RUTA'
+  AND camion_id IS NOT NULL
+GROUP BY camion_id
+HAVING COUNT(*) > 1;
+
+SELECT chofer_id
+FROM jornadas_reparto
+WHERE estado = 'EN_RUTA'
+  AND chofer_id IS NOT NULL
+GROUP BY chofer_id
+HAVING COUNT(*) > 1;
+
+SELECT jornada_reparto_id, orden_entrega
+FROM despachos
+WHERE jornada_reparto_id IS NOT NULL
+GROUP BY jornada_reparto_id, orden_entrega
+HAVING COUNT(*) > 1;
+
+SELECT jornada_reparto_id, pedido_id
+FROM despachos
+WHERE jornada_reparto_id IS NOT NULL
+GROUP BY jornada_reparto_id, pedido_id
+HAVING COUNT(*) > 1;
+```
+
+La correccion manual recomendada es revisar cada grupo, cerrar o cancelar operaciones activas inconsistentes segun evidencia operativa, y ejecutar la migracion solo cuando las consultas no devuelvan filas.
 - Checks para capacidad positiva, distancias positivas/no negativas, stock no negativo, precios coherentes y coordenadas validas.
 
 ## Dependencia de la bodega central
 
-El backend usa `BODEGA_CENTRAL_ID = 1`. La base debe contener una ubicacion con ese ID y coordenadas completas. Si cambia el seed o se reconstruye la base, esta dependencia debe verificarse.
+El backend usa `BODEGA_CENTRAL_ID = 1`. No existe todavia un campo estable de tipo codigo, slug o tipo de ubicacion que permita reemplazarlo sin migracion adicional. La siguiente fase de base de datos deberia agregar un identificador estable para la bodega central y actualizar seeders sin romper el ID actual.
 
 ## Riesgos actuales
 
-- No existe restriccion unica para impedir por base de datos dos jornadas activas del mismo camion.
+- La restriccion parcial propuesta impide dos jornadas activas del mismo camion o chofer en la misma fecha y dos jornadas `EN_RUTA` del mismo recurso aunque sean de fechas distintas.
 - No existe restriccion parcial para impedir multiples despachos activos por pedido.
 - Algunas reglas de consistencia viven solo en servicios.
 - El `ruta_json` puede desactualizarse si se modifican ubicaciones despues de generar jornadas.

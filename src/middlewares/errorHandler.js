@@ -13,6 +13,37 @@ const isSequelizeError = (err, name) =>
   err?.name === name ||
   err?.constructor?.name === name;
 
+const logisticUniqueConstraints = {
+  despachos_pedido_activo_unique: [
+    'El pedido ya posee un despacho activo',
+    'PEDIDO_YA_ASIGNADO',
+  ],
+  jornadas_reparto_camion_activo_unique: [
+    'El camión ya posee una jornada activa',
+    'CAMION_NO_DISPONIBLE',
+  ],
+  jornadas_reparto_chofer_activo_unique: [
+    'El chofer ya posee una jornada activa',
+    'CHOFER_NO_DISPONIBLE',
+  ],
+  jornadas_reparto_camion_en_ruta_unique: [
+    'El camión ya posee una jornada en ruta',
+    'CAMION_NO_DISPONIBLE',
+  ],
+  jornadas_reparto_chofer_en_ruta_unique: [
+    'El chofer ya posee una jornada en ruta',
+    'CHOFER_NO_DISPONIBLE',
+  ],
+  despachos_jornada_orden_unique: [
+    'La jornada ya posee un despacho con ese orden de entrega',
+    'ORDEN_ENTREGA_DUPLICADO',
+  ],
+  despachos_jornada_pedido_unique: [
+    'El pedido ya está asignado a esta jornada',
+    'PEDIDO_YA_ASIGNADO',
+  ],
+};
+
 const normalizeSequelizeError = (err) => {
   if (
     isSequelizeError(
@@ -33,6 +64,21 @@ const normalizeSequelizeError = (err) => {
       'SequelizeUniqueConstraintError',
     )
   ) {
+    const constraint =
+      err.parent?.constraint ??
+      err.original?.constraint ??
+      err.constraint;
+
+    const mapped =
+      logisticUniqueConstraints[constraint];
+
+    if (mapped) {
+      return new ConflictError(
+        mapped[0],
+        mapped[1],
+      );
+    }
+
     return new ConflictError(
       err.errors?.[0]?.message ??
         'El registro ya existe',
@@ -82,6 +128,7 @@ const errorHandler = (err, req, res, next) => {
     return res.status(error.statusCode).json({
       success: false,
       message: error.message,
+      code: error.code,
     });
   }
 

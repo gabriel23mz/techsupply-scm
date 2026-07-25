@@ -518,17 +518,6 @@ export const validarActualizarDetallePedido = validate([
   },
 ]);
 
-export const validarCrearDespacho = validate([
-  (req) => {
-    if (!isPositiveInteger(req.body.pedido_id)) {
-      throw new ValidationError(
-        'pedido_id es obligatorio',
-        'PEDIDO_ID_OBLIGATORIO',
-      );
-    }
-  },
-]);
-
 export const validarActualizarPreparacionDetalle = validate([
   (req) => {
     const cantidad = Number(

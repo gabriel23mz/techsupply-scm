@@ -1,5 +1,5 @@
 import * as despachoService from '../services/despacho.service.js';
-import * as logisticaService from '../services/logistica.service.js';
+import * as pedidoService from '../services/pedido.service.js';
 
 import {
   successResponse,
@@ -40,73 +40,12 @@ export const obtenerPorId = asyncHandler(
 export const obtenerPedidosDisponibles = asyncHandler(
   async (req, res) => {
     const pedidos =
-      await logisticaService.obtenerPedidosDisponibles();
+      await pedidoService.obtenerPedidosDisponibles();
 
     return successResponse(
       res,
       pedidos,
       'Pedidos disponibles para despacho obtenidos correctamente',
-    );
-  },
-);
-
-export const crear = asyncHandler(
-  async (req, res) => {
-    const despacho =
-      await logisticaService.crearDespacho(
-        req.body.pedido_id,
-      );
-
-    return successResponse(
-      res,
-      despacho,
-      'Despacho creado correctamente',
-      201,
-    );
-  },
-);
-
-export const iniciar = asyncHandler(
-  async (req, res) => {
-    const despacho =
-      await logisticaService.iniciarDespacho(
-        req.params.id,
-      );
-
-    return successResponse(
-      res,
-      despacho,
-      'Despacho iniciado correctamente',
-    );
-  },
-);
-
-export const entregar = asyncHandler(
-  async (req, res) => {
-    const despacho =
-      await logisticaService.entregarDespacho(
-        req.params.id,
-      );
-
-    return successResponse(
-      res,
-      despacho,
-      'Despacho entregado correctamente',
-    );
-  },
-);
-
-export const cancelar = asyncHandler(
-  async (req, res) => {
-    const despacho =
-      await logisticaService.cancelarDespacho(
-        req.params.id,
-      );
-
-    return successResponse(
-      res,
-      despacho,
-      'Despacho cancelado correctamente',
     );
   },
 );

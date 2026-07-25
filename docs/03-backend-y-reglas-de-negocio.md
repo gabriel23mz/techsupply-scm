@@ -135,14 +135,21 @@ La generacion de jornadas:
 
 - Toma pedidos `LISTO_PARA_DESPACHO`.
 - Excluye pedidos con despacho activo.
+- Usa la fecha operativa actual calculada con `APP_TIMEZONE`.
+- Rechaza fechas pasadas o futuras con `GENERACION_FUERA_DE_FECHA_OPERATIVA`.
 - Busca camiones `EN_BODEGA` con capacidad positiva.
-- Excluye camiones con jornadas `PLANIFICADA` o `EN_RUTA`.
+- Excluye camiones con jornada `PLANIFICADA` o `EN_RUTA` en la fecha operativa y cualquier camion con jornada `EN_RUTA` global.
+- Busca choferes activos, con usuario `CHOFER`, usuario activo y licencia vigente.
+- Excluye choferes con jornada `PLANIFICADA` o `EN_RUTA` en la fecha operativa y cualquier chofer con jornada `EN_RUTA` global.
+- Limita los camiones enviados a Python a la cantidad de choferes disponibles.
+- Asigna un chofer deterministico por jornada creada.
 - Usa la bodega central `BODEGA_CENTRAL_ID = 1`.
 - Envia pedidos, camiones, bodega y rutas activas a Python.
 - Persiste jornadas y despachos en una transaccion administrada.
 - No cambia pedidos asignados a `DESPACHADO` durante la planificacion.
-- Despues de la respuesta de Python, vuelve a bloquear y validar pedidos, camiones, jornadas activas y despachos activos antes de persistir.
+- Despues de la respuesta de Python, vuelve a bloquear y validar pedidos, camiones, choferes, jornadas activas de la misma fecha, jornadas `EN_RUTA` globales y despachos activos antes de persistir.
 - Python se invoca antes de abrir la transaccion. n8n se invoca despues del commit.
+- Registra `inicio_estimado_en`, `retorno_estimado_en` y `fecha_estimada_entrega` por despacho cuando los tiempos acumulados de Python lo permiten.
 
 El inicio de jornada:
 
@@ -153,6 +160,8 @@ El inicio de jornada:
 - Solo puede iniciarla el chofer asignado o `ADMIN`.
 - Requiere despachos `PENDIENTE`.
 - Cambia jornada y camion a `EN_RUTA`.
+- Registra `fecha_salida` como inicio real con un unico timestamp.
+- Reestima retorno y entregas pendientes desde el inicio real sin cambiar fechas reales.
 - Cambia despachos a `EN_TRANSITO`.
 - Cambia pedidos asociados a `DESPACHADO`.
 - Define `posicion_actual_orden` con el primer orden.
@@ -170,6 +179,7 @@ La finalizacion:
 - Requiere que todos los despachos esten en estado terminal.
 - Cambia jornada a `FINALIZADA`.
 - Libera camion a `EN_BODEGA`.
+- Registra `fecha_finalizacion` como retorno real y conserva `retorno_estimado_en`.
 - Reprograma pedidos `NO_ENTREGADO` cuando corresponde.
 
 ## Reglas de despachos
@@ -185,6 +195,8 @@ Para entregar o marcar como no entregado:
 - El `orden_entrega` debe coincidir con `posicion_actual_orden`.
 - Despacho, pedido y jornada se bloquean y actualizan dentro de una misma transaccion.
 - Cuando todos los despachos del punto actual quedan cerrados, la jornada avanza al siguiente `orden_entrega` pendiente si existe.
+- Al entregar, `Despacho.fecha_entrega` y `Pedido.fecha_entrega` reciben el mismo instante real.
+- Al marcar no entregado, no se asigna fecha real de entrega y se conserva la estimacion historica del intento.
 
 Si falla la actualizacion del pedido o de la jornada, el despacho no queda entregado ni marcado como no entregado.
 
@@ -198,7 +210,7 @@ Si falla la actualizacion del pedido o de la jornada, el despacho no queda entre
 | `chofer.service.js` | CRUD de choferes, disponibilidad y jornadas propias |
 | `jornadaReparto.service.js` | Generacion, inicio, avance, recalculo, finalizacion y mapas de jornadas |
 | `despacho.service.js` | Consulta, enriquecimiento y operacion de despachos |
-| `logistica.service.js` | Adaptador de planificacion y notificaciones; conserva flujo heredado de despacho individual |
+| `logistica.service.js` | Adaptador tecnico de planificacion: payload Python y notificaciones post-commit |
 | `python.service.js` | Cliente HTTP hacia FastAPI |
 | `n8n.service.js` | Stub de eventos logisticos |
 
@@ -277,10 +289,25 @@ Se usan transacciones administradas y bloqueos de fila en:
 - Avanzar jornada.
 - Restricciones parciales de base para jornadas/despachos activos.
 
-Riesgo pendiente: no existen restricciones de base de datos que impidan de forma definitiva dos jornadas activas para un mismo camion o dos despachos activos para un mismo pedido. La fase transaccional agrega bloqueos y revalidaciones de servicio, pero una restriccion parcial futura en PostgreSQL seria la proteccion mas fuerte.
+## Integridad PostgreSQL
+
+La fase de cierre agrega una migracion no ejecutada con indices unicos parciales para reforzar invariantes que ya validan los servicios:
+
+- Un despacho activo por pedido: `despachos_pedido_activo_unique` para estados `PENDIENTE` y `EN_TRANSITO`.
+- Una jornada activa por camion y fecha: `jornadas_reparto_camion_activo_unique` para `PLANIFICADA` y `EN_RUTA`.
+- Una jornada activa por chofer y fecha: `jornadas_reparto_chofer_activo_unique` para `PLANIFICADA` y `EN_RUTA`.
+- Un camion globalmente en ruta: `jornadas_reparto_camion_en_ruta_unique` para `EN_RUTA`.
+- Un chofer globalmente en ruta: `jornadas_reparto_chofer_en_ruta_unique` para `EN_RUTA`.
+- Orden unico dentro de jornada: `despachos_jornada_orden_unique`.
+- Pedido unico dentro de jornada: `despachos_jornada_pedido_unique`.
+
+La unicidad de camion y chofer se evalua por `fecha` para jornadas activas del dia. Ademas, una jornada `EN_RUTA` bloquea fisicamente el recurso sin importar la fecha, porque cambiar de dia no libera camion ni chofer.
+
+Riesgo pendiente: estos indices parciales aun no se ejecutaron contra una base real. La migracion debe correr solo cuando las consultas diagnosticas no devuelvan conflictos historicos.
 
 ## Seguridad actual
 
 Existe autenticacion con token HMAC y bcrypt para contrasenas. `requireAuth` valida el token, consulta el usuario vigente en base, exige `estado = true`, excluye `password_hash` y adjunta `req.user`. Un token ausente, invalido, expirado o con usuario inexistente/inactivo responde `401`.
 
 La autorizacion usa `authorization.middleware.js` y la matriz central de `permissions.js`. Un usuario autenticado sin permiso recibe `403`. `ADMIN` tiene permiso total; las reglas de propiedad y visibilidad permanecen en servicios.
+`/api/despachos` conserva consulta, pedidos disponibles, entrega y no entrega asociados a jornadas. Ya no expone creacion, inicio ni cancelacion de despachos individuales.

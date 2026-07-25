@@ -124,7 +124,7 @@ La pantalla de detalle de jornada permite:
 - Finalizar jornada.
 - Visualizar mapa de la ruta.
 
-El backend exige chofer asignado y carga confirmada para iniciar una jornada; Logistica planifica y supervisa, pero no inicia fisicamente la ruta salvo permiso administrativo.
+El backend exige chofer asignado y carga confirmada para iniciar una jornada; Logistica planifica y supervisa, pero no inicia fisicamente la ruta salvo permiso administrativo. El frontend ya no consume endpoints para iniciar o cancelar despachos individuales; las acciones vigentes de despacho son entrega y no entrega desde la jornada.
 
 `JornadaMap.jsx` usa `MapContainer`, `TileLayer`, `Marker`, `Polyline`, `Popup` y `Tooltip`. Normaliza geometria como `[latitud, longitud]`, agrupa marcadores por orden y representa bodega, camion y puntos de entrega.
 

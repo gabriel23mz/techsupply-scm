@@ -38,7 +38,11 @@ sequenceDiagram
   BE-->>FE: resumen de jornadas creadas
 ```
 
-La llamada a Python ocurre antes de abrir la transaccion. Despues de recibir el plan, el backend vuelve a consultar y bloquear los pedidos propuestos, los camiones propuestos, los despachos activos y las jornadas activas. Si alguno cambio entre la planificacion y la persistencia, no se guarda ningun dato parcial. La planificacion no marca pedidos como `DESPACHADO`.
+La llamada a Python ocurre antes de abrir la transaccion. Antes de llamar a Python, Node calcula la fecha operativa del dia con `APP_TIMEZONE`, selecciona pedidos elegibles, camiones `EN_BODEGA` y choferes disponibles, y limita los camiones a `min(camiones, choferes)`. Python no recibe choferes ni cambia su contrato.
+
+Despues de recibir el plan, el backend vuelve a consultar y bloquear los pedidos propuestos, los camiones propuestos, los choferes asignados, los despachos activos, las jornadas activas de la misma fecha y cualquier jornada `EN_RUTA` del mismo recurso. Si alguno cambio entre la planificacion y la persistencia, no se guarda ningun dato parcial. La planificacion no marca pedidos como `DESPACHADO`.
+
+Node calcula `inicio_estimado_en`, `retorno_estimado_en` y `fecha_estimada_entrega` por despacho usando los tiempos acumulados devueltos por Python, tiempo de servicio por entrega, margen operativo y limite diario de minutos. El retorno incluye el regreso a bodega; la ultima entrega no suma el retorno.
 
 ## Preparacion y carga
 
@@ -82,7 +86,7 @@ Estas operaciones se ejecutan dentro de una misma transaccion. Si falla la actua
 
 ## Retorno a bodega
 
-La ruta general de una jornada incluye el tramo de retorno a bodega. La finalizacion de jornada representa que el camion completo la ruta y vuelve a quedar `EN_BODEGA`.
+La ruta general de una jornada incluye el tramo de retorno a bodega. La finalizacion de jornada representa que el camion completo la ruta y vuelve a quedar `EN_BODEGA`. El retorno estimado no libera camion ni chofer; solo el cierre real de la jornada libera el recurso.
 
 ## Contrato Frontend-Backend
 
@@ -129,6 +133,14 @@ Endpoints usados por frontend:
 | Despachos | `GET /despachos`, `GET /despachos/:id` |
 | Bodega | `/bodega/pedidos`, `/bodega/jornadas`, `/bodega/despachos/:id/carga` |
 | Choferes | `/choferes`, `/choferes/disponibles`, `/jornadas-reparto/mis-jornadas` |
+
+Endpoints eliminados del flujo heredado:
+
+- `POST /despachos`
+- `PATCH /despachos/:id/iniciar`
+- `PATCH /despachos/:id/cancelar`
+
+No existe creacion, inicio ni cancelacion de despachos fuera de una jornada.
 
 ## Contrato Node-Python: ruta individual
 
@@ -286,10 +298,7 @@ La geometria se expresa como arreglos `[latitud, longitud]`, formato usado por L
 
 Funciones existentes:
 
-- `despachoCreado`
-- `despachoIniciado`
 - `despachoEntregado`
-- `despachoCancelado`
 - `jornadaCreada`
 - `jornadaIniciada`
 - `despachoNoEntregado`

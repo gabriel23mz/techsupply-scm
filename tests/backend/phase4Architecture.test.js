@@ -106,10 +106,9 @@ test('errorHandler traduce errores tipados y Sequelize manteniendo forma públic
     errorHandler(error, {}, res, () => {});
 
     assert.equal(res.statusCode, status);
-    assert.deepEqual(res.body, {
-      success: false,
-      message,
-    });
+    assert.equal(res.body.success, false);
+    assert.equal(res.body.message, message);
+    assert.equal(typeof res.body.code, 'string');
   }
 
   process.env.NODE_ENV = originalEnv;

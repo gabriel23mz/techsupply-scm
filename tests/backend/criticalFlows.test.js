@@ -255,6 +255,11 @@ test('despachos impide entrega fuera de orden y actualiza pedido al entregar en 
 
   assert.equal(resultado.estado, 'ENTREGADO');
   assert.equal(pedido.estado, 'ENTREGADO');
+  assert.ok(fueraDeOrden.fecha_entrega instanceof Date);
+  assert.equal(
+    pedido.fecha_entrega,
+    fueraDeOrden.fecha_entrega,
+  );
   assert.equal(jornada.posicion_actual_orden, 2);
 });
 
@@ -409,6 +414,8 @@ test('despacho no entregado actualiza pedido y avanza jornada de forma atómica'
 
   assert.equal(resultado.estado, 'NO_ENTREGADO');
   assert.equal(pedido.estado, 'REPROGRAMADO');
+  assert.equal(despacho.fecha_entrega, undefined);
+  assert.equal(pedido.fecha_entrega, undefined);
   assert.equal(jornada.posicion_actual_orden, 2);
 });
 
@@ -429,13 +436,23 @@ test('jornada rechaza generación sin pedidos o sin camiones disponibles', async
     {
       id: 1,
       cliente_id: 2,
-      cliente: { nombre: 'Cliente', ubicacion: { id: 3 } },
+      cliente: {
+        nombre: 'Cliente',
+        ubicacion: {
+          id: 3,
+          latitud: -2,
+          longitud: -79,
+        },
+      },
     },
   ];
   stubMethods(t, db.JornadaReparto, {
     findAll: async () => [],
   });
   stubMethods(t, db.Camion, {
+    findAll: async () => [],
+  });
+  stubMethods(t, db.Chofer, {
     findAll: async () => [],
   });
 

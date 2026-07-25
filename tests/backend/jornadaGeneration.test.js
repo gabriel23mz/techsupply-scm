@@ -1,6 +1,7 @@
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import axios from 'axios';
+import { Op } from 'sequelize';
 
 import {
   modelInstance,
@@ -50,6 +51,18 @@ function camion(id = 10) {
   });
 }
 
+function chofer(id = 30) {
+  return modelInstance({
+    id,
+    activo: true,
+    fecha_vencimiento_licencia: '2099-12-31',
+    usuario: {
+      rol: 'CHOFER',
+      estado: true,
+    },
+  });
+}
+
 function bodega() {
   return {
     ...solicitudJornadaValida.bodega,
@@ -74,6 +87,7 @@ function planValido(overrides = {}) {
 function stubPreliminares(t, db, options = {}) {
   const pedidos = options.pedidos ?? [pedido()];
   const camiones = options.camiones ?? [camion()];
+  const choferes = options.choferes ?? [chofer()];
 
   stubMethods(t, db.Pedido, {
     findAll: async () => pedidos,
@@ -91,6 +105,13 @@ function stubPreliminares(t, db, options = {}) {
   stubMethods(t, db.Camion, {
     findAll: async () => camiones,
     findByPk: async () => camiones[0],
+  });
+  stubMethods(t, db.Chofer, {
+    findAll: async () => choferes,
+    findByPk: async (id) =>
+      choferes.find(
+        (item) => Number(item.id) === Number(id),
+      ) ?? choferes[0],
   });
   stubMethods(t, db.Ubicacion, {
     findByPk: async () => bodega(),
@@ -148,7 +169,85 @@ test('generación de jornada revalida recursos y emite payload jornadaCreada rea
   assert.equal(payload.despachos[0].pedido_id, 100);
 });
 
-test('generación aborta si el camión se ocupa entre Python y la persistencia', async (t) => {
+test('generación diaria rechaza fechas fuera de la fecha operativa', async () => {
+  await assert.rejects(
+    () => service.generarJornadaReparto({
+      fecha: '2026-07-24',
+      now: new Date('2026-07-25T15:00:00.000Z'),
+    }),
+    (error) => {
+      assert.equal(
+        error.code,
+        'GENERACION_FUERA_DE_FECHA_OPERATIVA',
+      );
+      return true;
+    },
+  );
+
+  await assert.rejects(
+    () => service.generarJornadaReparto({
+      fecha: '2026-07-26',
+      now: new Date('2026-07-25T15:00:00.000Z'),
+    }),
+    (error) => {
+      assert.equal(
+        error.code,
+        'GENERACION_FUERA_DE_FECHA_OPERATIVA',
+      );
+      return true;
+    },
+  );
+});
+
+test('generación limita camiones por cantidad de choferes disponibles', async (t) => {
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: db } = await import('../../src/models/index.js');
+
+  post.mock.mockImplementationOnce(async (url, payload) => {
+    assert.equal(payload.camiones.length, 1);
+    assert.equal(payload.camiones[0].id, 10);
+
+    return {
+      data: planValido(),
+    };
+  });
+
+  stubManagedTransaction(t, sequelize);
+  stubPreliminares(t, db, {
+    camiones: [camion(10), camion(11)],
+    choferes: [chofer(30)],
+  });
+
+  const resultado =
+    await service.generarJornadaReparto();
+
+  assert.equal(resultado.total_jornadas, 1);
+  assert.equal(
+    db.JornadaReparto.create.mock.calls[0].arguments[0].chofer_id,
+    30,
+  );
+});
+
+test('generación rechaza cero choferes disponibles', async (t) => {
+  const { default: db } = await import('../../src/models/index.js');
+
+  stubPreliminares(t, db, {
+    choferes: [],
+  });
+
+  await assert.rejects(
+    () => service.generarJornadaReparto(),
+    (error) => {
+      assert.equal(
+        error.code,
+        'CHOFERES_NO_DISPONIBLES',
+      );
+      return true;
+    },
+  );
+});
+
+test('generación revierte si el chofer deja de estar disponible antes de persistir', async (t) => {
   const { default: sequelize } = await import('../../src/config/database.js');
   const { default: db } = await import('../../src/models/index.js');
 
@@ -158,14 +257,137 @@ test('generación aborta si el camión se ocupa entre Python y la persistencia',
 
   stubManagedTransaction(t, sequelize);
   stubPreliminares(t, db);
-  db.JornadaReparto.findOne = async () => ({ id: 777 });
+  db.Chofer.findByPk = async () =>
+    modelInstance({
+      id: 30,
+      activo: false,
+      fecha_vencimiento_licencia: '2099-12-31',
+      usuario: {
+        rol: 'CHOFER',
+        estado: true,
+      },
+    });
 
   await assert.rejects(
     () => service.generarJornadaReparto(),
-    /ya posee una jornada activa/,
+    (error) => {
+      assert.equal(error.code, 'CHOFER_NO_DISPONIBLE');
+      return true;
+    },
+  );
+
+  assert.equal(
+    db.JornadaReparto.create.mock.callCount(),
+    0,
+  );
+});
+
+test('generación aborta si el camión se ocupa en la misma fecha entre Python y la persistencia', async (t) => {
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: db } = await import('../../src/models/index.js');
+
+  post.mock.mockImplementationOnce(async () => ({
+    data: planValido(),
+  }));
+
+  stubManagedTransaction(t, sequelize);
+  stubPreliminares(t, db);
+  db.JornadaReparto.findOne = async (options) => {
+    assert.ok(
+      options.where[Op.or].some(
+        (item) => typeof item.fecha === 'string',
+      ),
+    );
+    assert.equal(options.where.camion_id, 10);
+
+    return { id: 777 };
+  };
+
+  await assert.rejects(
+    () => service.generarJornadaReparto(),
+    (error) => {
+      assert.equal(error.code, 'CAMION_NO_DISPONIBLE');
+      assert.match(error.message, /misma fecha|fecha/);
+
+      return true;
+    },
   );
 
   assert.equal(db.JornadaReparto.create.mock.callCount(), 0);
+});
+
+test('generación permite usar el mismo camión si la jornada activa es de otra fecha', async (t) => {
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: db } = await import('../../src/models/index.js');
+  const fechasConsultadas = [];
+
+  post.mock.mockImplementationOnce(async () => ({
+    data: planValido(),
+  }));
+
+  stubManagedTransaction(t, sequelize);
+  stubPreliminares(t, db);
+
+  db.JornadaReparto.findAll = async (options) => {
+    fechasConsultadas.push(
+      options.where[Op.or]?.find((item) => item.fecha)?.fecha,
+    );
+
+    return [];
+  };
+  db.JornadaReparto.findOne = async (options) => {
+    fechasConsultadas.push(
+      options.where[Op.or]?.find((item) => item.fecha)?.fecha,
+    );
+
+    return null;
+  };
+
+  const resultado =
+    await service.generarJornadaReparto();
+
+  assert.equal(resultado.total_jornadas, 1);
+  assert.equal(
+    db.JornadaReparto.create.mock.calls[0].arguments[0].camion_id,
+    10,
+  );
+  assert.ok(
+    fechasConsultadas.every(
+      (fecha) =>
+        typeof fecha === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(fecha),
+    ),
+  );
+});
+
+test('generación no bloquea un camión con jornada finalizada en la misma fecha', async (t) => {
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: db } = await import('../../src/models/index.js');
+
+  post.mock.mockImplementationOnce(async () => ({
+    data: planValido(),
+  }));
+
+  stubManagedTransaction(t, sequelize);
+  stubPreliminares(t, db, {
+    choferes: [chofer(30), chofer(31)],
+  });
+
+  db.JornadaReparto.findAll = async (options) => {
+    assert.ok(options.where[Op.or]);
+
+    return [];
+  };
+  db.JornadaReparto.findOne = async (options) => {
+    assert.ok(options.where[Op.or]);
+
+    return null;
+  };
+
+  const resultado =
+    await service.generarJornadaReparto();
+
+  assert.equal(resultado.total_jornadas, 1);
 });
 
 test('generación aborta si el pedido ya tiene despacho activo al revalidar', async (t) => {
@@ -177,7 +399,9 @@ test('generación aborta si el pedido ya tiene despacho activo al revalidar', as
   }));
 
   stubManagedTransaction(t, sequelize);
-  stubPreliminares(t, db);
+  stubPreliminares(t, db, {
+    choferes: [chofer(30), chofer(31)],
+  });
   db.Despacho.findAll = async () => [
     { id: 300, pedido_id: 100, estado: 'PENDIENTE' },
   ];
@@ -233,7 +457,7 @@ test('generación revierte si un pedido deja de estar disponible al revalidar', 
   respuesta.jornadas[0].entregas.push({
     ...respuesta.jornadas[0].entregas[0],
     pedido_id: 101,
-    orden_entrega: 1,
+    orden_entrega: 2,
   });
 
   post.mock.mockImplementationOnce(async () => ({
@@ -299,9 +523,43 @@ test('generación rechaza dos planes con el mismo camión o el mismo pedido', as
   }));
   db.Camion.findAll = async () => [camion(10), camion(11)];
   db.Camion.findByPk = async (id) => camion(id);
+  db.Chofer.findAll = async () => [chofer(30), chofer(31)];
+  db.Chofer.findByPk = async (id) => chofer(id);
 
   await assert.rejects(
     () => service.generarJornadaReparto(),
     /pedido duplicado/,
+  );
+});
+
+test('generación rechaza órdenes duplicadas dentro de una jornada antes de persistir', async (t) => {
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: db } = await import('../../src/models/index.js');
+  const pedidos = [
+    pedido(100),
+    pedido(101),
+  ];
+  const respuesta = structuredClone(respuestaJornadaValida);
+  respuesta.jornadas[0].entregas.push({
+    ...respuesta.jornadas[0].entregas[0],
+    pedido_id: 101,
+    orden_entrega: respuesta.jornadas[0].entregas[0].orden_entrega,
+  });
+
+  post.mock.mockImplementationOnce(async () => ({
+    data: respuesta,
+  }));
+
+  stubManagedTransaction(t, sequelize);
+  stubPreliminares(t, db, { pedidos });
+
+  await assert.rejects(
+    () => service.generarJornadaReparto(),
+    /órdenes de entrega duplicados/,
+  );
+
+  assert.equal(
+    db.JornadaReparto.create.mock.callCount(),
+    0,
   );
 });

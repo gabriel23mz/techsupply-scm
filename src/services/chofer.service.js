@@ -31,6 +31,28 @@ const ESTADOS_JORNADA_ACTIVA = [
   'EN_RUTA',
 ];
 
+const formatearFechaLocal = (
+  fecha = new Date(),
+) => {
+  if (typeof fecha === 'string') {
+    return fecha.slice(0, 10);
+  }
+
+  const valor = fecha instanceof Date
+    ? fecha
+    : new Date(fecha);
+
+  const year = valor.getFullYear();
+  const month = String(
+    valor.getMonth() + 1,
+  ).padStart(2, '0');
+  const day = String(
+    valor.getDate(),
+  ).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
 const includeUsuario = {
   model: Usuario,
   as: 'usuario',
@@ -54,6 +76,25 @@ const includeJornadas = {
     },
   },
 };
+
+const construirIncludeJornadasActivas = (
+  fecha,
+) => ({
+  ...includeJornadas,
+  where: {
+    [Op.or]: [
+      {
+        fecha: formatearFechaLocal(fecha),
+        estado: {
+          [Op.in]: ESTADOS_JORNADA_ACTIVA,
+        },
+      },
+      {
+        estado: 'EN_RUTA',
+      },
+    ],
+  },
+});
 
 const jornadaCompletaInclude = [
   {
@@ -155,14 +196,16 @@ export const obtenerTodos = async (user) => {
   });
 };
 
-export const obtenerDisponibles = async () => {
+export const obtenerDisponibles = async (
+  fecha = new Date(),
+) => {
   const choferes = await Chofer.findAll({
     where: {
       activo: true,
     },
     include: [
       includeUsuario,
-      includeJornadas,
+      construirIncludeJornadasActivas(fecha),
     ],
     order: [['id', 'ASC']],
   });

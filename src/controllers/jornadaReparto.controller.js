@@ -11,7 +11,9 @@ import {
 export const generarJornadaReparto = asyncHandler(
   async (req, res) => {
     const resultado =
-      await jornadaRepartoService.generarJornadaReparto();
+      await jornadaRepartoService.generarJornadaReparto(
+        req.body,
+      );
 
     return successResponse(
       res,

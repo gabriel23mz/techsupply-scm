@@ -33,6 +33,16 @@ const JornadaReparto = sequelize.define('JornadaReparto', {
     allowNull: false,
   },
 
+  inicio_estimado_en: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+
+  retorno_estimado_en: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+
   fecha_salida: {
     type: DataTypes.DATE,
     allowNull: true,

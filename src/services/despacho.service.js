@@ -361,6 +361,8 @@ const includeRelations = [
       'id',
       'camion_id',
       'fecha',
+      'inicio_estimado_en',
+      'retorno_estimado_en',
       'estado',
       'posicion_actual_orden',
       'distancia_total',
@@ -437,90 +439,6 @@ export const obtenerPorId = async (id) => {
   }
 
   return despachoEnriquecido;
-};
-
-export const crear = async ({
-  pedido_id,
-  ruta_json,
-  distancia_total,
-  tiempo_estimado,
-}) => {
-  const despacho = await Despacho.create({
-    pedido_id,
-    estado: 'PENDIENTE',
-    ruta_json,
-    distancia_total,
-    tiempo_estimado,
-  });
-
-  return obtenerPorId(despacho.id);
-};
-
-export const iniciar = async (id) => {
-  const despacho = await Despacho.findByPk(id);
-
-  if (!despacho) {
-    throw new NotFoundError(
-      'Despacho no encontrado',
-      'DESPACHO_NO_ENCONTRADO',
-    );
-  }
-
-  await despacho.update({
-    estado: 'EN_TRANSITO',
-    fecha_salida: new Date(),
-  });
-
-  return obtenerPorId(id);
-};
-
-export const entregar = async (id) => {
-  const despacho = await Despacho.findByPk(id);
-
-  if (!despacho) {
-    throw new NotFoundError(
-      'Despacho no encontrado',
-      'DESPACHO_NO_ENCONTRADO',
-    );
-  }
-
-  await despacho.update({
-    estado: 'ENTREGADO',
-    fecha_entrega: new Date(),
-  });
-
-  return obtenerPorId(id);
-};
-
-export const cancelar = async (id) => {
-  const despacho = await Despacho.findByPk(id);
-
-  if (!despacho) {
-    throw new NotFoundError(
-      'Despacho no encontrado',
-      'DESPACHO_NO_ENCONTRADO',
-    );
-  }
-
-  await despacho.update({
-    estado: 'CANCELADO',
-  });
-
-  return obtenerPorId(id);
-};
-
-export const existeDespachoActivo = async (
-  pedidoId,
-) => {
-  return Despacho.findOne({
-    where: {
-      pedido_id: pedidoId,
-      estado: [
-        'PENDIENTE',
-        'EN_TRANSITO',
-      ],
-    },
-  });
 };
 
 export const entregarDespacho = async (
@@ -628,6 +546,7 @@ export const entregarDespacho = async (
       await pedido.update(
         {
           estado: 'ENTREGADO',
+          fecha_entrega: fechaEntrega,
         },
         {
           transaction,
@@ -744,12 +663,9 @@ export const marcarNoEntregado = async (
         );
       }
 
-      const fechaEntrega = new Date();
-
       await despacho.update(
         {
           estado: 'NO_ENTREGADO',
-          fecha_entrega: fechaEntrega,
         },
         {
           transaction,

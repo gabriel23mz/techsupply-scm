@@ -24,8 +24,8 @@ El alcance actual incluye:
 - Estados comerciales del pedido.
 - Gestion de camiones.
 - CRUD completo de camiones.
-- Generacion automatica de jornadas de reparto.
-- Asignacion automatica de camiones disponibles.
+- Generacion diaria de rutas operables con fecha operativa local.
+- Asignacion automatica de camiones en bodega y choferes disponibles.
 - Agrupacion de multiples pedidos por jornada.
 - Creacion de despachos asociados a cada pedido dentro de una jornada.
 - Orden de entrega por punto logistico.
@@ -46,13 +46,14 @@ El alcance actual incluye:
 - Frontend de Bodega, carga, choferes y administracion visual de permisos: el backend ya expone los endpoints, pero las pantallas dedicadas quedan para una siguiente pasada.
 - n8n: existen funciones por evento, pero solo hacen `console.log`.
 - Recalculo de jornada: implementado para jornadas `PLANIFICADA` con despachos `PENDIENTE`, con limite de desvio del 15% para nuevos destinos.
+- Estimaciones logisticas: inicio, retorno y entregas estimadas se calculan en Node con parametros tecnicos del MVP; las fechas reales solo se asignan al iniciar, entregar o finalizar.
 - Visualizacion geografica: implementada con mapas y geometria; no existe seguimiento GPS real.
 - Dashboard: consolida datos reales consultando varios endpoints, pero no usa agregaciones backend.
 
 ## Funcionalidades pendientes para completar el MVP
 
 - Formalizar contratos Node-Python con pruebas.
-- Corregir payload de evento `jornadaCreada` antes de activar webhook real.
+- Mantener auditado el payload de evento `jornadaCreada` antes de activar webhook real.
 - Incorporar pruebas de servicios, contratos y flujos logisticos.
 - Definir variables de entorno de ejemplo coherentes con PostgreSQL/Supabase.
 - Implementar n8n real solo cuando existan URL, payloads, timeouts, trazabilidad e idempotencia.
@@ -68,10 +69,12 @@ El alcance actual incluye:
 - Multiples algoritmos alternativos sin necesidad del MVP.
 - Analitica empresarial avanzada.
 - Optimizacion global de escala productiva.
+- Planificacion futura de recursos fuera de la fecha operativa actual.
+- Liberar recursos por cambio de dia o retorno estimado.
 
 ## Estado actual del MVP
 
-El MVP esta en estado funcional para demostracion academica local. El flujo principal de jornada esta mejor consolidado que el flujo heredado de despacho individual. La arquitectura ya refleja la evolucion real del proyecto: PostgreSQL/Supabase, mapas, coordenadas, OSRM, ACO-CVRP y `JornadaReparto` como entidad logistica central.
+El MVP esta en estado funcional para demostracion academica local. El flujo operativo de despacho individual heredado fue eliminado; `JornadaReparto` es la entidad logistica central para planificacion, salida, entregas y cierre. La arquitectura ya refleja la evolucion real del proyecto: PostgreSQL/Supabase, mapas, coordenadas, OSRM y ACO-CVRP.
 
 ## Limitaciones conocidas
 

@@ -49,24 +49,6 @@ router.get(
   despachoController.obtenerPorId,
 );
 
-router.post(
-  '/',
-  authorizationMiddleware.requirePermission(
-    PERMISSIONS.DESPACHOS_CANCELAR,
-  ),
-  requestValidators.validarCrearDespacho,
-  despachoController.crear,
-);
-
-router.patch(
-  '/:id/iniciar',
-  authorizationMiddleware.requirePermission(
-    PERMISSIONS.DESPACHOS_CANCELAR,
-  ),
-  requestValidators.validarIdParam,
-  despachoController.iniciar,
-);
-
 router.patch(
   '/:id/entregar',
   authorizationMiddleware.requirePermission(
@@ -83,15 +65,6 @@ router.patch(
   ),
   requestValidators.validarIdParam,
   despachoController.marcarNoEntregado,
-);
-
-router.patch(
-  '/:id/cancelar',
-  authorizationMiddleware.requirePermission(
-    PERMISSIONS.DESPACHOS_CANCELAR,
-  ),
-  requestValidators.validarIdParam,
-  despachoController.cancelar,
 );
 
 export default router;
