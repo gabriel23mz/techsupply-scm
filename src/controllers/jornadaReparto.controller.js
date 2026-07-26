@@ -45,6 +45,7 @@ export const avanzarJornada = asyncHandler(
     const resultado =
       await jornadaRepartoService.avanzarJornada(
         req.params.id,
+        req.user,
       );
 
     return successResponse(
@@ -120,7 +121,9 @@ export const recalcularJornada = asyncHandler(
 export const obtenerMapaGeneral = asyncHandler(
   async (req, res) => {
     const resultado =
-      await jornadaRepartoService.obtenerMapaGeneral();
+      await jornadaRepartoService.obtenerMapaGeneral(
+        req.user,
+      );
 
     return successResponse(
       res,

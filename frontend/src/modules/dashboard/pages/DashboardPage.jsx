@@ -1,18 +1,37 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
 
 import {
-  useNavigate,
-} from 'react-router-dom';
+  useInitialLoad,
+} from '../../../shared/hooks/useInitialLoad';
+
+import {
+  useAuth,
+} from '../../../shared/hooks/useAuth';
+
+import {
+  ROLE_LABELS,
+} from '../../../shared/constants/permissions';
+
+import {
+  getRouteById,
+} from '../../../shared/routing/routeRegistry';
+
+import {
+  formatDashboardContextValue,
+  getDashboardAccessConfig,
+  getDashboardContextLabel,
+  getDashboardMetricIcon,
+  normalizeDashboardNotification,
+  normalizeDashboardVariant,
+} from '../../../shared/routing/dashboardAccess';
 
 import {
   showError,
   showSuccess,
-  showWarning,
 } from '../../../shared/utils/toast';
 
 import {
@@ -21,51 +40,28 @@ import {
 
 import DashboardAlerts from '../components/DashboardAlerts';
 import MetricCard from '../components/MetricCard';
-import OperationalStatus from '../components/OperationalStatus';
 import QuickAccessCard from '../components/QuickAccessCard';
-import RecentActivity from '../components/RecentActivity';
 
 import '../dashboard.css';
 
 function DashboardPage() {
-  const navigate = useNavigate();
+  const {
+    user,
+  } = useAuth();
 
-  const [data, setData] = useState({
-    pedidos: [],
-    clientes: [],
-    ubicaciones: [],
-    rutas: [],
-    despachos: [],
-    jornadas: [],
-    camiones: [],
-    productos: [],
-    failedSources: [],
-  });
-
-  const [isLoading, setIsLoading] =
-    useState(true);
-
-  const [lastUpdated, setLastUpdated] =
-    useState(null);
+  const [summary, setSummary] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const loadDashboard = useCallback(
     async ({ notify = false } = {}) => {
       try {
         setIsLoading(true);
 
-        const summary =
-          await obtenerResumenDashboard();
+        const result = await obtenerResumenDashboard();
 
-        setData(summary);
-        setLastUpdated(new Date());
+        setSummary(result);
 
-        if (
-          summary.failedSources.length
-        ) {
-          showWarning(
-            `El Dashboard se cargó parcialmente. Sin respuesta: ${summary.failedSources.join(', ')}.`,
-          );
-        } else if (notify) {
+        if (notify) {
           showSuccess(
             'Dashboard actualizado correctamente.',
           );
@@ -87,259 +83,100 @@ function DashboardPage() {
     [],
   );
 
-  useEffect(() => {
-    loadDashboard();
-  }, [loadDashboard]);
+  useInitialLoad(loadDashboard);
 
-  const counts = useMemo(() => {
-    const pedidoCount = (
-      status,
-    ) =>
-      data.pedidos.filter(
-        (item) =>
-          item.estado === status,
-      ).length;
-
-    const dispatchCount = (
-      status,
-    ) =>
-      data.despachos.filter(
-        (item) =>
-          item.estado === status,
-      ).length;
-
-    return {
-      PENDIENTE:
-        pedidoCount('PENDIENTE'),
-      PREPARANDO:
-        pedidoCount('PREPARANDO'),
-      LISTO_PARA_DESPACHO:
-        pedidoCount(
-          'LISTO_PARA_DESPACHO',
-        ),
-      EN_TRANSITO:
-        dispatchCount(
-          'EN_TRANSITO',
-        ),
-      ENTREGADO:
-        dispatchCount(
-          'ENTREGADO',
-        ),
-    };
-  }, [data]);
+  const role = summary?.rol ?? user?.rol;
+  const roleLabel = ROLE_LABELS[role] ?? role ?? 'Usuario';
 
   const metrics = useMemo(
-    () => [
-      {
-        title: 'Pedidos pendientes',
-        value: counts.PENDIENTE,
-        description:
-          'Esperan preparación',
-        icon: 'bi-receipt',
-        variant: 'warning',
-        path: '/pedidos',
-      },
-      {
-        title: 'Listos para despacho',
-        value:
-          counts.LISTO_PARA_DESPACHO,
-        description:
-          'Disponibles en logística',
-        icon: 'bi-box2-check',
-        variant: 'info',
-        path: '/centro-logistico',
-      },
-      {
-        title: 'Jornadas activas',
-        value:
-          data.jornadas.filter(
-            (item) =>
-              [
-                'PLANIFICADA',
-                'EN_RUTA',
-              ].includes(
-                item.estado,
-              ),
-          ).length,
-        description:
-          'Planificadas o en ruta',
-        icon: 'bi-map',
-        variant: 'primary',
-        path: '/rutas',
-      },
-      {
-        title: 'Despachos en tránsito',
-        value: counts.EN_TRANSITO,
-        description:
-          'Seguimiento operativo',
-        icon: 'bi-truck',
-        variant: 'success',
-        path: '/despachos',
-      },
-    ],
-    [
-      counts,
-      data.jornadas,
-    ],
+    () => (summary?.metricas ?? []).map((item) => ({
+      id: item.id,
+      title: item.titulo,
+      value: item.valor,
+      description: item.descripcion,
+      icon: getDashboardMetricIcon(item.id),
+      variant: normalizeDashboardVariant(item.nivel),
+    })),
+    [summary?.metricas],
   );
 
-  const alerts = useMemo(() => {
-    const result = [];
+  const alerts = useMemo(
+    () => (summary?.alertas ?? []).map((item) =>
+      normalizeDashboardNotification(item, role),
+    ),
+    [role, summary?.alertas],
+  );
 
-    const noEntregados =
-      data.despachos.filter(
-        (item) =>
-          item.estado ===
-          'NO_ENTREGADO',
-      ).length;
+  const quickAccess = useMemo(
+    () => (summary?.accesos ?? [])
+      .map((item) => {
+        const config = getDashboardAccessConfig(
+          item.id,
+          role,
+        );
 
-    const stockBajo =
-      data.productos.filter(
-        (item) =>
-          Number(item.stock_actual) <=
-          Number(
-            item.stock_minimo ?? 0,
-          ),
-      ).length;
+        const route = config
+          ? getRouteById(config.routeId)
+          : null;
 
-    const pedidosListos =
-      counts.LISTO_PARA_DESPACHO;
+        if (!route) {
+          return null;
+        }
 
-    const camionesDisponibles =
-      data.camiones.filter(
-        (item) =>
-          item.estado ===
-          'EN_BODEGA',
-      ).length;
+        const journeyId =
+          summary?.contexto?.jornada_actual?.id;
 
-    if (noEntregados) {
-      result.push({
-        id: 'no-entregados',
-        title:
-          'Despachos no entregados',
-        message:
-          `${noEntregados} requieren revisión o reprogramación.`,
-        icon:
-          'bi-exclamation-triangle',
-        variant: 'danger',
-        path: '/despachos',
-      });
-    }
+        const path =
+          item.id === 'MI_JORNADA' && journeyId
+            ? `/centro-logistico/jornadas/${journeyId}`
+            : route.path;
 
-    if (stockBajo) {
-      result.push({
-        id: 'stock-bajo',
-        title: 'Stock bajo',
-        message:
-          `${stockBajo} productos alcanzaron su mínimo.`,
-        icon: 'bi-box-seam',
-        variant: 'warning',
-        path: '/pedidos',
-      });
-    }
+        return {
+          id: item.id,
+          title: item.titulo,
+          description: item.descripcion,
+          icon: config.icon ?? route.icon,
+          path,
+        };
+      })
+      .filter(Boolean),
+    [role, summary?.accesos, summary?.contexto?.jornada_actual?.id],
+  );
 
-    if (
-      pedidosListos &&
-      !data.jornadas.some(
-        (item) =>
-          item.estado ===
-          'PLANIFICADA',
-      )
-    ) {
-      result.push({
-        id: 'sin-jornada',
-        title:
-          'Pedidos listos sin jornada planificada',
-        message:
-          `${pedidosListos} pedidos esperan planificación logística.`,
-        icon: 'bi-calendar-plus',
-        variant: 'info',
-        path:
-          '/centro-logistico',
-      });
-    }
+  const contextEntries = useMemo(
+    () => Object.entries(summary?.contexto ?? {})
+      .filter(([, value]) =>
+        value !== null && value !== undefined,
+      ),
+    [summary?.contexto],
+  );
 
-    if (
-      !camionesDisponibles &&
-      pedidosListos
-    ) {
-      result.push({
-        id:
-          'sin-camiones',
-        title:
-          'Sin camiones disponibles',
-        message:
-          'Existen pedidos listos, pero ningún camión está en bodega.',
-        icon: 'bi-truck-front',
-        variant: 'danger',
-        path: '/rutas',
-      });
-    }
-
-    return result;
-  }, [
-    counts.LISTO_PARA_DESPACHO,
-    data,
-  ]);
-
-  const quickAccess = [
-    {
-      title: 'Nuevo pedido',
-      description:
-        'Registrar y abrir Workspace',
-      icon: 'bi-plus-circle',
-      path: '/pedidos/nuevo',
-    },
-    {
-      title: 'Centro Logístico',
-      description:
-        'Planificar jornadas',
-      icon: 'bi-diagram-3',
-      path: '/centro-logistico',
-      featured: true,
-      badge:
-        counts.LISTO_PARA_DESPACHO,
-    },
-    {
-      title: 'Mapa de rutas',
-      description:
-        'Supervisar jornadas',
-      icon: 'bi-map',
-      path: '/rutas',
-    },
-    {
-      title: 'Clientes',
-      description:
-        'Directorio comercial',
-      icon:
-        'bi-person-lines-fill',
-      path: '/clientes',
-    },
-  ];
+  const updatedAt = summary?.actualizado_en
+    ? new Date(summary.actualizado_en)
+    : null;
 
   return (
     <div className="dashboard-page">
       <section className="dashboard-welcome">
         <div>
           <span>
-            Centro de control Outbound
+            Panel de {roleLabel}
           </span>
 
           <h3>
-            Resumen general de la operación
+            Resumen de tu operación
           </h3>
 
           <p>
-            Indicadores consolidados de pedidos,
-            logística y entregas.
+            Indicadores y alertas calculados según tu rol y alcance actual.
           </p>
         </div>
 
         <div className="dashboard-refresh-area">
-          {lastUpdated && (
+          {updatedAt && !Number.isNaN(updatedAt.getTime()) && (
             <small>
               Actualizado{' '}
-              {lastUpdated.toLocaleTimeString(
+              {updatedAt.toLocaleTimeString(
                 'es-EC',
                 {
                   hour: '2-digit',
@@ -370,122 +207,33 @@ function DashboardPage() {
         </div>
       </section>
 
-      {isLoading &&
-      !lastUpdated ? (
+      {isLoading && !summary ? (
         <div className="dashboard-loading">
           <span className="spinner-border text-primary" />
 
           <h4>
-            Preparando el centro de control...
+            Preparando tu dashboard...
           </h4>
 
           <p>
-            Consolidando la información operativa.
+            Consultando únicamente la información autorizada para tu rol.
           </p>
         </div>
       ) : (
         <>
           <section className="dashboard-metrics-grid">
-            {metrics.map(
-              (metric) => (
-                <MetricCard
-                  key={metric.title}
-                  {...metric}
-                  onClick={() =>
-                    navigate(
-                      metric.path,
-                    )
-                  }
-                />
-              ),
-            )}
+            {metrics.map((metric) => (
+              <MetricCard
+                key={metric.id}
+                {...metric}
+              />
+            ))}
           </section>
-
-          <OperationalStatus
-            counts={counts}
-          />
 
           <section className="dashboard-content-grid">
             <DashboardAlerts
               alerts={alerts}
             />
-
-            <RecentActivity
-              pedidos={data.pedidos}
-              despachos={data.despachos}
-            />
-          </section>
-
-          <section className="dashboard-bottom-grid">
-            <section className="dashboard-panel dashboard-master">
-              <header className="dashboard-section-header">
-                <div>
-                  <span>
-                    Datos maestros
-                  </span>
-
-                  <h4>
-                    Cobertura del sistema
-                  </h4>
-                </div>
-              </header>
-
-              <div className="dashboard-master-grid">
-                {[
-                  {
-                    label:
-                      'Clientes',
-                    value:
-                      data.clientes
-                        .length,
-                    icon:
-                      'bi-people',
-                  },
-                  {
-                    label:
-                      'Ubicaciones',
-                    value:
-                      data.ubicaciones
-                        .length,
-                    icon:
-                      'bi-geo-alt',
-                  },
-                  {
-                    label:
-                      'Rutas',
-                    value:
-                      data.rutas
-                        .length,
-                    icon:
-                      'bi-signpost-split',
-                  },
-                  {
-                    label:
-                      'Camiones',
-                    value:
-                      data.camiones
-                        .length,
-                    icon:
-                      'bi-truck-front',
-                  },
-                ].map((item) => (
-                  <article
-                    key={item.label}
-                    className="dashboard-master-item"
-                  >
-                    <i className={`bi ${item.icon}`} />
-
-                    <span>
-                      {item.label}
-                    </span>
-
-                    <strong>
-                      {item.value}
-                    </strong>
-                  </article>
-                ))}
-              </div>
-            </section>
 
             <section className="dashboard-panel dashboard-quick-access">
               <header className="dashboard-section-header">
@@ -495,23 +243,72 @@ function DashboardPage() {
                   </span>
 
                   <h4>
-                    Accesos rápidos
+                    Accesos disponibles
                   </h4>
                 </div>
               </header>
 
-              <div className="dashboard-quick-grid">
-                {quickAccess.map(
-                  (item) => (
+              {quickAccess.length ? (
+                <div className="dashboard-quick-grid">
+                  {quickAccess.map((item) => (
                     <QuickAccessCard
-                      key={item.title}
+                      key={item.id}
                       {...item}
                     />
-                  ),
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="dashboard-alert-empty">
+                  <i className="bi bi-layout-sidebar-inset" />
+
+                  <div>
+                    <strong>
+                      Sin accesos adicionales
+                    </strong>
+
+                    <span>
+                      Tu rol dispone por ahora de un dashboard informativo.
+                    </span>
+                  </div>
+                </div>
+              )}
             </section>
           </section>
+
+          {contextEntries.length > 0 && (
+            <section className="dashboard-panel dashboard-master">
+              <header className="dashboard-section-header">
+                <div>
+                  <span>
+                    Contexto
+                  </span>
+
+                  <h4>
+                    Alcance operativo actual
+                  </h4>
+                </div>
+              </header>
+
+              <div className="dashboard-master-grid">
+                {contextEntries.map(([key, value]) => (
+                  <article
+                    key={key}
+                    className="dashboard-master-item"
+                  >
+                    <i className="bi bi-info-circle" />
+
+                    <span>
+                      {getDashboardContextLabel(key)}
+                    </span>
+
+                    <strong>
+                      {formatDashboardContextValue(value)}
+                    </strong>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
         </>
       )}
     </div>

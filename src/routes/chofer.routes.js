@@ -33,9 +33,17 @@ router.get(
 );
 
 router.get(
+  '/me',
+  authorizationMiddleware.requirePermission(
+    PERMISSIONS.CHOFER_PERFIL_PROPIO_LEER,
+  ),
+  choferController.obtenerPerfilPropio,
+);
+
+router.get(
   '/disponibles',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.CHOFERES_LEER,
+    PERMISSIONS.JORNADAS_ASIGNAR_CHOFER,
   ),
   choferController.obtenerDisponibles,
 );

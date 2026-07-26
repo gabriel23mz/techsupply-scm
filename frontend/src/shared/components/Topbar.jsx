@@ -1,9 +1,14 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+
+import {
+  useInitialLoad,
+} from '../hooks/useInitialLoad';
 
 import {
   useLocation,
@@ -16,67 +21,27 @@ import {
 
 import {
   useAuth,
-} from '../contexts/AuthContext';
+} from '../hooks/useAuth';
 
 import {
-  navigation,
-} from '../constants/navigation.jsx';
+  getRouteByPathname,
+} from '../routing/routeRegistry';
+
+import {
+  normalizeDashboardNotification,
+} from '../routing/dashboardAccess';
+
+import {
+  obtenerNotificacionesDashboard,
+} from '../../modules/dashboard/services/dashboard.service';
 
 import NotificationsPanel from './NotificationsPanel';
 import SettingsPanel from './SettingsPanel';
 
-import api from '../services/api';
-
-function getCurrentRoute(pathname) {
-  return (
-    navigation.find(
-      (route) => {
-        if (
-          route.path.includes(':')
-        ) {
-          const pattern =
-            new RegExp(
-              `^${route.path.replace(
-                /:[^/]+/g,
-                '[^/]+',
-              )}$`,
-            );
-
-          return pattern.test(
-            pathname,
-          );
-        }
-
-        return (
-          route.path === pathname
-        );
-      },
-    ) ?? navigation[0]
-  );
-}
-
-function unwrap(
-  result,
-) {
-  return (
-    result?.value?.data?.data ??
-    result?.value?.data ??
-    []
-  );
-}
-
-function arrayFrom(result) {
-  const data = unwrap(result);
-
-  return Array.isArray(data)
-    ? data
-    : [];
-}
 
 function Topbar() {
   const menuRef = useRef(null);
-  const notificationRef =
-    useRef(null);
+  const notificationRef = useRef(null);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -86,130 +51,42 @@ function Topbar() {
     logout,
   } = useAuth();
 
-  const [
-    showUserMenu,
-    setShowUserMenu,
-  ] = useState(false);
+  const [showUserMenu, setShowUserMenu] =
+    useState(false);
 
-  const [
-    showNotifications,
-    setShowNotifications,
-  ] = useState(false);
+  const [showNotifications, setShowNotifications] =
+    useState(false);
 
-  const [
-    showSettings,
-    setShowSettings,
-  ] = useState(false);
+  const [showSettings, setShowSettings] =
+    useState(false);
 
-  const [
-    notifications,
-    setNotifications,
-  ] = useState([]);
+  const [notifications, setNotifications] =
+    useState([]);
 
-  const [
-    loadingNotifications,
-    setLoadingNotifications,
-  ] = useState(false);
+  const [loadingNotifications, setLoadingNotifications] =
+    useState(false);
 
   const currentRoute = useMemo(
-    () =>
-      getCurrentRoute(
-        location.pathname,
-      ),
+    () => getRouteByPathname(location.pathname),
     [location.pathname],
   );
 
-  const loadNotifications =
+  const loadNotifications = useCallback(
     async () => {
       try {
         setLoadingNotifications(true);
 
-        const results =
-          await Promise.allSettled([
-            api.get('/pedidos'),
-            api.get('/despachos'),
-            api.get('/productos'),
-          ]);
+        const result =
+          await obtenerNotificacionesDashboard(8);
 
-        const pedidos =
-          arrayFrom(results[0]);
-
-        const despachos =
-          arrayFrom(results[1]);
-
-        const productos =
-          arrayFrom(results[2]);
-
-        const items = [];
-
-        const ready =
-          pedidos.filter(
-            (item) =>
-              item.estado ===
-              'LISTO_PARA_DESPACHO',
-          ).length;
-
-        const failed =
-          despachos.filter(
-            (item) =>
-              item.estado ===
-              'NO_ENTREGADO',
-          ).length;
-
-        const lowStock =
-          productos.filter(
-            (item) =>
-              Number(
-                item.stock_actual,
-              ) <=
-              Number(
-                item.stock_minimo ??
-                0,
-              ),
-          ).length;
-
-        if (ready) {
-          items.push({
-            id: 'ready',
-            title:
-              'Pedidos listos para despacho',
-            message:
-              `${ready} pedidos esperan planificación.`,
-            icon:
-              'bi-box2-check',
-            variant: 'info',
-            path:
-              '/centro-logistico',
-          });
-        }
-
-        if (failed) {
-          items.push({
-            id: 'failed',
-            title:
-              'Entregas no completadas',
-            message:
-              `${failed} despachos requieren revisión.`,
-            icon:
-              'bi-exclamation-triangle',
-            variant: 'danger',
-            path: '/despachos',
-          });
-        }
-
-        if (lowStock) {
-          items.push({
-            id: 'low-stock',
-            title:
-              'Productos con stock bajo',
-            message:
-              `${lowStock} productos alcanzaron su mínimo.`,
-            icon:
-              'bi-box-seam',
-            variant: 'warning',
-            path: '/pedidos',
-          });
-        }
+        const items = Array.isArray(result?.items)
+          ? result.items.map((item) =>
+            normalizeDashboardNotification(
+              item,
+              user?.rol,
+            ),
+          )
+          : [];
 
         setNotifications(items);
       } catch (error) {
@@ -219,37 +96,30 @@ function Topbar() {
         );
 
         showError(
-          'No fue posible actualizar las notificaciones.',
+          error.message ||
+            'No fue posible actualizar las notificaciones.',
         );
       } finally {
-        setLoadingNotifications(
-          false,
-        );
+        setLoadingNotifications(false);
       }
-    };
+    },
+    [user?.rol],
+  );
+
+  useInitialLoad(loadNotifications);
 
   useEffect(() => {
-    loadNotifications();
-  }, []);
-
-  useEffect(() => {
-    function handleOutside(
-      event,
-    ) {
+    function handleOutside(event) {
       if (
         menuRef.current &&
-        !menuRef.current.contains(
-          event.target,
-        )
+        !menuRef.current.contains(event.target)
       ) {
         setShowUserMenu(false);
       }
 
       if (
         notificationRef.current &&
-        !notificationRef.current.contains(
-          event.target,
-        )
+        !notificationRef.current.contains(event.target)
       ) {
         setShowNotifications(false);
       }
@@ -272,25 +142,16 @@ function Topbar() {
     <>
       <header className="app-topbar">
         <div className="topbar-route">
-          <span>
-            Módulo Outbound
-          </span>
+          <span>Módulo Outbound</span>
 
-          <h2>
-            {currentRoute.label}
-          </h2>
-
-          <p>
-            {currentRoute.description}
-          </p>
+          <h2>{currentRoute.label}</h2>
+          <p>{currentRoute.description}</p>
         </div>
 
         <div className="topbar-actions">
           <div
             className="topbar-notification-wrapper"
-            ref={
-              notificationRef
-            }
+            ref={notificationRef}
           >
             <button
               type="button"
@@ -298,45 +159,26 @@ function Topbar() {
               title="Notificaciones"
               onClick={() => {
                 setShowNotifications(
-                  (current) =>
-                    !current,
+                  (current) => !current,
                 );
-
-                setShowUserMenu(
-                  false,
-                );
+                setShowUserMenu(false);
               }}
             >
               <i className="bi bi-bell" />
 
-              {notifications.length >
-                0 && (
-                <span>
-                  {
-                    notifications.length
-                  }
-                </span>
+              {notifications.length > 0 && (
+                <span>{notifications.length}</span>
               )}
             </button>
 
             <NotificationsPanel
-              open={
-                showNotifications
-              }
-              notifications={
-                notifications
-              }
-              isLoading={
-                loadingNotifications
-              }
+              open={showNotifications}
+              notifications={notifications}
+              isLoading={loadingNotifications}
               onClose={() =>
-                setShowNotifications(
-                  false,
-                )
+                setShowNotifications(false)
               }
-              onRefresh={
-                loadNotifications
-              }
+              onRefresh={loadNotifications}
             />
           </div>
 
@@ -347,9 +189,7 @@ function Topbar() {
             onClick={() => {
               setShowSettings(true);
               setShowUserMenu(false);
-              setShowNotifications(
-                false,
-              );
+              setShowNotifications(false);
             }}
           >
             <i className="bi bi-sliders" />
@@ -364,33 +204,24 @@ function Topbar() {
               className="topbar-user-button"
               onClick={() => {
                 setShowUserMenu(
-                  (current) =>
-                    !current,
+                  (current) => !current,
                 );
-
-                setShowNotifications(
-                  false,
-                );
+                setShowNotifications(false);
               }}
             >
               <div>
-                {String(
-                  user?.nombre ??
-                  'U',
-                )
+                {String(user?.nombre ?? 'U')
                   .charAt(0)
                   .toUpperCase()}
               </div>
 
               <span>
                 <strong>
-                  {user?.nombre ??
-                    'Usuario'}
+                  {user?.nombre ?? 'Usuario'}
                 </strong>
 
                 <small>
-                  {user?.rol ??
-                    'Sin rol'}
+                  {user?.rol ?? 'Sin rol'}
                 </small>
               </span>
 
@@ -409,21 +240,14 @@ function Topbar() {
                       .join(' ')}
                   </strong>
 
-                  <span>
-                    {user?.correo}
-                  </span>
+                  <span>{user?.correo}</span>
                 </header>
 
                 <button
                   type="button"
                   onClick={() => {
-                    setShowUserMenu(
-                      false,
-                    );
-
-                    setShowSettings(
-                      true,
-                    );
+                    setShowUserMenu(false);
+                    setShowSettings(true);
                   }}
                 >
                   <i className="bi bi-gear me-2" />
@@ -435,12 +259,9 @@ function Topbar() {
                   className="danger"
                   onClick={() => {
                     logout();
-                    navigate(
-                      '/login',
-                      {
-                        replace: true,
-                      },
-                    );
+                    navigate('/login', {
+                      replace: true,
+                    });
                   }}
                 >
                   <i className="bi bi-box-arrow-right me-2" />
@@ -454,9 +275,7 @@ function Topbar() {
 
       <SettingsPanel
         open={showSettings}
-        onClose={() =>
-          setShowSettings(false)
-        }
+        onClose={() => setShowSettings(false)}
       />
     </>
   );

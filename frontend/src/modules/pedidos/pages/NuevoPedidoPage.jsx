@@ -1,8 +1,11 @@
 import {
   useCallback,
-  useEffect,
   useState,
 } from 'react';
+
+import {
+  useInitialLoad,
+} from '../../../shared/hooks/useInitialLoad';
 
 import {
   useNavigate,
@@ -12,7 +15,7 @@ import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialo
 
 import {
   useAuth,
-} from '../../../shared/contexts/AuthContext';
+} from '../../../shared/hooks/useAuth';
 
 import {
   showError,
@@ -82,9 +85,7 @@ function NuevoPedidoPage() {
       }
     }, []);
 
-  useEffect(() => {
-    cargarCatalogos();
-  }, [cargarCatalogos]);
+  useInitialLoad(cargarCatalogos);
 
   const handleSubmit = async (
     payload,

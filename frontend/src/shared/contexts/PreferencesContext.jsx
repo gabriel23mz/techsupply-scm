@@ -1,10 +1,11 @@
 import {
-  createContext,
-  useContext,
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
+
+import PreferencesContext from './preferences-context';
 
 const STORAGE_KEY =
   'techsupply_preferences';
@@ -31,9 +32,6 @@ function readPreferences() {
   }
 }
 
-const PreferencesContext =
-  createContext(null);
-
 export function PreferencesProvider({
   children,
 }) {
@@ -49,24 +47,24 @@ export function PreferencesProvider({
     );
   }, [preferences]);
 
-  const updatePreference = (
-    name,
-    value,
-  ) => {
-    setPreferences(
-      (current) => ({
-        ...current,
-        [name]: value,
-      }),
-    );
-  };
+  const updatePreference = useCallback(
+    (name, value) => {
+      setPreferences(
+        (current) => ({
+          ...current,
+          [name]: value,
+        }),
+      );
+    },
+    [],
+  );
 
   const value = useMemo(
     () => ({
       preferences,
       updatePreference,
     }),
-    [preferences],
+    [preferences, updatePreference],
   );
 
   return (
@@ -76,18 +74,4 @@ export function PreferencesProvider({
       {children}
     </PreferencesContext.Provider>
   );
-}
-
-export function usePreferences() {
-  const context = useContext(
-    PreferencesContext,
-  );
-
-  if (!context) {
-    throw new Error(
-      'usePreferences debe utilizarse dentro de PreferencesProvider',
-    );
-  }
-
-  return context;
 }

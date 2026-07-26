@@ -1,11 +1,22 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
 
+import {
+  useInitialLoad,
+} from '../../../shared/hooks/useInitialLoad';
+
 import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialog';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
+import {
+  usePermissions,
+} from '../../../shared/hooks/usePermissions';
 
 import {
   showError,
@@ -44,6 +55,14 @@ function normalizeText(value) {
 }
 
 function ClientesPage() {
+  const {
+    can,
+  } = usePermissions();
+
+  const canManageClients = can(
+    PERMISSIONS.CLIENTES_GESTIONAR,
+  );
+
   const [clientes, setClientes] =
     useState([]);
 
@@ -132,9 +151,7 @@ function ClientesPage() {
     [],
   );
 
-  useEffect(() => {
-    cargarDatos();
-  }, [cargarDatos]);
+  useInitialLoad(cargarDatos);
 
   const filteredClients = useMemo(() => {
     const search =
@@ -183,10 +200,15 @@ function ClientesPage() {
     1,
   );
 
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages,
+  );
+
   const paginatedClients =
     useMemo(() => {
       const start =
-        (currentPage - 1) *
+        (safeCurrentPage - 1) *
         PAGE_SIZE;
 
       return filteredClients.slice(
@@ -194,35 +216,31 @@ function ClientesPage() {
         start + PAGE_SIZE,
       );
     }, [
-      currentPage,
+      safeCurrentPage,
       filteredClients,
     ]);
 
-  useEffect(() => {
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
     setCurrentPage(1);
-  }, [
-    locationFilter,
-    searchTerm,
-  ]);
+  };
 
-  useEffect(() => {
-    if (
-      currentPage >
-      totalPages
-    ) {
-      setCurrentPage(totalPages);
-    }
-  }, [
-    currentPage,
-    totalPages,
-  ]);
+  const handleLocationChange = (value) => {
+    setLocationFilter(value);
+    setCurrentPage(1);
+  };
 
   const clearFilters = () => {
     setSearchTerm('');
     setLocationFilter('TODAS');
+    setCurrentPage(1);
   };
 
   const openCreateModal = () => {
+    if (!canManageClients) {
+      return;
+    }
+
     setFormModal({
       mode: 'create',
       cliente: null,
@@ -232,6 +250,10 @@ function ClientesPage() {
   const openEditModal = (
     cliente,
   ) => {
+    if (!canManageClients) {
+      return;
+    }
+
     setSelectedClient(null);
 
     setFormModal({
@@ -243,6 +265,10 @@ function ClientesPage() {
   const handleSave = async (
     payload,
   ) => {
+    if (!canManageClients) {
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -287,6 +313,7 @@ function ClientesPage() {
   const handleDeactivate =
     async () => {
       if (
+        !canManageClients ||
         !pendingDeactivate?.id
       ) {
         return;
@@ -344,10 +371,10 @@ function ClientesPage() {
           }
           ubicaciones={ubicaciones}
           onSearchChange={
-            setSearchTerm
+            handleSearchChange
           }
           onLocationChange={
-            setLocationFilter
+            handleLocationChange
           }
           onCreate={
             openCreateModal
@@ -394,7 +421,7 @@ function ClientesPage() {
 
             <ClientesPagination
               currentPage={
-                currentPage
+                safeCurrentPage
               }
               totalPages={
                 totalPages
@@ -414,7 +441,12 @@ function ClientesPage() {
       </section>
 
       <ClienteFormModal
-        open={Boolean(formModal)}
+        key={
+          formModal
+            ? `${formModal.mode}-${formModal.cliente?.id ?? 'new'}`
+            : 'closed'
+        }
+        open={canManageClients && Boolean(formModal)}
         mode={
           formModal?.mode ??
           'create'
@@ -450,7 +482,7 @@ function ClientesPage() {
       />
 
       <ConfirmDialog
-        open={Boolean(
+        open={canManageClients && Boolean(
           pendingDeactivate,
         )}
         title="Desactivar cliente"

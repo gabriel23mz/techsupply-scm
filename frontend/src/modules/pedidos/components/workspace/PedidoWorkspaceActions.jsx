@@ -1,16 +1,11 @@
 function PedidoWorkspaceActions({
-  pedido,
   isWorking,
+  canStart,
+  canCancel,
   onBack,
   onStart,
   onCancel,
 }) {
-  const canStart =
-    pedido.estado === 'PENDIENTE';
-
-  const canCancel =
-    pedido.estado === 'PENDIENTE';
-
   return (
     <section className="pedido-workspace-actions">
       <button

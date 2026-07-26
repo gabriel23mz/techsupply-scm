@@ -15,6 +15,7 @@ import {
 } from '../shared/contexts/PreferencesContext';
 
 import 'react-toastify/dist/ReactToastify.css';
+import '../shared/pages/access-pages.css';
 
 function AppProviders({ children }) {
   return (

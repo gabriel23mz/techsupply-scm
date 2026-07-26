@@ -7,12 +7,24 @@ import {
 } from 'react';
 
 import {
+  useInitialLoad,
+} from '../../../shared/hooks/useInitialLoad';
+
+import {
   useLocation,
   useNavigate,
   useParams,
 } from 'react-router-dom';
 
 import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialog';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
+import {
+  usePermissions,
+} from '../../../shared/hooks/usePermissions';
 
 import {
   showError,
@@ -130,6 +142,26 @@ function JornadaDetallePage() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const {
+    can,
+  } = usePermissions();
+
+  const canStartJourney = can(
+    PERMISSIONS.JORNADAS_INICIAR,
+  );
+
+  const canFinishJourney = can(
+    PERMISSIONS.JORNADAS_FINALIZAR,
+  );
+
+  const canDeliverDispatch = can(
+    PERMISSIONS.DESPACHOS_ENTREGAR,
+  );
+
+  const canRejectDispatch = can(
+    PERMISSIONS.DESPACHOS_NO_ENTREGAR,
+  );
+
   /* --------------------------------------------------------------------------
      Estado principal
      -------------------------------------------------------------------------- */
@@ -202,9 +234,7 @@ function JornadaDetallePage() {
       }
     }, [id]);
 
-  useEffect(() => {
-    cargarJornada();
-  }, [cargarJornada]);
+  useInitialLoad(cargarJornada);
 
   /* --------------------------------------------------------------------------
      Navegación de retorno
@@ -372,7 +402,6 @@ function JornadaDetallePage() {
       isLoading ||
       !jornada
     ) {
-      setIsStickyBarStuck(false);
       return undefined;
     }
 
@@ -444,6 +473,10 @@ function JornadaDetallePage() {
      -------------------------------------------------------------------------- */
 
   const requestIniciar = () => {
+    if (!canStartJourney) {
+      return;
+    }
+
     setConfirmConfig({
       type: 'INICIAR',
       title: 'Iniciar jornada',
@@ -457,6 +490,10 @@ function JornadaDetallePage() {
   };
 
   const requestFinalizar = () => {
+    if (!canFinishJourney) {
+      return;
+    }
+
     setConfirmConfig({
       type: 'FINALIZAR',
       title: 'Finalizar jornada',
@@ -471,6 +508,10 @@ function JornadaDetallePage() {
   const requestNoEntregado = (
     despacho,
   ) => {
+    if (!canRejectDispatch) {
+      return;
+    }
+
     setConfirmConfig({
       type: 'NO_ENTREGADO',
       despachoId: despacho.id,
@@ -492,6 +533,10 @@ function JornadaDetallePage() {
      -------------------------------------------------------------------------- */
 
   const handleIniciar = async () => {
+    if (!canStartJourney) {
+      return;
+    }
+
     setConfirmConfig(null);
 
     await ejecutarAccion({
@@ -504,6 +549,10 @@ function JornadaDetallePage() {
   };
 
   const handleAvanzar = async () => {
+    if (!canStartJourney) {
+      return;
+    }
+
     await ejecutarAccion({
       key: 'avanzar',
       action: () =>
@@ -515,6 +564,10 @@ function JornadaDetallePage() {
 
   const handleFinalizar =
     async () => {
+      if (!canFinishJourney) {
+        return;
+      }
+
       setConfirmConfig(null);
 
       await ejecutarAccion({
@@ -529,6 +582,10 @@ function JornadaDetallePage() {
   const handleEntregar = async (
     despachoId,
   ) => {
+    if (!canDeliverDispatch) {
+      return;
+    }
+
     await ejecutarAccion({
       key: `entregar-${despachoId}`,
       action: () =>
@@ -545,7 +602,7 @@ function JornadaDetallePage() {
       const despachoId =
         confirmConfig?.despachoId;
 
-      if (!despachoId) {
+      if (!canRejectDispatch || !despachoId) {
         setConfirmConfig(null);
         return;
       }
@@ -643,6 +700,11 @@ function JornadaDetallePage() {
     );
   }
 
+  const showStickyState =
+    !isLoading &&
+    Boolean(jornada) &&
+    isStickyBarStuck;
+
   const camion =
     jornada.camion ?? null;
 
@@ -664,7 +726,7 @@ function JornadaDetallePage() {
       <section
         className={[
           'journey-sticky-bar',
-          isStickyBarStuck
+          showStickyState
             ? 'is-stuck'
             : '',
         ]
@@ -834,7 +896,8 @@ function JornadaDetallePage() {
         </div>
 
         <div className="journey-actions">
-          {jornada.estado ===
+          {canStartJourney &&
+          jornada.estado ===
             'PLANIFICADA' && (
             <button
               type="button"
@@ -856,45 +919,51 @@ function JornadaDetallePage() {
           )}
 
           {jornada.estado ===
-            'EN_RUTA' && (
+            'EN_RUTA' &&
+          (canStartJourney ||
+            canFinishJourney) && (
             <>
-              <button
-                type="button"
-                className="btn btn-outline-primary"
-                disabled={Boolean(
-                  actionLoading,
-                )}
-                onClick={handleAvanzar}
-              >
-                {actionLoading ===
-                'avanzar' ? (
-                  <span className="spinner-border spinner-border-sm me-2" />
-                ) : (
-                  <i className="bi bi-arrow-right me-2" />
-                )}
+              {canStartJourney && (
+                <button
+                  type="button"
+                  className="btn btn-outline-primary"
+                  disabled={Boolean(
+                    actionLoading,
+                  )}
+                  onClick={handleAvanzar}
+                >
+                  {actionLoading ===
+                  'avanzar' ? (
+                    <span className="spinner-border spinner-border-sm me-2" />
+                  ) : (
+                    <i className="bi bi-arrow-right me-2" />
+                  )}
 
-                Avanzar
-              </button>
+                  Avanzar
+                </button>
+              )}
 
-              <button
-                type="button"
-                className="btn btn-success"
-                disabled={Boolean(
-                  actionLoading,
-                )}
-                onClick={
-                  requestFinalizar
-                }
-              >
-                {actionLoading ===
-                'finalizar' ? (
-                  <span className="spinner-border spinner-border-sm me-2" />
-                ) : (
-                  <i className="bi bi-check-circle me-2" />
-                )}
+              {canFinishJourney && (
+                <button
+                  type="button"
+                  className="btn btn-success"
+                  disabled={Boolean(
+                    actionLoading,
+                  )}
+                  onClick={
+                    requestFinalizar
+                  }
+                >
+                  {actionLoading ===
+                  'finalizar' ? (
+                    <span className="spinner-border spinner-border-sm me-2" />
+                  ) : (
+                    <i className="bi bi-check-circle me-2" />
+                  )}
 
-                Finalizar
-              </button>
+                  Finalizar
+                </button>
+              )}
             </>
           )}
         </div>
@@ -1146,53 +1215,59 @@ function JornadaDetallePage() {
                                 )}
                               </span>
 
-                              {canCloseDispatch && (
-                                <>
-                                  <button
-                                    type="button"
-                                    className="btn btn-success btn-sm"
-                                    disabled={Boolean(
-                                      actionLoading,
+                              {canCloseDispatch &&
+                                (canDeliverDispatch ||
+                                  canRejectDispatch) && (
+                                  <>
+                                    {canDeliverDispatch && (
+                                      <button
+                                        type="button"
+                                        className="btn btn-success btn-sm"
+                                        disabled={Boolean(
+                                          actionLoading,
+                                        )}
+                                        onClick={() =>
+                                          handleEntregar(
+                                            despacho.id,
+                                          )
+                                        }
+                                      >
+                                        {isDelivering ? (
+                                          <span className="spinner-border spinner-border-sm" />
+                                        ) : (
+                                          <>
+                                            <i className="bi bi-check-lg me-1" />
+                                            Entregar
+                                          </>
+                                        )}
+                                      </button>
                                     )}
-                                    onClick={() =>
-                                      handleEntregar(
-                                        despacho.id,
-                                      )
-                                    }
-                                  >
-                                    {isDelivering ? (
-                                      <span className="spinner-border spinner-border-sm" />
-                                    ) : (
-                                      <>
-                                        <i className="bi bi-check-lg me-1" />
-                                        Entregar
-                                      </>
-                                    )}
-                                  </button>
 
-                                  <button
-                                    type="button"
-                                    className="btn btn-outline-danger btn-sm"
-                                    disabled={Boolean(
-                                      actionLoading,
+                                    {canRejectDispatch && (
+                                      <button
+                                        type="button"
+                                        className="btn btn-outline-danger btn-sm"
+                                        disabled={Boolean(
+                                          actionLoading,
+                                        )}
+                                        onClick={() =>
+                                          requestNoEntregado(
+                                            despacho,
+                                          )
+                                        }
+                                      >
+                                        {isMarkingNotDelivered ? (
+                                          <span className="spinner-border spinner-border-sm" />
+                                        ) : (
+                                          <>
+                                            <i className="bi bi-x-lg me-1" />
+                                            No entregado
+                                          </>
+                                        )}
+                                      </button>
                                     )}
-                                    onClick={() =>
-                                      requestNoEntregado(
-                                        despacho,
-                                      )
-                                    }
-                                  >
-                                    {isMarkingNotDelivered ? (
-                                      <span className="spinner-border spinner-border-sm" />
-                                    ) : (
-                                      <>
-                                        <i className="bi bi-x-lg me-1" />
-                                        No entregado
-                                      </>
-                                    )}
-                                  </button>
-                                </>
-                              )}
+                                  </>
+                                )}
                             </div>
                           </div>
                         );
@@ -1221,7 +1296,15 @@ function JornadaDetallePage() {
       {/* Confirmación reutilizable */}
 
       <ConfirmDialog
-        open={Boolean(confirmConfig)}
+        open={Boolean(confirmConfig) && (
+          confirmConfig?.type === 'INICIAR'
+            ? canStartJourney
+            : confirmConfig?.type === 'FINALIZAR'
+              ? canFinishJourney
+              : confirmConfig?.type === 'NO_ENTREGADO'
+                ? canRejectDispatch
+                : false
+        )}
         title={
           confirmConfig?.title ?? ''
         }
@@ -1252,4 +1335,3 @@ function JornadaDetallePage() {
 }
 
 export default JornadaDetallePage;
-

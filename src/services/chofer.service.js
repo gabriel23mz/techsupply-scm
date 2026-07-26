@@ -11,7 +11,9 @@ import {
 } from '../utils/errors.js';
 
 import {
+  PERMISSIONS,
   ROLES,
+  hasPermission,
   isAdmin,
 } from '../constants/permissions.js';
 
@@ -30,6 +32,24 @@ const ESTADOS_JORNADA_ACTIVA = [
   'PLANIFICADA',
   'EN_RUTA',
 ];
+
+const assertPermissionIfUser = (
+  user,
+  permission,
+  message,
+  code,
+) => {
+  if (!user) {
+    return;
+  }
+
+  if (!hasPermission(user.rol, permission)) {
+    throw new ForbiddenError(
+      message,
+      code,
+    );
+  }
+};
 
 const formatearFechaLocal = (
   fecha = new Date(),
@@ -181,11 +201,12 @@ const validarLicenciaVigente = (chofer) => {
 };
 
 export const obtenerTodos = async (user) => {
-  if (user?.rol === ROLES.CHOFER) {
-    return [
-      await obtenerPerfilPropio(user),
-    ];
-  }
+  assertPermissionIfUser(
+    user,
+    PERMISSIONS.CHOFERES_LEER,
+    'No puede consultar el directorio de choferes',
+    'CHOFERES_LECTURA_DENEGADA',
+  );
 
   return Chofer.findAll({
     include: [
@@ -198,7 +219,15 @@ export const obtenerTodos = async (user) => {
 
 export const obtenerDisponibles = async (
   fecha = new Date(),
+  user,
 ) => {
+  assertPermissionIfUser(
+    user,
+    PERMISSIONS.JORNADAS_ASIGNAR_CHOFER,
+    'No puede consultar choferes disponibles',
+    'CHOFERES_DISPONIBLES_LECTURA_DENEGADA',
+  );
+
   const choferes = await Chofer.findAll({
     where: {
       activo: true,
@@ -230,6 +259,13 @@ export const obtenerPorId = async (
   id,
   user,
 ) => {
+  assertPermissionIfUser(
+    user,
+    PERMISSIONS.CHOFERES_LEER,
+    'No puede consultar perfiles de choferes',
+    'CHOFERES_LECTURA_DENEGADA',
+  );
+
   const chofer = await Chofer.findByPk(id, {
     include: [
       includeUsuario,
@@ -244,20 +280,17 @@ export const obtenerPorId = async (
     );
   }
 
-  if (
-    user?.rol === ROLES.CHOFER &&
-    Number(chofer.usuario_id) !== Number(user.id)
-  ) {
-    throw new ForbiddenError(
-      'No puede acceder al perfil de otro chofer',
-      'CHOFER_AJENO',
-    );
-  }
-
   return chofer;
 };
 
 export const obtenerPerfilPropio = async (user) => {
+  assertPermissionIfUser(
+    user,
+    PERMISSIONS.CHOFER_PERFIL_PROPIO_LEER,
+    'No puede consultar el perfil operativo propio',
+    'PERFIL_CHOFER_DENEGADO',
+  );
+
   const chofer = await Chofer.findOne({
     where: {
       usuario_id: user.id,

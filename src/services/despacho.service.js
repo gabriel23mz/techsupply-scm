@@ -353,7 +353,32 @@ async function actualizarPosicionJornadaSiCorresponde(
   );
 }
 
-const includeRelations = [
+const obtenerChoferAutenticado = async (user) => {
+  if (user?.rol !== ROLES.CHOFER) {
+    return null;
+  }
+
+  const chofer = await Chofer.findOne({
+    where: {
+      usuario_id: user.id,
+      activo: true,
+    },
+    attributes: ['id'],
+  });
+
+  if (!chofer) {
+    throw new NotFoundError(
+      'Perfil operativo de chofer no encontrado',
+      'CHOFER_NO_ENCONTRADO',
+    );
+  }
+
+  return chofer;
+};
+
+const construirIncludeRelations = (
+  choferId = null,
+) => [
   {
     model: JornadaReparto,
     as: 'jornada',
@@ -368,7 +393,14 @@ const includeRelations = [
       'distancia_total',
       'tiempo_estimado',
     ],
-    required: false,
+    required: choferId !== null,
+    ...(choferId !== null
+      ? {
+        where: {
+          chofer_id: choferId,
+        },
+      }
+      : {}),
   },
   {
     model: Pedido,
@@ -414,18 +446,34 @@ const includeRelations = [
   },
 ];
 
-export const obtenerTodos = async () => {
+export const obtenerTodos = async (user) => {
+  const chofer =
+    await obtenerChoferAutenticado(user);
+
   const despachos = await Despacho.findAll({
-    include: includeRelations,
+    include: construirIncludeRelations(
+      chofer?.id ?? null,
+    ),
     order: [['id', 'DESC']],
   });
 
   return enriquecerDespachos(despachos);
 };
 
-export const obtenerPorId = async (id) => {
-  const despacho = await Despacho.findByPk(id, {
-    include: includeRelations,
+export const obtenerPorId = async (
+  id,
+  user,
+) => {
+  const chofer =
+    await obtenerChoferAutenticado(user);
+
+  const despacho = await Despacho.findOne({
+    where: {
+      id,
+    },
+    include: construirIncludeRelations(
+      chofer?.id ?? null,
+    ),
   });
 
   const despachoEnriquecido =
@@ -560,7 +608,10 @@ export const entregarDespacho = async (
     },
   );
 
-  const resultado = await obtenerPorId(id);
+  const resultado = await obtenerPorId(
+    id,
+    user,
+  );
 
   /*
    * n8n se ejecuta después del commit para que un fallo
@@ -688,7 +739,10 @@ export const marcarNoEntregado = async (
     },
   );
 
-  const resultado = await obtenerPorId(id);
+  const resultado = await obtenerPorId(
+    id,
+    user,
+  );
 
   /*
    * n8n se ejecuta después del commit para que un fallo

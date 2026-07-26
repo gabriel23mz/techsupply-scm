@@ -12,15 +12,10 @@ const MENSAJES_PLANIFICACION = [
   'Finalizando la planificación logística...',
 ];
 
-function GeneracionLoadingModal({ open }) {
+function GeneracionLoadingContent() {
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
-    if (!open) {
-      setMessageIndex(0);
-      return undefined;
-    }
-
     const intervalId = window.setInterval(() => {
       setMessageIndex((currentIndex) =>
         Math.min(
@@ -33,11 +28,7 @@ function GeneracionLoadingModal({ open }) {
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [open]);
-
-  if (!open) {
-    return null;
-  }
+  }, []);
 
   return (
     <div
@@ -78,6 +69,10 @@ function GeneracionLoadingModal({ open }) {
       </section>
     </div>
   );
+}
+
+function GeneracionLoadingModal({ open }) {
+  return open ? <GeneracionLoadingContent /> : null;
 }
 
 export default GeneracionLoadingModal;

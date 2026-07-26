@@ -3,20 +3,34 @@ import {
   useLocation,
 } from 'react-router-dom';
 
+import SessionLoadingScreen from '../shared/components/SessionLoadingScreen';
+
 import {
   useAuth,
-} from '../shared/contexts/AuthContext';
+} from '../shared/hooks/useAuth';
+
+import {
+  usePermissions,
+} from '../shared/hooks/usePermissions';
 
 function ProtectedRoute({
+  access,
   children,
-  requiredPermission,
 }) {
   const location = useLocation();
 
   const {
-    hasPermission,
     isAuthenticated,
+    isSessionLoading,
   } = useAuth();
+
+  const {
+    canAccess,
+  } = usePermissions();
+
+  if (isSessionLoading) {
+    return <SessionLoadingScreen />;
+  }
 
   if (!isAuthenticated) {
     return (
@@ -24,28 +38,29 @@ function ProtectedRoute({
         to="/login"
         replace
         state={{
-          from: location,
+          from: {
+            pathname: location.pathname,
+            search: location.search,
+            hash: location.hash,
+          },
         }}
       />
     );
   }
 
-  if (
-    requiredPermission &&
-    !hasPermission(requiredPermission)
-  ) {
+  if (!canAccess(access)) {
     return (
-      <main className="app-content">
-        <section className="pedidos-empty">
-          <i className="bi bi-shield-lock" />
-          <h4>
-            Acceso denegado
-          </h4>
-          <p>
-            Tu usuario no tiene permiso para consultar esta sección.
-          </p>
-        </section>
-      </main>
+      <Navigate
+        to="/acceso-denegado"
+        replace
+        state={{
+          from: {
+            pathname: location.pathname,
+            search: location.search,
+            hash: location.hash,
+          },
+        }}
+      />
     );
   }
 

@@ -1,27 +1,42 @@
 import {
-  createContext,
-  useContext,
+  useCallback,
   useEffect,
   useMemo,
   useState,
 } from 'react';
 
 import {
-  iniciarSesion,
-  obtenerSesionLocal,
   guardarSesionLocal,
+  iniciarSesion,
   limpiarSesionLocal,
+  obtenerSesionActual,
+  obtenerSesionLocal,
 } from '../../modules/auth/services/auth.service';
 
-const AuthContext = createContext(null);
+import {
+  SESSION_EXPIRED_EVENT,
+} from '../services/api';
+
+import AuthContext from './auth-context';
 
 export function AuthProvider({ children }) {
-  const [session, setSession] = useState(() =>
-    obtenerSesionLocal(),
+  const [session, setSession] = useState(
+    obtenerSesionLocal,
   );
 
   const [isAuthenticating, setIsAuthenticating] =
     useState(false);
+
+  const [isSessionLoading, setIsSessionLoading] =
+    useState(true);
+
+  const [sessionError, setSessionError] =
+    useState(null);
+
+  const clearSession = useCallback(() => {
+    setSession(null);
+    limpiarSesionLocal();
+  }, []);
 
   useEffect(() => {
     if (session) {
@@ -31,50 +46,167 @@ export function AuthProvider({ children }) {
     }
   }, [session]);
 
-  const login = async (credentials) => {
-    try {
-      setIsAuthenticating(true);
+  const sessionToken = session?.token ?? null;
 
-      const nextSession =
-        await iniciarSesion(credentials);
+  useEffect(() => {
+    const controller = new AbortController();
 
-      setSession(nextSession);
+    async function validateStoredSession() {
+      if (!sessionToken) {
+        setIsSessionLoading(false);
+        return;
+      }
 
-      return nextSession;
-    } finally {
-      setIsAuthenticating(false);
+      try {
+        setIsSessionLoading(true);
+        setSessionError(null);
+
+        const validatedSession =
+          await obtenerSesionActual({
+            token: sessionToken,
+            signal: controller.signal,
+          });
+
+        setSession(validatedSession);
+      } catch (error) {
+        if (
+          error?.code === 'ERR_CANCELED' ||
+          error?.name === 'CanceledError'
+        ) {
+          return;
+        }
+
+        setSessionError(error);
+        clearSession();
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSessionLoading(false);
+        }
+      }
     }
-  };
 
-  const logout = () => {
-    setSession(null);
-  };
+    void validateStoredSession();
+
+    return () => controller.abort();
+  }, [clearSession, sessionToken]);
+
+  useEffect(() => {
+    const handleSessionExpired = (event) => {
+      setSessionError({
+        code:
+          event?.detail?.code ??
+          'SESSION_EXPIRED',
+        message:
+          event?.detail?.message ??
+          'La sesión expiró.',
+      });
+
+      clearSession();
+      setIsSessionLoading(false);
+    };
+
+    window.addEventListener(
+      SESSION_EXPIRED_EVENT,
+      handleSessionExpired,
+    );
+
+    return () => {
+      window.removeEventListener(
+        SESSION_EXPIRED_EVENT,
+        handleSessionExpired,
+      );
+    };
+  }, [clearSession]);
+
+  const login = useCallback(
+    async (credentials) => {
+      try {
+        setIsAuthenticating(true);
+        setSessionError(null);
+
+        const nextSession =
+          await iniciarSesion(credentials);
+
+        setSession(nextSession);
+
+        return nextSession;
+      } finally {
+        setIsAuthenticating(false);
+      }
+    },
+    [],
+  );
+
+  const refreshSession = useCallback(
+    async () => {
+      if (!sessionToken) {
+        clearSession();
+        return null;
+      }
+
+      try {
+        setIsSessionLoading(true);
+        setSessionError(null);
+
+        const nextSession =
+          await obtenerSesionActual({
+            token: sessionToken,
+          });
+
+        setSession(nextSession);
+
+        return nextSession;
+      } catch (error) {
+        setSessionError(error);
+        clearSession();
+        throw error;
+      } finally {
+        setIsSessionLoading(false);
+      }
+    },
+    [clearSession, sessionToken],
+  );
+
+  const logout = useCallback(() => {
+    setSessionError(null);
+    clearSession();
+  }, [clearSession]);
 
   const value = useMemo(
     () => {
       const permissions =
-        session?.permissions ??
-        session?.permisos ??
-        [];
+        Array.isArray(session?.permissions)
+          ? session.permissions
+          : [];
 
-      return ({
-      user: session?.user ?? null,
-      token: session?.token ?? null,
-      permissions,
-      hasPermission: (permission) =>
-        !permission ||
-        permissions.includes(permission),
-      isAuthenticated: Boolean(
-        session?.user,
-      ),
-      isAuthenticating,
-      login,
-      logout,
-    });
+      return {
+        user: session?.user ?? null,
+        token: sessionToken,
+        permissions,
+        hasPermission: (permission) =>
+          !permission ||
+          permissions.includes(permission),
+        isAuthenticated: Boolean(
+          session?.user &&
+          sessionToken,
+        ),
+        isAuthenticating,
+        isSessionLoading,
+        sessionError,
+        login,
+        logout,
+        refreshSession,
+      };
     },
     [
       isAuthenticating,
+      isSessionLoading,
+      login,
+      logout,
+      refreshSession,
       session,
+      sessionError,
+      sessionToken,
     ],
   );
 
@@ -84,17 +216,3 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error(
-      'useAuth debe utilizarse dentro de AuthProvider',
-    );
-  }
-
-  return context;
-}
-
-export default AuthContext;

@@ -35,7 +35,7 @@ router.get(
 router.get(
   '/mapa-general',
   authorizationMiddleware.requirePermission(
-    PERMISSIONS.JORNADAS_LEER,
+    PERMISSIONS.JORNADAS_MAPA_GENERAL,
   ),
   jornadaRepartoController.obtenerMapaGeneral,
 );

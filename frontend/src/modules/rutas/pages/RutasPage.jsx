@@ -111,25 +111,6 @@ function RutasPage() {
     setMapFocusRequest,
   ] = useState(0);
 
-  useEffect(() => {
-    if (location.state?.activeTab) {
-      setActiveTab(location.state.activeTab);
-    }
-
-    if (
-      location.state?.selectedJourneyId !== undefined &&
-      location.state?.selectedJourneyId !== null
-    ) {
-      setSelectedJourneyId(
-        location.state.selectedJourneyId,
-      );
-
-      setMapFocusRequest(
-        (current) => current + 1,
-      );
-    }
-  }, [location.state]);
-
   const [mapaGeneral, setMapaGeneral] =
     useState(null);
 
@@ -291,21 +272,17 @@ function RutasPage() {
   );
 
 
-  useEffect(() => {
+  const effectiveSelectedJourneyId = useMemo(() => {
     if (!jornadas.length) {
-      setSelectedJourneyId(null);
-      return;
+      return null;
     }
 
-    const stillExists = jornadas.some(
+    const selectedJourney = jornadas.find(
       (jornada) =>
         Number(jornada.id) === Number(selectedJourneyId),
     );
 
-    if (!stillExists) {
-      setSelectedJourneyId(jornadas[0].id);
-      setMapFocusRequest((current) => current + 1);
-    }
+    return selectedJourney?.id ?? jornadas[0].id;
   }, [jornadas, selectedJourneyId]);
 
   const handleSelectJourney = (jornada) => {
@@ -484,15 +461,14 @@ function RutasPage() {
         <section className="routes-map-workspace">
           <MapaGeneralJornadas
             jornadas={jornadas}
-            selectedJourneyId={selectedJourneyId}
+            selectedJourneyId={effectiveSelectedJourneyId}
             focusRequest={mapFocusRequest}
             onSelectJourney={handleSelectJourney}
-            onViewJourney={handleViewJourney}
           />
 
           <JornadasMapaPanel
             jornadas={jornadas}
-            selectedJourneyId={selectedJourneyId}
+            selectedJourneyId={effectiveSelectedJourneyId}
             onSelectJourney={handleSelectJourney}
             onViewJourney={handleViewJourney}
           />
@@ -505,7 +481,6 @@ function RutasPage() {
         <RutasCatalogo
           rutas={rutas}
           ubicaciones={ubicaciones}
-          isLoading={isLoading}
           onRefresh={() =>
             cargarDatos({
               notify: false,

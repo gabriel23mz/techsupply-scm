@@ -1,3 +1,9 @@
+import Can from '../../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../../shared/constants/permissions';
+
 function RutasCatalogoToolbar({
   searchTerm,
   originFilter,
@@ -92,14 +98,16 @@ function RutasCatalogoToolbar({
         Limpiar
       </button>
 
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={onCreate}
-      >
-        <i className="bi bi-plus-lg me-2" />
-        Nueva ruta
-      </button>
+      <Can permission={PERMISSIONS.RUTAS_GESTIONAR}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={onCreate}
+        >
+          <i className="bi bi-plus-lg me-2" />
+          Nueva ruta
+        </button>
+      </Can>
     </div>
   );
 }

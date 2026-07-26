@@ -7,6 +7,11 @@ import {
   stubMethods,
 } from './helpers/testEnv.js';
 
+const ADMIN_USER = Object.freeze({
+  id: 1,
+  rol: 'ADMIN',
+});
+
 test('pedidos rechaza finalizar preparación sin detalles y conserva transición válida', async (t) => {
   const service = await import('../../src/services/pedido.service.js');
   const { default: sequelize } = await import('../../src/config/database.js');
@@ -229,6 +234,7 @@ test('despachos impide entrega fuera de orden y actualiza pedido al entregar en 
   stubManagedTransaction(t, sequelize);
   stubMethods(t, Despacho, {
     findByPk: async () => fueraDeOrden,
+    findOne: async () => fueraDeOrden,
     findAll: async () => [
       fueraDeOrden,
       { id: 99, orden_entrega: 2, estado: 'EN_TRANSITO' },
@@ -242,7 +248,7 @@ test('despachos impide entrega fuera de orden y actualiza pedido al entregar en 
   });
 
   await assert.rejects(
-    () => service.entregarDespacho(20),
+    () => service.entregarDespacho(20, ADMIN_USER),
     /aún no se encuentra en el punto/,
   );
 
@@ -251,7 +257,7 @@ test('despachos impide entrega fuera de orden y actualiza pedido al entregar en 
     findAll: async () => [],
   });
 
-  const resultado = await service.entregarDespacho(20);
+  const resultado = await service.entregarDespacho(20, ADMIN_USER);
 
   assert.equal(resultado.estado, 'ENTREGADO');
   assert.equal(pedido.estado, 'ENTREGADO');
@@ -295,7 +301,7 @@ test('despacho revierte entrega si falla actualización de pedido', async (t) =>
   });
 
   await assert.rejects(
-    () => service.entregarDespacho(21),
+    () => service.entregarDespacho(21, ADMIN_USER),
     /fallo simulado/,
   );
 
@@ -339,7 +345,7 @@ test('despacho revierte entrega si falla avance de jornada', async (t) => {
   });
 
   await assert.rejects(
-    () => service.entregarDespacho(22),
+    () => service.entregarDespacho(22, ADMIN_USER),
     /fallo simulado al avanzar jornada/,
   );
 
@@ -373,7 +379,7 @@ test('despacho rechaza doble entrega con estado controlado', async (t) => {
   });
 
   await assert.rejects(
-    () => service.entregarDespacho(23),
+    () => service.entregarDespacho(23, ADMIN_USER),
     /Solo se pueden entregar despachos en estado EN_TRANSITO/,
   );
 });
@@ -398,6 +404,7 @@ test('despacho no entregado actualiza pedido y avanza jornada de forma atómica'
   stubManagedTransaction(t, sequelize);
   stubMethods(t, Despacho, {
     findByPk: async () => despacho,
+    findOne: async () => despacho,
     findAll: async () => [
       despacho,
       { id: 35, orden_entrega: 2, estado: 'EN_TRANSITO' },
@@ -410,7 +417,7 @@ test('despacho no entregado actualiza pedido y avanza jornada de forma atómica'
     findByPk: async () => jornada,
   });
 
-  const resultado = await service.marcarNoEntregado(24);
+  const resultado = await service.marcarNoEntregado(24, ADMIN_USER);
 
   assert.equal(resultado.estado, 'NO_ENTREGADO');
   assert.equal(pedido.estado, 'REPROGRAMADO');
@@ -532,7 +539,7 @@ test('inicio de jornada exige PLANIFICADA y cambia camión/despachos de forma co
     update: async () => [2],
   });
 
-  const resultado = await service.iniciarJornada(70);
+  const resultado = await service.iniciarJornada(70, ADMIN_USER);
 
   assert.equal(resultado.estado, 'EN_RUTA');
   assert.deepEqual(jornada.update.mock.calls[0].arguments[0].posicion_actual_orden, 1);
@@ -558,7 +565,7 @@ test('jornada no avanza mientras el punto actual tenga despachos abiertos', asyn
   });
 
   await assert.rejects(
-    () => service.avanzarJornada(77),
+    () => service.avanzarJornada(77, ADMIN_USER),
     /No se puede avanzar/,
   );
 });

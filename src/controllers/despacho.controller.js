@@ -12,7 +12,7 @@ import {
 export const obtenerTodos = asyncHandler(
   async (req, res) => {
     const despachos =
-      await despachoService.obtenerTodos();
+      await despachoService.obtenerTodos(req.user);
 
     return successResponse(
       res,
@@ -27,6 +27,7 @@ export const obtenerPorId = asyncHandler(
     const despacho =
       await despachoService.obtenerPorId(
         req.params.id,
+        req.user,
       );
 
     return successResponse(

@@ -157,7 +157,6 @@ function DespachosTable({
 
         <tbody>
           {despachos.map((despacho) => {
-            const pedido = getPedido(despacho);
             const cliente = getCliente(despacho);
             const jornada = getJornada(despacho);
             const route = getRouteSummary(despacho);

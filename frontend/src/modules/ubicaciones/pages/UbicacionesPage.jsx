@@ -1,11 +1,24 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
 
+import {
+  useInitialLoad,
+} from '../../../shared/hooks/useInitialLoad';
+
 import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialog';
+
+import Can from '../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
+import {
+  usePermissions,
+} from '../../../shared/hooks/usePermissions';
 
 import {
   showError,
@@ -37,6 +50,14 @@ function normalizeText(value) {
 }
 
 function UbicacionesPage() {
+  const {
+    can,
+  } = usePermissions();
+
+  const canManageLocations = can(
+    PERMISSIONS.UBICACIONES_GESTIONAR,
+  );
+
   const [activeTab, setActiveTab] =
     useState('catalogo');
 
@@ -103,9 +124,7 @@ function UbicacionesPage() {
     [],
   );
 
-  useEffect(() => {
-    cargarUbicaciones();
-  }, [cargarUbicaciones]);
+  useInitialLoad(cargarUbicaciones);
 
   const filteredLocations = useMemo(() => {
     const search = normalizeText(searchTerm);
@@ -143,36 +162,39 @@ function UbicacionesPage() {
     1,
   );
 
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages,
+  );
+
   const paginatedLocations = useMemo(() => {
     const start =
-      (currentPage - 1) * PAGE_SIZE;
+      (safeCurrentPage - 1) * PAGE_SIZE;
 
     return filteredLocations.slice(
       start,
       start + PAGE_SIZE,
     );
   }, [
-    currentPage,
+    safeCurrentPage,
     filteredLocations,
   ]);
 
-  useEffect(() => {
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
     setCurrentPage(1);
-  }, [
-    searchTerm,
-    statusFilter,
-  ]);
+  };
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [
-    currentPage,
-    totalPages,
-  ]);
+  const handleStatusChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
 
   const handleSave = async (payload) => {
+    if (!canManageLocations) {
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -212,7 +234,10 @@ function UbicacionesPage() {
   };
 
   const handleDeactivate = async () => {
-    if (!pendingDeactivate?.id) {
+    if (
+      !canManageLocations ||
+      !pendingDeactivate?.id
+    ) {
       return;
     }
 
@@ -302,7 +327,7 @@ function UbicacionesPage() {
                   value={searchTerm}
                   placeholder="Buscar ubicación..."
                   onChange={(event) =>
-                    setSearchTerm(
+                    handleSearchChange(
                       event.target.value,
                     )
                   }
@@ -313,7 +338,7 @@ function UbicacionesPage() {
                 className="form-select"
                 value={statusFilter}
                 onChange={(event) =>
-                  setStatusFilter(
+                  handleStatusChange(
                     event.target.value,
                   )
                 }
@@ -331,19 +356,21 @@ function UbicacionesPage() {
                 </option>
               </select>
 
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() =>
-                  setFormModal({
-                    mode: 'create',
-                    ubicacion: null,
-                  })
-                }
-              >
-                <i className="bi bi-plus-lg me-2" />
-                Nueva ubicación
-              </button>
+              <Can permission={PERMISSIONS.UBICACIONES_GESTIONAR}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() =>
+                    setFormModal({
+                      mode: 'create',
+                      ubicacion: null,
+                    })
+                  }
+                >
+                  <i className="bi bi-plus-lg me-2" />
+                  Nueva ubicación
+                </button>
+              </Can>
             </div>
 
             {isLoading ? (
@@ -356,31 +383,33 @@ function UbicacionesPage() {
                 <UbicacionesTable
                   ubicaciones={paginatedLocations}
                   onView={setDetailLocation}
-                  onEdit={(ubicacion) =>
-                    setFormModal({
-                      mode: 'edit',
-                      ubicacion,
-                    })
-                  }
-                  onDeactivate={
-                    setPendingDeactivate
-                  }
+                  onEdit={(ubicacion) => {
+                    if (canManageLocations) {
+                      setFormModal({
+                        mode: 'edit',
+                        ubicacion,
+                      });
+                    }
+                  }}
+                  onDeactivate={(ubicacion) => {
+                    if (canManageLocations) {
+                      setPendingDeactivate(ubicacion);
+                    }
+                  }}
                 />
 
                 {filteredLocations.length > PAGE_SIZE && (
                   <footer className="locations-pagination">
                     <span>
-                      Página {currentPage} de {totalPages}
+                      Página {safeCurrentPage} de {totalPages}
                     </span>
 
                     <div>
                       <button
                         type="button"
-                        disabled={currentPage === 1}
+                        disabled={safeCurrentPage === 1}
                         onClick={() =>
-                          setCurrentPage(
-                            (page) => page - 1,
-                          )
+                          setCurrentPage(safeCurrentPage - 1)
                         }
                       >
                         <i className="bi bi-chevron-left" />
@@ -394,7 +423,7 @@ function UbicacionesPage() {
                           key={page}
                           type="button"
                           className={
-                            page === currentPage
+                            page === safeCurrentPage
                               ? 'active'
                               : ''
                           }
@@ -409,12 +438,10 @@ function UbicacionesPage() {
                       <button
                         type="button"
                         disabled={
-                          currentPage === totalPages
+                          safeCurrentPage === totalPages
                         }
                         onClick={() =>
-                          setCurrentPage(
-                            (page) => page + 1,
-                          )
+                          setCurrentPage(safeCurrentPage + 1)
                         }
                       >
                         <i className="bi bi-chevron-right" />
@@ -439,7 +466,12 @@ function UbicacionesPage() {
       </section>
 
       <UbicacionFormModal
-        open={Boolean(formModal)}
+        key={
+          formModal
+            ? `${formModal.mode}-${formModal.ubicacion?.id ?? 'new'}`
+            : 'closed'
+        }
+        open={canManageLocations && Boolean(formModal)}
         mode={
           formModal?.mode ??
           'create'
@@ -467,7 +499,7 @@ function UbicacionesPage() {
       />
 
       <ConfirmDialog
-        open={Boolean(pendingDeactivate)}
+        open={canManageLocations && Boolean(pendingDeactivate)}
         title="Desactivar ubicación"
         message={
           pendingDeactivate

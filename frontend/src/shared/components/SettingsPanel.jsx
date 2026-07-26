@@ -1,6 +1,6 @@
 import {
   usePreferences,
-} from '../contexts/PreferencesContext';
+} from '../hooks/usePreferences';
 
 function SettingsPanel({
   open,

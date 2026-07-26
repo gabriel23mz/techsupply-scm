@@ -1,3 +1,9 @@
+import Can from '../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
 function LogisticsToolbar({
   activeTab,
   searchTerm,
@@ -92,32 +98,34 @@ function LogisticsToolbar({
       </button>
 
       {isOrdersTab && (
-        <button
-          type="button"
-          className="btn btn-primary logistics-generate-btn"
-          disabled={generateDisabled}
-          onClick={onGenerate}
-          title={
-            availableOrdersCount === 0
-              ? 'No existen pedidos disponibles para planificar'
-              : 'Generar jornadas de reparto'
-          }
-        >
-          {isGenerating ? (
-            <>
-              <span className="spinner-border spinner-border-sm me-2" />
-              Planificando...
-            </>
-          ) : (
-            <>
-              <i className="bi bi-stars me-2" />
-              Generar jornadas
-              <span className="logistics-generate-count">
-                {availableOrdersCount}
-              </span>
-            </>
-          )}
-        </button>
+        <Can permission={PERMISSIONS.JORNADAS_GENERAR}>
+          <button
+            type="button"
+            className="btn btn-primary logistics-generate-btn"
+            disabled={generateDisabled}
+            onClick={onGenerate}
+            title={
+              availableOrdersCount === 0
+                ? 'No existen pedidos disponibles para planificar'
+                : 'Generar jornadas de reparto'
+            }
+          >
+            {isGenerating ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" />
+                Planificando...
+              </>
+            ) : (
+              <>
+                <i className="bi bi-stars me-2" />
+                Generar jornadas
+                <span className="logistics-generate-count">
+                  {availableOrdersCount}
+                </span>
+              </>
+            )}
+          </button>
+        </Can>
       )}
     </section>
   );

@@ -1,8 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+
+import {
+  useInitialLoad,
+} from '../../../shared/hooks/useInitialLoad';
 
 import { useNavigate } from 'react-router-dom';
 
 import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialog';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
+import {
+  usePermissions,
+} from '../../../shared/hooks/usePermissions';
 
 import GeneracionLoadingModal from '../components/GeneracionLoadingModal';
 import JornadasTable from '../components/JornadasTable';
@@ -63,6 +75,18 @@ function normalizeText(value) {
 
 function CentroLogisticoPage() {
   const navigate = useNavigate();
+
+  const {
+    can,
+  } = usePermissions();
+
+  const canGenerateJourneys = can(
+    PERMISSIONS.JORNADAS_GENERAR,
+  );
+
+  const canRecalculateJourneys = can(
+    PERMISSIONS.JORNADAS_RECALCULAR,
+  );
 
   /*
   |--------------------------------------------------------------------------
@@ -191,9 +215,7 @@ function CentroLogisticoPage() {
     }
   }, []);
 
-  useEffect(() => {
-    cargarDatos();
-  }, [cargarDatos]);
+  useInitialLoad(cargarDatos);
 
   /*
   |--------------------------------------------------------------------------
@@ -368,6 +390,7 @@ function CentroLogisticoPage() {
 
   const requestGenerateJourneys = () => {
     if (
+      !canGenerateJourneys ||
       isGenerating ||
       pedidosDisponibles.length === 0
     ) {
@@ -379,6 +402,10 @@ function CentroLogisticoPage() {
 
   const handleGenerateJourneys =
     async () => {
+      if (!canGenerateJourneys) {
+        return;
+      }
+
       try {
         setShowGenerateConfirm(false);
         setIsGenerating(true);
@@ -421,6 +448,7 @@ function CentroLogisticoPage() {
     jornada,
   ) => {
     if (
+      !canRecalculateJourneys ||
       !jornada?.id ||
       recalculatingId !== null
     ) {
@@ -438,6 +466,7 @@ function CentroLogisticoPage() {
         journeyPendingRecalculation;
 
       if (
+        !canRecalculateJourneys ||
         !jornada?.id ||
         recalculatingId !== null
       ) {
@@ -684,7 +713,7 @@ function CentroLogisticoPage() {
       {/* Confirmación para generar jornadas */}
 
       <ConfirmDialog
-        open={showGenerateConfirm}
+        open={canGenerateJourneys && showGenerateConfirm}
         title="Generar jornadas de reparto"
         message={`Se planificarán automáticamente ${pedidosDisponibles.length} pedido${
           pedidosDisponibles.length === 1
@@ -705,7 +734,7 @@ function CentroLogisticoPage() {
       {/* Confirmación para recalcular */}
 
       <ConfirmDialog
-        open={Boolean(
+        open={canRecalculateJourneys && Boolean(
           journeyPendingRecalculation,
         )}
         title="Recalcular jornada"
@@ -733,4 +762,3 @@ function CentroLogisticoPage() {
 }
 
 export default CentroLogisticoPage;
-

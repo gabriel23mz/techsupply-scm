@@ -100,7 +100,6 @@ function DespachoDetailDrawer({
     return null;
   }
 
-  const pedido = getPedido(despacho);
   const cliente = getCliente(despacho);
   const usuario = getUsuario(despacho);
   const jornada = getJornada(despacho);

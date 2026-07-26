@@ -20,6 +20,7 @@ const activeRouteFiles = [
   'camion.routes.js',
   'bodega.routes.js',
   'chofer.routes.js',
+  'dashboard.routes.js',
 ];
 
 const readFiles = (directory, extensions) => {
@@ -92,6 +93,7 @@ test('rutas Express activas conservan método, URL y orden observable', async ()
     camiones: await import('../../src/routes/camion.routes.js'),
     bodega: await import('../../src/routes/bodega.routes.js'),
     choferes: await import('../../src/routes/chofer.routes.js'),
+    dashboard: await import('../../src/routes/dashboard.routes.js'),
   };
 
   const actual = Object.fromEntries(
@@ -178,17 +180,29 @@ test('rutas Express activas conservan método, URL y orden observable', async ()
 
   assert.deepEqual(actual.choferes.map((route) => [route.methods, route.path]), [
     [['get'], '/'],
+    [['get'], '/me'],
     [['get'], '/disponibles'],
     [['post'], '/'],
     [['get'], '/:id'],
     [['put'], '/:id'],
     [['delete'], '/:id'],
   ]);
+
+
+  assert.deepEqual(actual.dashboard.map((route) => [route.methods, route.path]), [
+    [['get'], '/resumen'],
+    [['get'], '/notificaciones'],
+  ]);
 });
 
 test('rutas operativas activas declaran autenticación antes de autorización', () => {
+  const authenticatedOnlyRouteFiles = [
+    'dashboard.routes.js',
+  ];
   const operationalRouteFiles = activeRouteFiles.filter(
-    (file) => file !== 'auth.routes.js',
+    (file) =>
+      file !== 'auth.routes.js' &&
+      !authenticatedOnlyRouteFiles.includes(file),
   );
 
   for (const file of operationalRouteFiles) {
@@ -226,6 +240,30 @@ test('rutas operativas activas declaran autenticación antes de autorización', 
       `${file} debe autenticar antes de autorizar`,
     );
   }
+
+  for (const file of authenticatedOnlyRouteFiles) {
+    const source = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        'src',
+        'routes',
+        file,
+      ),
+      'utf8',
+    );
+
+    assert.match(
+      source,
+      /router\.use\(\s*authMiddleware\.requireAuth,\s*\);/,
+      file,
+    );
+    assert.doesNotMatch(
+      source,
+      /authorizationMiddleware\.requirePermission/,
+      `${file} debe ser role-aware sin exigir un permiso de módulo`,
+    );
+  }
+
 });
 
 test('asociaciones Sequelize declaran aliases canónicos explícitos', async () => {

@@ -1,7 +1,13 @@
-import {
-  useEffect,
-  useState,
-} from 'react';
+import { useState } from 'react';
+
+
+function buildInitialForm(pedido) {
+  return {
+    cliente_id: String(pedido?.cliente_id ?? ''),
+    usuario_id: String(pedido?.usuario_id ?? ''),
+    fecha_entrega: pedido?.fecha_entrega ?? '',
+  };
+}
 
 function PedidoEditModal({
   open,
@@ -13,36 +19,10 @@ function PedidoEditModal({
   onClose,
 }) {
   const [formData, setFormData] =
-    useState({
-      cliente_id: '',
-      usuario_id: '',
-      fecha_entrega: '',
-    });
+    useState(() => buildInitialForm(pedido));
 
   const [errors, setErrors] =
     useState({});
-
-  useEffect(() => {
-    if (!open || !pedido) {
-      return;
-    }
-
-    setFormData({
-      cliente_id: String(
-        pedido.cliente_id ?? '',
-      ),
-      usuario_id: String(
-        pedido.usuario_id ?? '',
-      ),
-      fecha_entrega:
-        pedido.fecha_entrega ?? '',
-    });
-
-    setErrors({});
-  }, [
-    open,
-    pedido,
-  ]);
 
   const handleSubmit = (
     event,

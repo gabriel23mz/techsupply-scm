@@ -1,3 +1,9 @@
+import Can from '../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
 function getLocation(cliente) {
   return cliente?.ubicacion ?? null;
 }
@@ -187,16 +193,18 @@ function ClienteDetailDrawer({
             Cerrar
           </button>
 
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() =>
-              onEdit(cliente)
-            }
-          >
-            <i className="bi bi-pencil-square me-2" />
-            Editar cliente
-          </button>
+          <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() =>
+                onEdit(cliente)
+              }
+            >
+              <i className="bi bi-pencil-square me-2" />
+              Editar cliente
+            </button>
+          </Can>
         </footer>
       </aside>
     </div>

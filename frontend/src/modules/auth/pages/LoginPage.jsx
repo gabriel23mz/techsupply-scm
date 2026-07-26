@@ -6,7 +6,6 @@ import {
 } from 'react';
 
 import {
-  Navigate,
   useLocation,
   useNavigate,
 } from 'react-router-dom';
@@ -17,7 +16,11 @@ import {
 
 import {
   useAuth,
-} from '../../../shared/contexts/AuthContext';
+} from '../../../shared/hooks/useAuth';
+
+import {
+  getLandingPath,
+} from '../../../shared/routing/access';
 
 import '../auth.css';
 
@@ -32,7 +35,6 @@ function LoginPage() {
   const passwordRef = useRef(null);
 
   const {
-    isAuthenticated,
     isAuthenticating,
     login,
   } = useAuth();
@@ -115,10 +117,6 @@ function LoginPage() {
     passwordIsValid,
   ]);
 
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-
   const triggerFieldFeedback = (
     field,
   ) => {
@@ -193,16 +191,22 @@ function LoginPage() {
     }
 
     try {
-      await login({
+      const nextSession = await login({
         correo:
           normalizedEmail.toLowerCase(),
         password:
           formData.password,
       });
 
+      const previousLocation =
+        location.state?.from;
+
       const destination =
-        location.state?.from
-          ?.pathname ?? '/';
+        typeof previousLocation === 'string'
+          ? previousLocation
+          : previousLocation?.pathname
+            ? `${previousLocation.pathname}${previousLocation.search ?? ''}${previousLocation.hash ?? ''}`
+            : getLandingPath(nextSession.user);
 
       navigate(destination, {
         replace: true,

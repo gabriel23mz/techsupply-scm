@@ -1,4 +1,5 @@
 import {
+  useMemo,
   useState,
 } from 'react';
 
@@ -10,17 +11,25 @@ import {
 
 import {
   useAuth,
-} from '../contexts/AuthContext';
+} from '../hooks/useAuth';
 
 import {
   usePreferences,
-} from '../contexts/PreferencesContext';
+} from '../hooks/usePreferences';
+
+import {
+  usePermissions,
+} from '../hooks/usePermissions';
 
 import ConfirmDialog from './ConfirmDialog/ConfirmDialog';
 
 import {
-  navigation,
+  navigationSections,
 } from '../constants/navigation.jsx';
+
+import {
+  getRouteById,
+} from '../routing/routeRegistry';
 
 function getInitials(user) {
   const values = [
@@ -44,24 +53,54 @@ function Sidebar() {
   const navigate = useNavigate();
 
   const {
-    hasPermission,
     user,
   } = useAuth();
+
+  const {
+    canAccess,
+    role,
+  } = usePermissions();
 
   const {
     preferences,
     updatePreference,
   } = usePreferences();
 
-  const [
-    pendingPath,
-    setPendingPath,
-  ] = useState(null);
+  const [pendingPath, setPendingPath] =
+    useState(null);
 
-  const [
-    showConfirm,
-    setShowConfirm,
-  ] = useState(false);
+  const [showConfirm, setShowConfirm] =
+    useState(false);
+
+  const visibleSections = useMemo(
+    () =>
+      navigationSections
+        .map((section) => ({
+          ...section,
+          items: section.items
+            .map(getRouteById)
+            .filter(Boolean)
+            .filter((route) => {
+              if (
+                route.hidden ||
+                !canAccess(route.access)
+              ) {
+                return false;
+              }
+
+              return (
+                !Array.isArray(
+                  route.navigationRoles,
+                ) ||
+                route.navigationRoles.includes(role)
+              );
+            }),
+        }))
+        .filter((section) =>
+          section.items.length > 0,
+        ),
+    [canAccess, role],
+  );
 
   const protectedPaths = [
     '/pedidos/nuevo',
@@ -69,9 +108,7 @@ function Sidebar() {
 
   const isProtectedPage =
     protectedPaths.some((path) =>
-      location.pathname.startsWith(
-        path,
-      ),
+      location.pathname.startsWith(path),
     );
 
   const handleNavigation = (
@@ -111,13 +148,8 @@ function Sidebar() {
         </div>
 
         <div className="sidebar-brand-copy">
-          <strong>
-            TechSupply
-          </strong>
-
-          <span>
-            Supply Chain Management
-          </span>
+          <strong>TechSupply</strong>
+          <span>Supply Chain Management</span>
         </div>
 
         <button
@@ -145,46 +177,40 @@ function Sidebar() {
         </button>
       </div>
 
-      <span className="sidebar-section-label">
-        Operación
-      </span>
-
       <nav className="sidebar-nav">
-        {navigation
-          .filter(
-            (item) =>
-              !item.hidden &&
-              hasPermission(
-                item.permission,
-              ),
-          )
-          .map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              end={item.path === '/'}
-              title={item.label}
-              className={({
-                isActive,
-              }) =>
-                isActive
-                  ? 'sidebar-link active'
-                  : 'sidebar-link'
-              }
-              onClick={(event) =>
-                handleNavigation(
-                  event,
-                  item.path,
-                )
-              }
-            >
-              <i className={`bi ${item.icon}`} />
+        {visibleSections.map((section) => (
+          <div
+            key={section.id}
+            className="sidebar-nav-section"
+          >
+            <span className="sidebar-section-label">
+              {section.label}
+            </span>
 
-              <span>
-                {item.label}
-              </span>
-            </NavLink>
-          ))}
+            {section.items.map((item) => (
+              <NavLink
+                key={item.id}
+                to={item.path}
+                end={item.path === '/'}
+                title={item.label}
+                className={({ isActive }) =>
+                  isActive
+                    ? 'sidebar-link active'
+                    : 'sidebar-link'
+                }
+                onClick={(event) =>
+                  handleNavigation(
+                    event,
+                    item.path,
+                  )
+                }
+              >
+                <i className={`bi ${item.icon}`} />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
+        ))}
       </nav>
 
       <div className="sidebar-footer-card">
@@ -199,14 +225,10 @@ function Sidebar() {
               user?.apellido,
             ]
               .filter(Boolean)
-              .join(' ') ||
-              'Usuario'}
+              .join(' ') || 'Usuario'}
           </strong>
 
-          <span>
-            {user?.rol ??
-              'Sin rol'}
-          </span>
+          <span>{user?.rol ?? 'Sin rol'}</span>
         </div>
       </div>
 

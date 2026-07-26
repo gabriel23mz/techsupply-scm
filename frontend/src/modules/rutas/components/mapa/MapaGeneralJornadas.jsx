@@ -365,7 +365,6 @@ function MapaGeneralJornadas({
   selectedJourneyId,
   focusRequest,
   onSelectJourney,
-  onViewJourney,
 }) {
   const [tileError, setTileError] = useState(false);
 

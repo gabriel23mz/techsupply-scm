@@ -1,5 +1,16 @@
 import axios from 'axios';
 
+import {
+  SESSION_STORAGE_KEY,
+} from '../constants/storage';
+
+import {
+  createApiError,
+} from './ApiError';
+
+export const SESSION_EXPIRED_EVENT =
+  'techsupply:session-expired';
+
 const api = axios.create({
   baseURL:
     import.meta.env.VITE_API_URL ??
@@ -16,14 +27,17 @@ api.interceptors.request.use(
     try {
       const raw =
         localStorage.getItem(
-          'techsupply_session',
+          SESSION_STORAGE_KEY,
         );
 
       const session = raw
         ? JSON.parse(raw)
         : null;
 
-      if (session?.token) {
+      if (
+        session?.token &&
+        !config.headers?.Authorization
+      ) {
         config.headers.Authorization =
           `Bearer ${session.token}`;
       }
@@ -38,41 +52,32 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const status =
-      error.response?.status;
+    const apiError =
+      createApiError(error);
 
-    const message =
-      status === 403
-        ? 'Acceso denegado. Tu usuario no tiene permiso para esta operación.'
-        :
-      error.response?.data?.message ??
-      error.response?.data?.error ??
-      error.message ??
-      'Error de comunicación con el servidor';
-
-    if (
-      status === 401 &&
-      !error.config?.url?.includes(
+    const isLoginRequest =
+      error?.config?.url?.includes(
         '/auth/login',
-      )
-    ) {
-      localStorage.removeItem(
-        'techsupply_session',
       );
 
-      if (
-        window.location.pathname !==
-        '/login'
-      ) {
-        window.location.assign(
-          '/login',
-        );
-      }
+    if (
+      apiError.status === 401 &&
+      !isLoginRequest
+    ) {
+      window.dispatchEvent(
+        new CustomEvent(
+          SESSION_EXPIRED_EVENT,
+          {
+            detail: {
+              code: apiError.code,
+              message: apiError.message,
+            },
+          },
+        ),
+      );
     }
 
-    return Promise.reject(
-      new Error(message),
-    );
+    return Promise.reject(apiError);
   },
 );
 

@@ -21,10 +21,28 @@ export const obtenerTodos = asyncHandler(
   },
 );
 
+export const obtenerPerfilPropio = asyncHandler(
+  async (req, res) => {
+    const chofer =
+      await choferService.obtenerPerfilPropio(
+        req.user,
+      );
+
+    return successResponse(
+      res,
+      chofer,
+      'Perfil de chofer obtenido correctamente',
+    );
+  },
+);
+
 export const obtenerDisponibles = asyncHandler(
   async (req, res) => {
     const choferes =
-      await choferService.obtenerDisponibles();
+      await choferService.obtenerDisponibles(
+        req.query.fecha ?? new Date(),
+        req.user,
+      );
 
     return successResponse(
       res,

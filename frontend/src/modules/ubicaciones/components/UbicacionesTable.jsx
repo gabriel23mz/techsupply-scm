@@ -1,3 +1,9 @@
+import Can from '../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
 function formatCoordinate(value) {
   const coordinate = Number(value);
   return Number.isFinite(coordinate)
@@ -95,23 +101,27 @@ function UbicacionesTable({
                       <i className="bi bi-eye" />
                     </button>
 
-                    <button
-                      type="button"
-                      title="Editar"
-                      onClick={() => onEdit(ubicacion)}
-                    >
-                      <i className="bi bi-pencil-square" />
-                    </button>
-
-                    {ubicacion.estado !== false && (
+                    <Can permission={PERMISSIONS.UBICACIONES_GESTIONAR}>
                       <button
                         type="button"
-                        className="danger"
-                        title="Desactivar"
-                        onClick={() => onDeactivate(ubicacion)}
+                        title="Editar"
+                        onClick={() => onEdit(ubicacion)}
                       >
-                        <i className="bi bi-slash-circle" />
+                        <i className="bi bi-pencil-square" />
                       </button>
+                    </Can>
+
+                    {ubicacion.estado !== false && (
+                      <Can permission={PERMISSIONS.UBICACIONES_GESTIONAR}>
+                        <button
+                          type="button"
+                          className="danger"
+                          title="Desactivar"
+                          onClick={() => onDeactivate(ubicacion)}
+                        >
+                          <i className="bi bi-slash-circle" />
+                        </button>
+                      </Can>
                     )}
                   </div>
                 </td>

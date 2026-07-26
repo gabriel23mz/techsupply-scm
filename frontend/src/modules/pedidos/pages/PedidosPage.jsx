@@ -1,15 +1,30 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
+
+import {
+  useInitialLoad,
+} from '../../../shared/hooks/useInitialLoad';
 
 import {
   useNavigate,
 } from 'react-router-dom';
 
 import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialog';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
+import {
+  useAuth,
+} from '../../../shared/hooks/useAuth';
+
+import {
+  usePermissions,
+} from '../../../shared/hooks/usePermissions';
 
 import {
   showError,
@@ -120,6 +135,32 @@ function isDateMatch(
 function PedidosPage() {
   const navigate = useNavigate();
 
+  const {
+    user,
+  } = useAuth();
+
+  const {
+    can,
+    canAny,
+  } = usePermissions();
+
+  const canCreateOrders = can(
+    PERMISSIONS.PEDIDOS_CREAR,
+  );
+
+  const canEditOrders = can(
+    PERMISSIONS.PEDIDOS_EDITAR,
+  );
+
+  const canCancelOrders = can(
+    PERMISSIONS.PEDIDOS_CANCELAR,
+  );
+
+  const canOpenWorkspace = canAny(
+    PERMISSIONS.PEDIDOS_EDITAR,
+    PERMISSIONS.PEDIDOS_ENVIAR_PREPARACION,
+  );
+
   const [pedidos, setPedidos] =
     useState([]);
 
@@ -164,11 +205,24 @@ function PedidosPage() {
       try {
         setIsLoading(true);
 
+        const shouldLoadClients =
+          canCreateOrders || canEditOrders;
+
+        const shouldLoadUsers = can(
+          PERMISSIONS.USUARIOS_GESTIONAR,
+        );
+
         const results =
           await Promise.allSettled([
             obtenerPedidos(),
-            obtenerClientes(),
-            obtenerUsuarios(),
+            shouldLoadClients
+              ? obtenerClientes()
+              : Promise.resolve([]),
+            shouldLoadUsers
+              ? obtenerUsuarios()
+              : Promise.resolve(
+                user ? [user] : [],
+              ),
           ]);
 
         const [
@@ -231,12 +285,15 @@ function PedidosPage() {
         setIsLoading(false);
       }
     },
-    [],
+    [
+      can,
+      canCreateOrders,
+      canEditOrders,
+      user,
+    ],
   );
 
-  useEffect(() => {
-    cargarDatos();
-  }, [cargarDatos]);
+  useInitialLoad(cargarDatos);
 
   const filteredPedidos = useMemo(() => {
     const search =
@@ -297,10 +354,15 @@ function PedidosPage() {
     1,
   );
 
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages,
+  );
+
   const paginatedPedidos =
     useMemo(() => {
       const start =
-        (currentPage - 1) *
+        (safeCurrentPage - 1) *
         PAGE_SIZE;
 
       return filteredPedidos.slice(
@@ -308,29 +370,24 @@ function PedidosPage() {
         start + PAGE_SIZE,
       );
     }, [
-      currentPage,
+      safeCurrentPage,
       filteredPedidos,
     ]);
 
-  useEffect(() => {
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
     setCurrentPage(1);
-  }, [
-    dateFilter,
-    searchTerm,
-    statusFilter,
-  ]);
+  };
 
-  useEffect(() => {
-    if (
-      currentPage >
-      totalPages
-    ) {
-      setCurrentPage(totalPages);
-    }
-  }, [
-    currentPage,
-    totalPages,
-  ]);
+  const handleStatusChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleDateChange = (value) => {
+    setDateFilter(value);
+    setCurrentPage(1);
+  };
 
   const metrics = useMemo(
     () => [
@@ -382,11 +439,16 @@ function PedidosPage() {
     setSearchTerm('');
     setStatusFilter('TODOS');
     setDateFilter('TODAS');
+    setCurrentPage(1);
   };
 
   const handleUpdate = async (
     payload,
   ) => {
+    if (!canEditOrders || !editingPedido?.id) {
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -418,7 +480,10 @@ function PedidosPage() {
   };
 
   const handleCancel = async () => {
-    if (!pendingCancel?.id) {
+    if (
+      !canCancelOrders ||
+      !pendingCancel?.id
+    ) {
       return;
     }
 
@@ -513,13 +578,13 @@ function PedidosPage() {
           }
           dateFilter={dateFilter}
           onSearchChange={
-            setSearchTerm
+            handleSearchChange
           }
           onStatusChange={
-            setStatusFilter
+            handleStatusChange
           }
           onDateChange={
-            setDateFilter
+            handleDateChange
           }
           onClear={clearFilters}
           onCreate={() =>
@@ -550,30 +615,38 @@ function PedidosPage() {
               }
               onOpenWorkspace={(
                 pedido,
-              ) =>
+              ) => {
+                if (!canOpenWorkspace) {
+                  return;
+                }
+
                 navigate(
                   `/pedidos/${pedido.id}/workspace`,
-                )
-              }
-              onEdit={
-                setEditingPedido
-              }
-              onCancel={
-                setPendingCancel
-              }
+                );
+              }}
+              onEdit={(pedido) => {
+                if (canEditOrders) {
+                  setEditingPedido(pedido);
+                }
+              }}
+              onCancel={(pedido) => {
+                if (canCancelOrders) {
+                  setPendingCancel(pedido);
+                }
+              }}
               onClearFilters={
                 clearFilters
               }
-              onCreate={() =>
-                navigate(
-                  '/pedidos/nuevo',
-                )
-              }
+              onCreate={() => {
+                if (canCreateOrders) {
+                  navigate('/pedidos/nuevo');
+                }
+              }}
             />
 
             <PedidosPagination
               currentPage={
-                currentPage
+                safeCurrentPage
               }
               totalPages={
                 totalPages
@@ -591,7 +664,8 @@ function PedidosPage() {
       </section>
 
       <PedidoEditModal
-        open={Boolean(
+        key={editingPedido?.id ?? 'closed'}
+        open={canEditOrders && Boolean(
           editingPedido,
         )}
         pedido={editingPedido}
@@ -607,7 +681,7 @@ function PedidosPage() {
       />
 
       <ConfirmDialog
-        open={Boolean(
+        open={canCancelOrders && Boolean(
           pendingCancel,
         )}
         title="Cancelar pedido"

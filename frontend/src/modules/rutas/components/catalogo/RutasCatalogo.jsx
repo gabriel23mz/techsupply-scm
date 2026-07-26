@@ -1,10 +1,17 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from 'react';
 
 import ConfirmDialog from '../../../../shared/components/ConfirmDialog/ConfirmDialog';
+
+import {
+  PERMISSIONS,
+} from '../../../../shared/constants/permissions';
+
+import {
+  usePermissions,
+} from '../../../../shared/hooks/usePermissions';
 
 import {
   showError,
@@ -36,9 +43,16 @@ function formatRouteCode(id) {
 function RutasCatalogo({
   rutas,
   ubicaciones,
-  isLoading,
   onRefresh,
 }) {
+  const {
+    can,
+  } = usePermissions();
+
+  const canManageRoutes = can(
+    PERMISSIONS.RUTAS_GESTIONAR,
+  );
+
   const [searchTerm, setSearchTerm] =
     useState('');
 
@@ -126,37 +140,44 @@ function RutasCatalogo({
     1,
   );
 
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages,
+  );
+
   const paginatedRoutes = useMemo(() => {
     const start =
-      (currentPage - 1) * PAGE_SIZE;
+      (safeCurrentPage - 1) * PAGE_SIZE;
 
     return filteredRoutes.slice(
       start,
       start + PAGE_SIZE,
     );
   }, [
-    currentPage,
+    safeCurrentPage,
     filteredRoutes,
   ]);
 
-  useEffect(() => {
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
     setCurrentPage(1);
-  }, [
-    searchTerm,
-    originFilter,
-    destinationFilter,
-  ]);
+  };
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [
-    currentPage,
-    totalPages,
-  ]);
+  const handleOriginChange = (value) => {
+    setOriginFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleDestinationChange = (value) => {
+    setDestinationFilter(value);
+    setCurrentPage(1);
+  };
 
   const handleCreate = () => {
+    if (!canManageRoutes) {
+      return;
+    }
+
     setFormModal({
       mode: 'create',
       ruta: null,
@@ -164,6 +185,10 @@ function RutasCatalogo({
   };
 
   const handleEdit = (ruta) => {
+    if (!canManageRoutes) {
+      return;
+    }
+
     setFormModal({
       mode: 'edit',
       ruta,
@@ -181,6 +206,10 @@ function RutasCatalogo({
   const handleSave = async (
     payload,
   ) => {
+    if (!canManageRoutes) {
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -226,7 +255,7 @@ function RutasCatalogo({
       const ruta =
         routePendingDeactivate;
 
-      if (!ruta?.id) {
+      if (!canManageRoutes || !ruta?.id) {
         setRoutePendingDeactivate(
           null,
         );
@@ -278,17 +307,18 @@ function RutasCatalogo({
           destinationFilter
         }
         ubicaciones={ubicaciones}
-        onSearchChange={setSearchTerm}
+        onSearchChange={handleSearchChange}
         onOriginChange={
-          setOriginFilter
+          handleOriginChange
         }
         onDestinationChange={
-          setDestinationFilter
+          handleDestinationChange
         }
         onClear={() => {
           setSearchTerm('');
           setOriginFilter('todos');
           setDestinationFilter('todos');
+          setCurrentPage(1);
         }}
         onCreate={handleCreate}
       />
@@ -303,7 +333,7 @@ function RutasCatalogo({
       />
 
       <RoutesPagination
-        currentPage={currentPage}
+        currentPage={safeCurrentPage}
         totalPages={totalPages}
         totalItems={filteredRoutes.length}
         pageSize={PAGE_SIZE}
@@ -311,7 +341,7 @@ function RutasCatalogo({
       />
 
       <RutaFormModal
-        open={Boolean(formModal)}
+        open={canManageRoutes && Boolean(formModal)}
         mode={
           formModal?.mode ??
           'create'
@@ -333,7 +363,7 @@ function RutasCatalogo({
       />
 
       <ConfirmDialog
-        open={Boolean(
+        open={canManageRoutes && Boolean(
           routePendingDeactivate,
         )}
         title="Desactivar ruta"
@@ -361,4 +391,3 @@ function RutasCatalogo({
 }
 
 export default RutasCatalogo;
-

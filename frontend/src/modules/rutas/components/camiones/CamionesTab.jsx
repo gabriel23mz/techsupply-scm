@@ -1,7 +1,6 @@
 import {
   useMemo,
   useState,
-  useEffect,
 } from 'react';
 
 import CamionResumenModal from './CamionResumenModal';
@@ -105,35 +104,38 @@ function CamionesTab({
     1,
   );
 
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages,
+  );
+
   const paginatedTrucks = useMemo(() => {
     const start =
-      (currentPage - 1) * PAGE_SIZE;
+      (safeCurrentPage - 1) * PAGE_SIZE;
 
     return filteredTrucks.slice(
       start,
       start + PAGE_SIZE,
     );
   }, [
-    currentPage,
+    safeCurrentPage,
     filteredTrucks,
   ]);
 
-  useEffect(() => {
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
     setCurrentPage(1);
-  }, [
-    searchTerm,
-    statusFilter,
-    capacityFilter,
-  ]);
+  };
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [
-    currentPage,
-    totalPages,
-  ]);
+  const handleStatusChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleCapacityChange = (value) => {
+    setCapacityFilter(value);
+    setCurrentPage(1);
+  };
 
   const totalCapacity = useMemo(
     () =>
@@ -306,12 +308,12 @@ function CamionesTab({
           capacityFilter
         }
         isLoading={isLoading}
-        onSearchChange={setSearchTerm}
+        onSearchChange={handleSearchChange}
         onStatusChange={
-          setStatusFilter
+          handleStatusChange
         }
         onCapacityChange={
-          setCapacityFilter
+          handleCapacityChange
         }
         onRefresh={onRefresh}
       />
@@ -328,7 +330,7 @@ function CamionesTab({
       />
 
       <RoutesPagination
-        currentPage={currentPage}
+        currentPage={safeCurrentPage}
         totalPages={totalPages}
         totalItems={filteredTrucks.length}
         pageSize={PAGE_SIZE}

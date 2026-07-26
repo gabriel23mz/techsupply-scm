@@ -1,3 +1,9 @@
+import Can from '../../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../../shared/constants/permissions';
+
 function formatRouteCode(id) {
   return `RUT-${String(id).padStart(4, '0')}`;
 }
@@ -129,24 +135,28 @@ function RutasTable({
                     <i className="bi bi-eye" />
                   </button>
 
-                  <button
-                    type="button"
-                    title="Editar ruta"
-                    onClick={() => onEdit(ruta)}
-                  >
-                    <i className="bi bi-pencil-square" />
-                  </button>
+                  <Can permission={PERMISSIONS.RUTAS_GESTIONAR}>
+                    <button
+                      type="button"
+                      title="Editar ruta"
+                      onClick={() => onEdit(ruta)}
+                    >
+                      <i className="bi bi-pencil-square" />
+                    </button>
+                  </Can>
 
-                  <button
-                    type="button"
-                    className="danger"
-                    title="Desactivar ruta"
-                    onClick={() =>
-                      onDeactivate(ruta)
-                    }
-                  >
-                    <i className="bi bi-slash-circle" />
-                  </button>
+                  <Can permission={PERMISSIONS.RUTAS_GESTIONAR}>
+                    <button
+                      type="button"
+                      className="danger"
+                      title="Desactivar ruta"
+                      onClick={() =>
+                        onDeactivate(ruta)
+                      }
+                    >
+                      <i className="bi bi-slash-circle" />
+                    </button>
+                  </Can>
                 </div>
               </td>
             </tr>
@@ -158,4 +168,3 @@ function RutasTable({
 }
 
 export default RutasTable;
-

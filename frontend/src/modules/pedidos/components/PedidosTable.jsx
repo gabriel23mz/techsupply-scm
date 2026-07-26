@@ -1,5 +1,16 @@
 import PedidoStatusBadge from './PedidoStatusBadge';
 
+import Can from '../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+  ROLES,
+} from '../../../shared/constants/permissions';
+
+import {
+  usePermissions,
+} from '../../../shared/hooks/usePermissions';
+
 function getCliente(pedido) {
   return (
     pedido?.cliente ??
@@ -63,21 +74,6 @@ function formatUser(usuario) {
     .join(' ');
 }
 
-function isCancelable(status) {
-  return [
-    'PENDIENTE',
-    'PREPARANDO',
-    'LISTO_PARA_DESPACHO',
-  ].includes(status);
-}
-
-function isEditable(status) {
-  return [
-    'PENDIENTE',
-    'PREPARANDO',
-  ].includes(status);
-}
-
 function PedidosTable({
   pedidos,
   hasFilters,
@@ -87,6 +83,21 @@ function PedidosTable({
   onClearFilters,
   onCreate,
 }) {
+  const {
+    can,
+    canAny,
+    hasRole,
+  } = usePermissions();
+
+  const canOpenWorkspace = canAny(
+    PERMISSIONS.PEDIDOS_EDITAR,
+    PERMISSIONS.PEDIDOS_ENVIAR_PREPARACION,
+  );
+
+  const canCreate = can(
+    PERMISSIONS.PEDIDOS_CREAR,
+  );
+
   if (!pedidos.length) {
     return (
       <div className="pedidos-empty">
@@ -110,27 +121,25 @@ function PedidosTable({
             : 'Crea el primer pedido para iniciar el flujo comercial y logístico.'}
         </p>
 
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={
-            hasFilters
-              ? onClearFilters
-              : onCreate
-          }
-        >
-          <i
-            className={`bi ${
-              hasFilters
-                ? 'bi-eraser'
-                : 'bi-plus-lg'
-            } me-2`}
-          />
-
-          {hasFilters
-            ? 'Limpiar filtros'
-            : 'Crear primer pedido'}
-        </button>
+        {hasFilters ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={onClearFilters}
+          >
+            <i className="bi bi-eraser me-2" />
+            Limpiar filtros
+          </button>
+        ) : canCreate ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={onCreate}
+          >
+            <i className="bi bi-plus-lg me-2" />
+            Crear primer pedido
+          </button>
+        ) : null}
       </div>
     );
   }
@@ -166,19 +175,25 @@ function PedidosTable({
             return (
               <tr key={pedido.id}>
                 <td>
-                  <button
-                    type="button"
-                    className="pedido-code"
-                    onClick={() =>
-                      onOpenWorkspace(
-                        pedido,
-                      )
-                    }
-                  >
-                    {formatOrderCode(
-                      pedido.id,
-                    )}
-                  </button>
+                  {canOpenWorkspace ? (
+                    <button
+                      type="button"
+                      className="pedido-code"
+                      onClick={() =>
+                        onOpenWorkspace(
+                          pedido,
+                        )
+                      }
+                    >
+                      {formatOrderCode(
+                        pedido.id,
+                      )}
+                    </button>
+                  ) : (
+                    <span className="pedido-code pedido-code--static">
+                      {formatOrderCode(pedido.id)}
+                    </span>
+                  )}
                 </td>
 
                 <td>
@@ -228,36 +243,43 @@ function PedidosTable({
 
                 <td>
                   <div className="pedidos-actions">
-                    <button
-                      type="button"
-                      className="workspace"
-                      title="Abrir Workspace"
-                      onClick={() =>
-                        onOpenWorkspace(
-                          pedido,
-                        )
-                      }
-                    >
-                      <i className="bi bi-layout-text-window-reverse" />
-                    </button>
-
-                    {isEditable(
-                      pedido.estado,
-                    ) && (
+                    {canOpenWorkspace && (
                       <button
                         type="button"
-                        title="Editar información"
+                        className="workspace"
+                        title="Abrir Workspace"
                         onClick={() =>
-                          onEdit(pedido)
+                          onOpenWorkspace(
+                            pedido,
+                          )
                         }
                       >
-                        <i className="bi bi-pencil-square" />
+                        <i className="bi bi-layout-text-window-reverse" />
                       </button>
                     )}
 
-                    {isCancelable(
-                      pedido.estado,
-                    ) && (
+                    {pedido.estado === 'PENDIENTE' && (
+                      <Can permission={PERMISSIONS.PEDIDOS_EDITAR}>
+                        <button
+                          type="button"
+                          title="Editar información"
+                          onClick={() =>
+                            onEdit(pedido)
+                          }
+                        >
+                          <i className="bi bi-pencil-square" />
+                        </button>
+                      </Can>
+                    )}
+
+                    {can(PERMISSIONS.PEDIDOS_CANCELAR) &&
+                    (pedido.estado === 'PENDIENTE' ||
+                      (hasRole(ROLES.ADMIN) &&
+                        ![
+                          'DESPACHADO',
+                          'ENTREGADO',
+                          'CANCELADO',
+                        ].includes(pedido.estado))) && (
                       <button
                         type="button"
                         className="danger"

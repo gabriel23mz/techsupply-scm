@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -17,6 +16,26 @@ function getLocation(cliente) {
   return cliente?.ubicacion ?? null;
 }
 
+
+function buildInitialForm(mode, cliente) {
+  if (mode !== 'edit' || !cliente) {
+    return INITIAL_FORM;
+  }
+
+  const ubicacion = getLocation(cliente);
+
+  return {
+    nombre: String(cliente.nombre ?? ''),
+    identificacion: String(cliente.identificacion ?? ''),
+    telefono: String(cliente.telefono ?? ''),
+    correo: String(cliente.correo ?? ''),
+    ubicacion_id: String(
+      cliente.ubicacion_id ?? ubicacion?.id ?? '',
+    ),
+    direccion: String(cliente.direccion ?? ''),
+  };
+}
+
 function ClienteFormModal({
   open,
   mode = 'create',
@@ -28,53 +47,10 @@ function ClienteFormModal({
   onClose,
 }) {
   const [formData, setFormData] =
-    useState(INITIAL_FORM);
+    useState(() => buildInitialForm(mode, cliente));
 
   const [errors, setErrors] =
     useState({});
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    if (
-      mode === 'edit' &&
-      cliente
-    ) {
-      const ubicacion =
-        getLocation(cliente);
-
-      setFormData({
-        nombre:
-          String(cliente.nombre ?? ''),
-        identificacion:
-          String(
-            cliente.identificacion ?? '',
-          ),
-        telefono:
-          String(cliente.telefono ?? ''),
-        correo:
-          String(cliente.correo ?? ''),
-        ubicacion_id:
-          String(
-            cliente.ubicacion_id ??
-              ubicacion?.id ??
-              '',
-          ),
-        direccion:
-          String(cliente.direccion ?? ''),
-      });
-    } else {
-      setFormData(INITIAL_FORM);
-    }
-
-    setErrors({});
-  }, [
-    cliente,
-    mode,
-    open,
-  ]);
 
   const selectedLocation =
     useMemo(

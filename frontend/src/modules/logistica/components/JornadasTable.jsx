@@ -1,3 +1,9 @@
+import Can from '../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
 function formatJourneyCode(id) {
   return `JR-${String(id).padStart(5, '0')}`;
 }
@@ -225,20 +231,22 @@ function JornadasTable({
 
                       {jornada.estado ===
                         'PLANIFICADA' && (
-                        <button
-                          type="button"
-                          title="Recalcular jornada"
-                          disabled={isRecalculating}
-                          onClick={() =>
-                            onRecalculate(jornada)
-                          }
-                        >
-                          {isRecalculating ? (
-                            <span className="spinner-border spinner-border-sm" />
-                          ) : (
-                            <i className="bi bi-arrow-repeat" />
-                          )}
-                        </button>
+                        <Can permission={PERMISSIONS.JORNADAS_RECALCULAR}>
+                          <button
+                            type="button"
+                            title="Recalcular jornada"
+                            disabled={isRecalculating}
+                            onClick={() =>
+                              onRecalculate(jornada)
+                            }
+                          >
+                            {isRecalculating ? (
+                              <span className="spinner-border spinner-border-sm" />
+                            ) : (
+                              <i className="bi bi-arrow-repeat" />
+                            )}
+                          </button>
+                        </Can>
                       )}
                     </div>
                   </td>
@@ -274,4 +282,3 @@ function JornadasTable({
 }
 
 export default JornadasTable;
-

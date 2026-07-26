@@ -21,6 +21,7 @@ import jornadaRepartoRoutes from './src/routes/jornadaReparto.routes.js';
 import camionRoutes from './src/routes/camion.routes.js';
 import bodegaRoutes from './src/routes/bodega.routes.js';
 import choferRoutes from './src/routes/chofer.routes.js';
+import dashboardRoutes from './src/routes/dashboard.routes.js';
 
 import notFound from './src/middlewares/notFound.js';
 import errorHandler from './src/middlewares/errorHandler.js';
@@ -48,6 +49,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.use('/api/ubicaciones', ubicacionRoutes);
 app.use('/api/clientes', clienteRoutes);

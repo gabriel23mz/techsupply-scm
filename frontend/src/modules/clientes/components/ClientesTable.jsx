@@ -1,3 +1,9 @@
+import Can from '../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
 function getLocation(cliente) {
   return cliente?.ubicacion ?? null;
 }
@@ -52,27 +58,27 @@ function ClientesTable({
             : 'Registra el primer cliente para comenzar a gestionar pedidos y entregas.'}
         </p>
 
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={
-            hasFilters
-              ? onClearFilters
-              : onCreate
-          }
-        >
-          <i
-            className={`bi ${
-              hasFilters
-                ? 'bi-eraser'
-                : 'bi-person-plus'
-            } me-2`}
-          />
-
-          {hasFilters
-            ? 'Limpiar filtros'
-            : 'Registrar primer cliente'}
-        </button>
+        {hasFilters ? (
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={onClearFilters}
+          >
+            <i className="bi bi-eraser me-2" />
+            Limpiar filtros
+          </button>
+        ) : (
+          <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={onCreate}
+            >
+              <i className="bi bi-person-plus me-2" />
+              Registrar primer cliente
+            </button>
+          </Can>
+        )}
       </div>
     );
   }
@@ -191,25 +197,29 @@ function ClientesTable({
                       <i className="bi bi-eye" />
                     </button>
 
-                    <button
-                      type="button"
-                      title="Editar cliente"
-                      onClick={() => onEdit(cliente)}
-                    >
-                      <i className="bi bi-pencil-square" />
-                    </button>
-
-                    {cliente.estado !== false && (
+                    <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
                       <button
                         type="button"
-                        className="danger"
-                        title="Desactivar cliente"
-                        onClick={() =>
-                          onDeactivate(cliente)
-                        }
+                        title="Editar cliente"
+                        onClick={() => onEdit(cliente)}
                       >
-                        <i className="bi bi-slash-circle" />
+                        <i className="bi bi-pencil-square" />
                       </button>
+                    </Can>
+
+                    {cliente.estado !== false && (
+                      <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
+                        <button
+                          type="button"
+                          className="danger"
+                          title="Desactivar cliente"
+                          onClick={() =>
+                            onDeactivate(cliente)
+                          }
+                        >
+                          <i className="bi bi-slash-circle" />
+                        </button>
+                      </Can>
                     )}
                   </div>
                 </td>

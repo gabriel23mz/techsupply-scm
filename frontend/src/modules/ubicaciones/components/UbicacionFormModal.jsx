@@ -197,6 +197,27 @@ function haversineDistanceMeters(
   );
 }
 
+
+function getInitialLocation(mode, ubicacion) {
+  if (mode !== 'edit' || !ubicacion) {
+    return {
+      nombre: '',
+      position: null,
+    };
+  }
+
+  const latitud = Number(ubicacion.latitud);
+  const longitud = Number(ubicacion.longitud);
+
+  return {
+    nombre: String(ubicacion.nombre ?? ''),
+    position:
+      Number.isFinite(latitud) && Number.isFinite(longitud)
+        ? [latitud, longitud]
+        : null,
+  };
+}
+
 function UbicacionFormModal({
   open,
   mode = 'create',
@@ -206,11 +227,16 @@ function UbicacionFormModal({
   onSave,
   onClose,
 }) {
+  const initialLocation = getInitialLocation(
+    mode,
+    ubicacion,
+  );
+
   const [nombre, setNombre] =
-    useState('');
+    useState(initialLocation.nombre);
 
   const [position, setPosition] =
-    useState(null);
+    useState(initialLocation.position);
 
   const [errors, setErrors] =
     useState({});
@@ -219,46 +245,6 @@ function UbicacionFormModal({
     focusRequest,
     setFocusRequest,
   ] = useState(0);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    setNombre(
-      mode === 'edit'
-        ? String(
-          ubicacion?.nombre ?? '',
-        )
-        : '',
-    );
-
-    const latitud = Number(
-      ubicacion?.latitud,
-    );
-
-    const longitud = Number(
-      ubicacion?.longitud,
-    );
-
-    setPosition(
-      mode === 'edit' &&
-        Number.isFinite(latitud) &&
-        Number.isFinite(longitud)
-        ? [latitud, longitud]
-        : null,
-    );
-
-    setErrors({});
-
-    setFocusRequest(
-      (current) => current + 1,
-    );
-  }, [
-    mode,
-    open,
-    ubicacion,
-  ]);
 
   const duplicateByName =
     useMemo(() => {

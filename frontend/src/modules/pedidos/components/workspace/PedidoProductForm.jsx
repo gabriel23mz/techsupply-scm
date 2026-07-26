@@ -1,14 +1,19 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from 'react';
 
-function getProduct(detalle) {
-  return (
-    detalle?.producto ??
-    null
-  );
+
+function buildInitialForm(editingDetail) {
+  return editingDetail
+    ? {
+      producto_id: String(editingDetail.producto_id),
+      cantidad: Number(editingDetail.cantidad),
+    }
+    : {
+      producto_id: '',
+      cantidad: 1,
+    };
 }
 
 function PedidoProductForm({
@@ -21,33 +26,10 @@ function PedidoProductForm({
   onCancelEdit,
 }) {
   const [formData, setFormData] =
-    useState({
-      producto_id: '',
-      cantidad: 1,
-    });
+    useState(() => buildInitialForm(editingDetail));
 
   const [error, setError] =
     useState('');
-
-  useEffect(() => {
-    if (editingDetail) {
-      setFormData({
-        producto_id: String(
-          editingDetail.producto_id,
-        ),
-        cantidad: Number(
-          editingDetail.cantidad,
-        ),
-      });
-    } else {
-      setFormData({
-        producto_id: '',
-        cantidad: 1,
-      });
-    }
-
-    setError('');
-  }, [editingDetail]);
 
   const selectedProduct =
     useMemo(

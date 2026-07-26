@@ -1,9 +1,12 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
+
+import {
+  useInitialLoad,
+} from '../../../shared/hooks/useInitialLoad';
 
 import {
   useNavigate,
@@ -11,6 +14,14 @@ import {
 } from 'react-router-dom';
 
 import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialog';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
+import {
+  usePermissions,
+} from '../../../shared/hooks/usePermissions';
 
 import {
   showError,
@@ -58,6 +69,22 @@ function getProduct(detalle) {
 function PedidoWorkspacePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  const {
+    can,
+  } = usePermissions();
+
+  const canEditOrder = can(
+    PERMISSIONS.PEDIDOS_EDITAR,
+  );
+
+  const canSendPreparation = can(
+    PERMISSIONS.PEDIDOS_ENVIAR_PREPARACION,
+  );
+
+  const canCancelOrder = can(
+    PERMISSIONS.PEDIDOS_CANCELAR,
+  );
 
   const [pedido, setPedido] =
     useState(null);
@@ -127,9 +154,7 @@ function PedidoWorkspacePage() {
     [id],
   );
 
-  useEffect(() => {
-    cargarDatos();
-  }, [cargarDatos]);
+  useInitialLoad(cargarDatos);
 
   const detalles = useMemo(
     () => getDetails(pedido),
@@ -137,8 +162,17 @@ function PedidoWorkspacePage() {
   );
 
   const canEdit =
+    canEditOrder &&
     pedido &&
     pedido.estado === 'PENDIENTE';
+
+  const canStart =
+    canSendPreparation &&
+    pedido?.estado === 'PENDIENTE';
+
+  const canCancel =
+    canCancelOrder &&
+    pedido?.estado === 'PENDIENTE';
 
   const execute = async ({
     key,
@@ -171,6 +205,10 @@ function PedidoWorkspacePage() {
   const handleSaveProduct = async (
     payload,
   ) => {
+    if (!canEdit) {
+      return;
+    }
+
     if (editingDetail) {
       await execute({
         key: 'producto',
@@ -207,7 +245,7 @@ function PedidoWorkspacePage() {
 
   const handleDeleteProduct =
     async () => {
-      if (!pendingDelete?.id) {
+      if (!canEdit || !pendingDelete?.id) {
         return;
       }
 
@@ -230,6 +268,10 @@ function PedidoWorkspacePage() {
     };
 
   const handleStart = async () => {
+    if (!canStart) {
+      return;
+    }
+
     setConfirmAction(null);
 
     await execute({
@@ -242,6 +284,10 @@ function PedidoWorkspacePage() {
   };
 
   const handleCancel = async () => {
+    if (!canCancel) {
+      return;
+    }
+
     setConfirmAction(null);
 
     await execute({
@@ -318,6 +364,7 @@ function PedidoWorkspacePage() {
           />
 
           <PedidoProductForm
+            key={editingDetail?.id ?? 'new'}
             productos={productos}
             detalles={detalles}
             editingDetail={
@@ -339,7 +386,8 @@ function PedidoWorkspacePage() {
       </div>
 
       <PedidoWorkspaceActions
-        pedido={pedido}
+        canStart={canStart}
+        canCancel={canCancel}
         isWorking={Boolean(
           actionLoading,
         )}
@@ -359,7 +407,7 @@ function PedidoWorkspacePage() {
       />
 
       <ConfirmDialog
-        open={Boolean(
+        open={canEdit && Boolean(
           pendingDelete,
         )}
         title="Eliminar producto"
@@ -386,6 +434,7 @@ function PedidoWorkspacePage() {
 
       <ConfirmDialog
         open={
+          canStart &&
           confirmAction ===
           'START'
         }
@@ -402,6 +451,7 @@ function PedidoWorkspacePage() {
 
       <ConfirmDialog
         open={
+          canCancel &&
           confirmAction ===
           'CANCEL'
         }

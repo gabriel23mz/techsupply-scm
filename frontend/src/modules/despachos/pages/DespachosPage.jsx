@@ -1,9 +1,12 @@
 import {
   useCallback,
-  useEffect,
   useMemo,
   useState,
 } from 'react';
+
+import {
+  useInitialLoad,
+} from '../../../shared/hooks/useInitialLoad';
 
 import {
   showError,
@@ -148,9 +151,7 @@ function DespachosPage() {
     [],
   );
 
-  useEffect(() => {
-    cargarDespachos();
-  }, [cargarDespachos]);
+  useInitialLoad(cargarDespachos);
 
   const filteredDespachos = useMemo(() => {
     const search = normalizeText(searchTerm);
@@ -208,30 +209,41 @@ function DespachosPage() {
     1,
   );
 
+  const safeCurrentPage = Math.min(
+    currentPage,
+    totalPages,
+  );
+
   const paginatedDespachos = useMemo(() => {
     const start =
-      (currentPage - 1) * PAGE_SIZE;
+      (safeCurrentPage - 1) * PAGE_SIZE;
 
     return filteredDespachos.slice(
       start,
       start + PAGE_SIZE,
     );
-  }, [currentPage, filteredDespachos]);
+  }, [safeCurrentPage, filteredDespachos]);
 
-  useEffect(() => {
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
     setCurrentPage(1);
-  }, [dateFilter, searchTerm, statusFilter]);
+  };
 
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  const handleStatusChange = (value) => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+
+  const handleDateChange = (value) => {
+    setDateFilter(value);
+    setCurrentPage(1);
+  };
 
   const clearFilters = () => {
     setSearchTerm('');
     setStatusFilter('TODOS');
     setDateFilter('TODAS');
+    setCurrentPage(1);
   };
 
   const openDrawer = async (despacho, type) => {
@@ -318,9 +330,9 @@ function DespachosPage() {
           statusFilter={statusFilter}
           dateFilter={dateFilter}
           isLoading={isLoading}
-          onSearchChange={setSearchTerm}
-          onStatusChange={setStatusFilter}
-          onDateChange={setDateFilter}
+          onSearchChange={handleSearchChange}
+          onStatusChange={handleStatusChange}
+          onDateChange={handleDateChange}
           onClear={clearFilters}
           onRefresh={() =>
             cargarDespachos({
@@ -354,7 +366,7 @@ function DespachosPage() {
             />
 
             <DespachosPagination
-              currentPage={currentPage}
+              currentPage={safeCurrentPage}
               totalPages={totalPages}
               totalItems={filteredDespachos.length}
               pageSize={PAGE_SIZE}

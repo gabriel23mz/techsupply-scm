@@ -1,7 +1,10 @@
 import api from '../../../shared/services/api';
 
-const SESSION_KEY =
-  'techsupply_session';
+import {
+  SESSION_STORAGE_KEY,
+} from '../../../shared/constants/storage';
+
+export const SESSION_KEY = SESSION_STORAGE_KEY;
 
 function unwrap(response) {
   return (
@@ -9,6 +12,33 @@ function unwrap(response) {
     response?.data ??
     null
   );
+}
+
+export function normalizeSession(data, tokenFallback = null) {
+  if (!data) {
+    return null;
+  }
+
+  const user = data.user ?? data.usuario ?? null;
+  const token = data.token ?? tokenFallback ?? null;
+  const permissions =
+    data.permissions ??
+    data.permisos ??
+    [];
+
+  if (!user || !token) {
+    return null;
+  }
+
+  return {
+    ...data,
+    user,
+    token,
+    permissions:
+      Array.isArray(permissions)
+        ? [...new Set(permissions)]
+        : [],
+  };
 }
 
 export const iniciarSesion = async ({
@@ -23,22 +53,47 @@ export const iniciarSesion = async ({
     },
   );
 
-  const data = unwrap(response);
+  const session = normalizeSession(
+    unwrap(response),
+  );
 
-  if (!data?.user || !data?.token) {
+  if (!session) {
     throw new Error(
       'El servidor no devolvió una sesión válida.',
     );
   }
 
-  return {
-    ...data,
-    user: data.user ?? data.usuario,
-    permissions:
-      data.permissions ??
-      data.permisos ??
-      [],
-  };
+  return session;
+};
+
+export const obtenerSesionActual = async ({
+  token,
+  signal,
+} = {}) => {
+  const response = await api.get(
+    '/auth/me',
+    {
+      signal,
+      headers: token
+        ? {
+          Authorization: `Bearer ${token}`,
+        }
+        : undefined,
+    },
+  );
+
+  const session = normalizeSession(
+    unwrap(response),
+    token,
+  );
+
+  if (!session) {
+    throw new Error(
+      'El servidor no devolvió una sesión válida.',
+    );
+  }
+
+  return session;
 };
 
 export const obtenerSesionLocal = () => {
@@ -48,22 +103,16 @@ export const obtenerSesionLocal = () => {
     );
 
     const session = raw
-      ? JSON.parse(raw)
+      ? normalizeSession(JSON.parse(raw))
       : null;
 
     if (!session) {
-      return null;
+      localStorage.removeItem(SESSION_KEY);
     }
 
-    return {
-      ...session,
-      user: session.user ?? session.usuario,
-      permissions:
-        session.permissions ??
-        session.permisos ??
-        [],
-    };
+    return session;
   } catch {
+    localStorage.removeItem(SESSION_KEY);
     return null;
   }
 };
@@ -71,9 +120,16 @@ export const obtenerSesionLocal = () => {
 export const guardarSesionLocal = (
   session,
 ) => {
+  const normalized = normalizeSession(session);
+
+  if (!normalized) {
+    limpiarSesionLocal();
+    return;
+  }
+
   localStorage.setItem(
     SESSION_KEY,
-    JSON.stringify(session),
+    JSON.stringify(normalized),
   );
 };
 

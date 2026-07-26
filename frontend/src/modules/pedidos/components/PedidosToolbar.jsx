@@ -1,3 +1,9 @@
+import Can from '../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
 function PedidosToolbar({
   searchTerm,
   statusFilter,
@@ -107,14 +113,16 @@ function PedidosToolbar({
         </button>
       </div>
 
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={onCreate}
-      >
-        <i className="bi bi-plus-lg me-2" />
-        Nuevo pedido
-      </button>
+      <Can permission={PERMISSIONS.PEDIDOS_CREAR}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={onCreate}
+        >
+          <i className="bi bi-plus-lg me-2" />
+          Nuevo pedido
+        </button>
+      </Can>
     </section>
   );
 }

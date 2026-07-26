@@ -1,3 +1,9 @@
+import Can from '../../../shared/components/Can';
+
+import {
+  PERMISSIONS,
+} from '../../../shared/constants/permissions';
+
 function ClientesToolbar({
   searchTerm,
   locationFilter,
@@ -57,14 +63,16 @@ function ClientesToolbar({
         </select>
       </div>
 
-      <button
-        type="button"
-        className="btn btn-primary"
-        onClick={onCreate}
-      >
-        <i className="bi bi-person-plus me-2" />
-        Nuevo cliente
-      </button>
+      <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={onCreate}
+        >
+          <i className="bi bi-person-plus me-2" />
+          Nuevo cliente
+        </button>
+      </Can>
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import {
   usePreferences,
-} from '../contexts/PreferencesContext';
+} from '../hooks/usePreferences';
 
 import Footer from '../components/Footer';
 import Sidebar from '../components/Sidebar';

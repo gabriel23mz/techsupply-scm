@@ -19,7 +19,9 @@ import {
   NotFoundError,
 } from '../utils/errors.js';
 import {
+  PERMISSIONS,
   ROLES,
+  hasPermission,
   isAdmin,
 } from '../constants/permissions.js';
 
@@ -1515,9 +1517,28 @@ export const iniciarJornada = async (
   return jornadaActualizada;
 };
 
-export const avanzarJornada = async (id) => {
+export const avanzarJornada = async (
+  id,
+  user,
+) => {
   const jornada = await JornadaReparto.findByPk(id, {
     include: [
+      {
+        model: Chofer,
+        as: 'chofer',
+        required: false,
+        include: [
+          {
+            model: Usuario,
+            as: 'usuario',
+            attributes: [
+              'id',
+              'rol',
+              'estado',
+            ],
+          },
+        ],
+      },
       {
         model: Despacho,
         as: 'despachos',
@@ -1531,6 +1552,11 @@ export const avanzarJornada = async (id) => {
       'JORNADA_NO_ENCONTRADA',
     );
   }
+
+  assertChoferAsignado(
+    jornada.toJSON(),
+    user,
+  );
 
   if (jornada.estado !== 'EN_RUTA') {
     throw new BusinessRuleError('Solo se puede avanzar una jornada en estado EN_RUTA');
@@ -3056,7 +3082,20 @@ export const recalcularJornada = async (id) => {
   };
 };
 
-export const obtenerMapaGeneral = async () => {
+export const obtenerMapaGeneral = async (user) => {
+  if (
+    user &&
+    !hasPermission(
+      user.rol,
+      PERMISSIONS.JORNADAS_MAPA_GENERAL,
+    )
+  ) {
+    throw new ForbiddenError(
+      'No puede consultar el mapa operativo general',
+      'MAPA_GENERAL_JORNADAS_DENEGADO',
+    );
+  }
+
   const jornadas = await JornadaReparto.findAll({
     where: {
       estado: [
