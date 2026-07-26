@@ -1,11 +1,12 @@
 'use strict';
 
-const TABLAS = [
+const TABLES = [
   'usuarios',
   'categorias',
   'ubicaciones',
   'proveedores',
   'camiones',
+  'choferes',
   'productos',
   'clientes',
   'rutas',
@@ -21,36 +22,18 @@ const TABLAS = [
 
 module.exports = {
   async up(queryInterface) {
-    for (const tabla of TABLAS) {
-      /*
-       * Si la tabla contiene registros:
-       *   la próxima inserción será MAX(id) + 1.
-       *
-       * Si está vacía:
-       *   la próxima inserción comenzará en 1.
-       */
+    for (const table of TABLES) {
       await queryInterface.sequelize.query(`
         SELECT setval(
-          pg_get_serial_sequence('"${tabla}"', 'id'),
-          COALESCE(
-            (SELECT MAX("id") FROM "${tabla}"),
-            1
-          ),
-          EXISTS(
-            SELECT 1
-            FROM "${tabla}"
-          )
+          pg_get_serial_sequence('"${table}"', 'id'),
+          COALESCE((SELECT MAX("id") FROM "${table}"), 1),
+          EXISTS(SELECT 1 FROM "${table}")
         );
       `);
     }
   },
 
   async down() {
-    /*
-     * No modificamos las secuencias aquí porque este seeder
-     * se revierte antes que los seeders que eliminan los datos.
-     */
+    // Las secuencias se reajustan al volver a ejecutar los seeders.
   },
 };
-
-

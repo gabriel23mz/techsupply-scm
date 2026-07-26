@@ -4,82 +4,49 @@ const bcrypt = require('bcrypt');
 
 module.exports = {
   async up(queryInterface) {
-    const fechaActual = new Date();
+    const now = new Date();
+    const definitions = [
+      [1, 'Administrador', 'TechSupply', 'admin@demo.techsupply.ec', 'ADMIN', 'Admin123*', true],
+      [2, 'Carlos', 'Mendoza', 'ventas1@demo.techsupply.ec', 'VENTAS', 'Ventas123*', true],
+      [3, 'Andrea', 'Cedeño', 'ventas2@demo.techsupply.ec', 'VENTAS', 'Ventas123*', true],
+      [4, 'Lucía', 'Zambrano', 'ventas3@demo.techsupply.ec', 'VENTAS', 'Ventas123*', true],
+      [5, 'María', 'Mera', 'bodega1@demo.techsupply.ec', 'BODEGA', 'Bodega123*', true],
+      [6, 'José', 'Vélez', 'bodega2@demo.techsupply.ec', 'BODEGA', 'Bodega123*', true],
+      [7, 'Daniela', 'Moreira', 'logistica1@demo.techsupply.ec', 'LOGISTICA', 'Logistica123*', true],
+      [8, 'Luis', 'Alcívar', 'logistica2@demo.techsupply.ec', 'LOGISTICA', 'Logistica123*', true],
+      [9, 'Karla', 'Cedeño', 'compras1@demo.techsupply.ec', 'COMPRAS', 'Compras123*', true],
+      [10, 'Miguel', 'Ponce', 'compras2@demo.techsupply.ec', 'COMPRAS', 'Compras123*', true],
+      [11, 'Pedro', 'Loor', 'chofer1@demo.techsupply.ec', 'CHOFER', 'Chofer123*', true],
+      [12, 'Jorge', 'Macías', 'chofer2@demo.techsupply.ec', 'CHOFER', 'Chofer123*', true],
+      [13, 'Ricardo', 'Bravo', 'chofer3@demo.techsupply.ec', 'CHOFER', 'Chofer123*', true],
+      [14, 'Manuel', 'Delgado', 'chofer4@demo.techsupply.ec', 'CHOFER', 'Chofer123*', true],
+      [15, 'Héctor', 'Quijije', 'chofer5@demo.techsupply.ec', 'CHOFER', 'Chofer123*', true],
+      [16, 'Óscar', 'Mendoza', 'chofer6@demo.techsupply.ec', 'CHOFER', 'Chofer123*', true],
+      [17, 'Víctor', 'Palma', 'chofer7@demo.techsupply.ec', 'CHOFER', 'Chofer123*', true],
+      [18, 'Raúl', 'García', 'chofer8@demo.techsupply.ec', 'CHOFER', 'Chofer123*', false],
+    ];
 
-    await queryInterface.bulkInsert('usuarios', [
-      {
-        id: 1,
-        nombre: 'Administrador',
-        apellido: 'TechSupply',
-        correo: 'admin@techsupply.com',
-        password_hash: await bcrypt.hash('Admin123*', 10),
-        rol: 'ADMIN',
-        estado: true,
-        created_at: fechaActual,
-        updated_at: fechaActual,
-      },
-      {
-        id: 2,
-        nombre: 'Gabriel',
-        apellido: 'Moreira',
-        correo: 'gabriel23m11z@gmail.com',
-        password_hash: await bcrypt.hash('Admin123*', 10),
-        rol: 'ADMIN',
-        estado: true,
-        created_at: fechaActual,
-        updated_at: fechaActual,
-      },
-      {
-        id: 3,
-        nombre: 'Carlos',
-        apellido: 'Mendoza',
-        correo: 'ventas@techsupply.com',
-        password_hash: await bcrypt.hash('Ventas123*', 10),
-        rol: 'VENTAS',
-        estado: true,
-        created_at: fechaActual,
-        updated_at: fechaActual,
-      },
-      {
-        id: 4,
-        nombre: 'María',
-        apellido: 'Zambrano',
-        correo: 'logistica@techsupply.com',
-        password_hash: await bcrypt.hash('Logistica123*', 10),
-        rol: 'LOGISTICA',
-        estado: true,
-        created_at: fechaActual,
-        updated_at: fechaActual,
-      },
-      {
-        id: 5,
-        nombre: 'José',
-        apellido: 'Cedeño',
-        correo: 'bodega@techsupply.com',
-        password_hash: await bcrypt.hash('Bodega123*', 10),
-        rol: 'BODEGA',
-        estado: true,
-        created_at: fechaActual,
-        updated_at: fechaActual,
-      },
-      {
-        id: 6,
-        nombre: 'Andrea',
-        apellido: 'Vélez',
-        correo: 'compras@techsupply.com',
-        password_hash: await bcrypt.hash('Compras123*', 10),
-        rol: 'COMPRAS',
-        estado: true,
-        created_at: fechaActual,
-        updated_at: fechaActual,
-      },
-    ]);
+    const rows = [];
+    for (const [id, nombre, apellido, correo, rol, password, estado] of definitions) {
+      rows.push({
+        id,
+        nombre,
+        apellido,
+        correo,
+        password_hash: await bcrypt.hash(password, 10),
+        rol,
+        estado,
+        created_at: now,
+        updated_at: now,
+      });
+    }
+
+    await queryInterface.bulkInsert('usuarios', rows);
   },
 
   async down(queryInterface) {
     await queryInterface.bulkDelete('usuarios', {
-      id: [1, 2, 3, 4, 5, 6],
+      id: Array.from({ length: 18 }, (_, index) => index + 1),
     });
   },
 };
-

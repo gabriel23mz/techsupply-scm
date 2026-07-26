@@ -68,13 +68,22 @@ app.use(notFound);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
+const useSsl =
+  String(process.env.DB_SSL ?? 'false')
+    .trim()
+    .toLowerCase() === 'true';
+
+const DATABASE = useSsl
+  ? 'PostgreSQL Supabase'
+  : 'PostgreSQL Local';
+
 
 async function startServer() {
   try {
     await sequelize.authenticate();
 
     console.log(
-      '✅ Conexión a PostgreSQL Supabase exitosa',
+      `✅ Conexión a ${DATABASE} exitosa`,
     );
 
     app.listen(PORT, () => {

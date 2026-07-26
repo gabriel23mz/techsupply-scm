@@ -1,101 +1,93 @@
 'use strict';
 
+const {
+  buildProducts,
+  atTimezoneOffset,
+  orderStateForId,
+} = require('../support/demoData.cjs');
+
 module.exports = {
   async up(queryInterface) {
-    const detalles = [];
+    const products = buildProducts();
+    const priceById = new Map(
+      products.map((product) => [product.id, Number(product.precio_venta)]),
+    );
+    const rows = [];
+    let detailId = 1;
 
-    let idDetalle = 1;
+    for (let orderId = 1; orderId <= 72; orderId += 1) {
+      const estado = orderStateForId(orderId);
+      const productIds = [
+        ((orderId * 3 - 1) % 71) + 1,
+        ((orderId * 7 + 4) % 71) + 1,
+        ((orderId * 11 + 9) % 71) + 1,
+      ];
+      const uniqueProductIds = [...new Set(productIds)];
 
-    for (let pedidoId = 1; pedidoId <= 14; pedidoId += 1) {
-      const productoPrincipal =
-        ((pedidoId - 1) % 10) + 1;
+      uniqueProductIds.forEach((productId, index) => {
+        const cantidad = 1 + ((orderId + index) % 4);
+        let cantidadPreparada = 0;
 
-      let productoSecundario =
-        (pedidoId % 10) + 1;
+        if (estado === 'PREPARANDO') {
+          if (orderId <= 18) {
+            cantidadPreparada = index === 0
+              ? cantidad
+              : Math.max(0, cantidad - 1);
+          } else {
+            cantidadPreparada = cantidad;
+          }
+        } else if ([
+          'LISTO_PARA_DESPACHO',
+          'DESPACHADO',
+          'ENTREGADO',
+          'REPROGRAMADO',
+        ].includes(estado)) {
+          cantidadPreparada = cantidad;
+        }
 
-      if (
-        productoPrincipal ===
-        productoSecundario
-      ) {
-        productoSecundario =
-          (productoSecundario % 10) + 1;
-      }
+        const unitPrice = priceById.get(productId);
+        const completed = cantidadPreparada === cantidad && cantidad > 0;
 
-      const precios = {
-        1: 650.00,
-        2: 560.00,
-        3: 48.00,
-        4: 82.00,
-        5: 30.00,
-        6: 22.00,
-        7: 165.00,
-        8: 65.00,
-        9: 195.00,
-        10: 110.00,
-      };
+        rows.push({
+          id: detailId,
+          pedido_id: orderId,
+          producto_id: productId,
+          cantidad,
+          cantidad_preparada: cantidadPreparada,
+          preparado_por_usuario_id: completed ? (orderId % 2 === 0 ? 5 : 6) : null,
+          fecha_preparacion: completed
+            ? atTimezoneOffset(-1, 15, (detailId % 6) * 5)
+            : null,
+          precio_unitario: unitPrice,
+          subtotal: Math.round(unitPrice * cantidad * 100) / 100,
+        });
 
-      detalles.push({
-        id: idDetalle++,
-        pedido_id: pedidoId,
-        producto_id: productoPrincipal,
-        cantidad: 1,
-        precio_unitario:
-          precios[productoPrincipal],
-        subtotal:
-          precios[productoPrincipal],
-      });
-
-      detalles.push({
-        id: idDetalle++,
-        pedido_id: pedidoId,
-        producto_id: productoSecundario,
-        cantidad: 2,
-        precio_unitario:
-          precios[productoSecundario],
-        subtotal:
-          precios[productoSecundario] * 2,
+        detailId += 1;
       });
     }
 
-    await queryInterface.bulkInsert(
-      'detalle_pedido',
-      detalles,
-    );
+    await queryInterface.bulkInsert('detalle_pedido', rows);
 
-    /*
-     * Actualiza el total de cada pedido con la suma
-     * de sus detalles.
-     */
     await queryInterface.sequelize.query(`
-      UPDATE "pedidos" AS p
+      UPDATE "pedidos" AS "pedido"
       SET "total" = (
-        SELECT COALESCE(
-          SUM(dp."subtotal"),
-          0
-        )
-        FROM "detalle_pedido" AS dp
-        WHERE dp."pedido_id" = p."id"
+        SELECT COALESCE(SUM("detalle"."subtotal"), 0)
+        FROM "detalle_pedido" AS "detalle"
+        WHERE "detalle"."pedido_id" = "pedido"."id"
       )
-      WHERE p."id" BETWEEN 1 AND 14;
+      WHERE "pedido"."id" BETWEEN 1 AND 72;
     `);
   },
 
   async down(queryInterface) {
-    await queryInterface.bulkDelete(
-      'detalle_pedido',
-      {
-        pedido_id: [
-          1, 2, 3, 4, 5, 6, 7,
-          8, 9, 10, 11, 12, 13, 14,
-        ],
-      },
-    );
+    await queryInterface.bulkDelete('detalle_pedido', {
+      pedido_id: Array.from({ length: 72 }, (_, index) => index + 1),
+    });
 
     await queryInterface.sequelize.query(`
       UPDATE "pedidos"
       SET "total" = 0
-      WHERE "id" BETWEEN 1 AND 14;
+      WHERE "id" BETWEEN 1 AND 72;
     `);
   },
 };
-

@@ -1,209 +1,290 @@
-# TechSupply SCM Outbound — Servicio de Optimización Logística
+# TechSupply SCM Outbound — Motor Logístico Python
 
-Servicio Python del módulo **Outbound** de **TechSupply SCM**, desarrollado con **FastAPI** para resolver cálculos de rutas y planificación logística solicitados por el backend Node.js.
+Servicio desacoplado de optimización de rutas desarrollado con FastAPI.
 
-El módulo conserva el cálculo de rutas individuales mediante **A\*** y añade la generación de múltiples jornadas de reparto mediante una **metaheurística de colonia de hormigas aplicada a un problema CVRP**.
-
----
-
-## Capacidades principales
-
-El servicio expone dos funciones diferentes:
-
-### Ruta individual
-
-Calcula el camino de menor costo entre dos ubicaciones del grafo.
-
-- Construcción del grafo en memoria.
-- Ejecución de A\*.
-- Reconstrucción del camino.
-- Cálculo de distancia total.
-- Estimación de tiempo.
-
-### Generación de jornadas
-
-Distribuye pedidos entre camiones y ordena los destinos de cada jornada.
-
-- Agrupación de pedidos por destino.
-- Validación de capacidad de camiones.
-- Fragmentación de grupos cuando superan la capacidad máxima.
-- Asignación de pedidos mediante colonia de hormigas.
-- Optimización del orden de visita.
-- Penalización de pedidos no asignados, destinos divididos y aristas repetidas.
-- Construcción de rutas individuales por jornada.
-- Regreso obligatorio a la bodega.
-- Cálculo de distancias y tiempos acumulados.
-- Generación de geometría vial mediante OSRM.
-- Creación de tramos para visualización en Leaflet.
+El backend Node.js envía todos los datos necesarios, Python construye el grafo en memoria, ejecuta los algoritmos y devuelve un contrato JSON. Este servicio no accede a PostgreSQL, no conoce usuarios o permisos y no persiste jornadas ni despachos.
 
 ---
 
-## Arquitectura de integración
+## Responsabilidad
+
+Python resuelve dos problemas:
+
+1. **Ruta individual:** camino de menor costo entre dos ubicaciones.
+2. **Planificación multivehículo:** distribución de pedidos entre camiones y ordenamiento de sus destinos.
 
 ```text
-Frontend React
-      │
-      ▼
-Backend Node.js + Express
-      │
-      ├── obtiene datos desde PostgreSQL / Supabase
-      ├── construye el contrato de entrada
-      └── invoca el servicio Python
-              │
-              ▼
-        FastAPI
-              │
-              ├── A* para caminos mínimos
-              ├── Colonia de hormigas CVRP
-              └── OSRM para geometrías viales
-              │
-              ▼
-        Respuesta JSON
-              │
-              ▼
-Backend persiste jornadas, despachos y rutas
+Node.js
+  ├── obtiene pedidos, camiones, rutas y bodega
+  ├── limita recursos según reglas operativas
+  └── envía el contrato
+        ↓
+FastAPI
+  ├── valida el payload
+  ├── construye el grafo
+  ├── calcula A* y ACO-CVRP
+  ├── obtiene geometrías OSRM
+  └── devuelve jornadas y no asignados
+        ↓
+Node.js
+  ├── revalida recursos
+  ├── abre la transacción
+  ├── persiste jornadas y despachos
+  └── aplica estados y trazabilidad
 ```
 
-El servicio Python **no accede directamente a la base de datos** y no guarda información por sí mismo.
+Python no administra:
+
+- Autenticación o permisos.
+- Pedidos comerciales.
+- Preparación o carga.
+- Choferes.
+- Estados del dominio.
+- Fechas reales de inicio, entrega o finalización.
+- Persistencia o transacciones.
 
 ---
 
-## Estructura del proyecto
+## Tecnologías
+
+- Python 3.13 o compatible.
+- FastAPI.
+- Uvicorn.
+- Pydantic 2.
+- Requests.
+- `unittest` para pruebas.
+
+Dependencias exactas en [`requirements.txt`](requirements.txt).
+
+---
+
+## Estructura
 
 ```text
 python/
 ├── algoritmo/
-│   ├── __init__.py
 │   ├── astar.py
 │   ├── colonia_hormigas_cvrp.py
 │   ├── grafo.py
 │   ├── heuristica.py
 │   ├── metaheuristica_jornada.py
 │   └── osrm_service.py
+├── benchmarks/
+│   └── benchmark_jornadas.py
 ├── modelos/
-│   ├── __init__.py
 │   ├── contratos.py
+│   ├── nodo.py
 │   └── tipos.py
+├── tests/
+│   └── test_*.py
 ├── utils/
-│   ├── __init__.py
 │   ├── reconstruccion.py
 │   └── tiempo.py
-├── .gitignore
 ├── app.py
+├── errores.py
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## Algoritmos utilizados
+## Instalación
 
-### A\*
+En Windows PowerShell:
 
-El endpoint de ruta individual utiliza A\* con heurística nula:
-
-```text
-h(n) = 0
+```powershell
+cd python
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-En estas condiciones su comportamiento es equivalente a Dijkstra y garantiza el camino de menor costo dentro del grafo recibido.
+Ejecutar el servicio:
 
-A\* también se utiliza internamente para calcular la distancia entre ubicaciones durante la construcción de las jornadas.
-
-### Colonia de hormigas CVRP
-
-La planificación de jornadas utiliza una metaheurística inspirada en el comportamiento de las hormigas.
-
-La solución considera:
-
-- varios camiones;
-- capacidad máxima por camión;
-- múltiples pedidos;
-- pedidos agrupados por destino;
-- recorrido desde la bodega;
-- retorno a la bodega;
-- pedidos que no pueden asignarse.
-
-El costo de cada solución incluye la distancia total y penalizaciones para desalentar configuraciones poco convenientes.
-
----
-
-## Geometría vial
-
-Después de determinar el orden de los destinos, el servicio consulta **OSRM** para obtener la geometría real de cada tramo.
-
-OSRM devuelve coordenadas GeoJSON en el formato:
-
-```text
-[longitud, latitud]
+```powershell
+python -m uvicorn app:app --reload
 ```
 
-El servicio las transforma al formato utilizado por Leaflet:
+URL local:
 
 ```text
-[latitud, longitud]
+http://127.0.0.1:8000
 ```
 
-Si OSRM no responde para un tramo, se utiliza como respaldo una línea directa entre origen y destino para no interrumpir la generación completa.
+Documentación interactiva de FastAPI:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+Desde la raíz del repositorio también puede ejecutarse:
+
+```bash
+npm run dev:python
+```
+
+Ese script utiliza la ruta del entorno virtual de Windows.
 
 ---
 
 ## Endpoints
 
-### Calcular una ruta individual
+| Método | Endpoint | Uso |
+|---|---|---|
+| `POST` | `/api/rutas/calcular` | Calcula una ruta individual |
+| `POST` | `/api/jornadas/generar` | Genera una o varias jornadas optimizadas |
 
-```http
-POST /api/rutas/calcular
+---
+
+## Grafo
+
+El grafo se construye por solicitud a partir de las rutas enviadas por Node.js.
+
+```json
+{
+  "origen": 1,
+  "destino": 2,
+  "distancia": 10.5
+}
 ```
 
-#### Entrada
+Reglas:
+
+- IDs enteros positivos.
+- Distancias finitas y mayores que cero.
+- Las rutas se incorporan como conexiones bidireccionales.
+- El constructor tolera `distancia_km`, aunque el contrato vigente usa `distancia`.
+
+---
+
+## A*
+
+`algoritmo/astar.py` calcula caminos mínimos.
+
+La heurística actual retorna `0.0`, por lo que el comportamiento efectivo es equivalente a Dijkstra. Con pesos positivos, produce el camino de menor costo conocido en el grafo.
+
+Usos:
+
+- Endpoint de ruta individual.
+- Construcción de la matriz de distancias para destinos únicos antes de ACO.
+
+A* no se ejecuta dentro del ciclo interno de cada hormiga. Los resultados de distancia y camino se precalculan y reutilizan por solicitud.
+
+---
+
+## ACO-CVRP
+
+La generación de jornadas usa una colonia de hormigas aplicada a un problema tipo CVRP.
+
+El algoritmo:
+
+- Agrupa pedidos por destino.
+- Valida capacidades positivas.
+- Fragmenta grupos que exceden la capacidad máxima.
+- Asigna grupos a camiones.
+- Ordena los destinos de cada camión.
+- Penaliza pedidos no asignados.
+- Penaliza destinos divididos y aristas repetidas.
+- Regresa obligatoriamente a la bodega.
+
+Parámetros predeterminados:
+
+- Hormigas adaptativas entre 8 y 25.
+- Iteraciones adaptativas entre 18 y 70.
+- Parada temprana por falta de mejora.
+- `alfa = 1.0`.
+- `beta = 3.0`.
+- Evaporación `0.35`.
+- Semilla opcional.
+
+La implementación usa `random.Random` local. Con la misma entrada, configuración y semilla se obtiene un resultado reproducible.
+
+---
+
+## Matriz de distancias y caché
+
+Por solicitud se calcula una matriz entre:
+
+- Bodega.
+- Destinos únicos de los pedidos.
+
+La matriz conserva:
+
+- Distancia.
+- Camino de nodos.
+
+ACO consulta las distancias en O(1) y la expansión final reutiliza los caminos guardados. Esta optimización eliminó el recálculo masivo de A* dentro de la metaheurística.
+
+---
+
+## OSRM y geometría
+
+Después de determinar las jornadas finales, Python consulta OSRM para obtener geometrías viales.
+
+OSRM devuelve coordenadas GeoJSON:
+
+```text
+[longitud, latitud]
+```
+
+El servicio las transforma para Leaflet:
+
+```text
+[latitud, longitud]
+```
+
+OSRM:
+
+- No participa en el costo interno de ACO.
+- Se consulta solo para los tramos finales.
+- Usa caché por tramo dentro de la solicitud.
+- Tiene fallback a línea directa si falla la red, el timeout o la geometría.
+
+El fallback permite completar la respuesta visual, pero no representa una distancia vial exacta.
+
+---
+
+## Contrato de ruta individual
+
+### Entrada
 
 ```json
 {
   "origenId": 1,
-  "destinoId": 4,
+  "destinoId": 2,
   "rutas": [
     {
       "origen": 1,
       "destino": 2,
-      "distancia": 18.5
-    },
-    {
-      "origen": 2,
-      "destino": 4,
-      "distancia": 27.3
+      "distancia": 10
     }
   ]
 }
 ```
 
-#### Salida
+### Salida
 
 ```json
 {
-  "ruta": [1, 2, 4],
-  "distancia_total": 45.8,
-  "tiempo_estimado": 55
+  "ruta": [1, 2],
+  "distancia_total": 10,
+  "tiempo_estimado": 15
 }
 ```
 
 ---
 
-### Generar jornadas de reparto
+## Contrato de jornadas
 
-```http
-POST /api/jornadas/generar
-```
-
-#### Entrada resumida
+### Entrada resumida
 
 ```json
 {
   "bodega": {
     "id": 1,
-    "nombre": "Bodega Central",
-    "latitud": -0.845,
-    "longitud": -80.16
+    "nombre": "Bodega Central ESPAM MFL",
+    "latitud": -0.82726,
+    "longitud": -80.18695
   },
   "camiones": [
     {
@@ -217,26 +298,38 @@ POST /api/jornadas/generar
     {
       "pedido_id": 10,
       "cliente_id": 3,
-      "cliente": "Cliente de prueba",
+      "cliente": "Cliente demo",
       "destino_id": 4,
-      "ubicacion": "Chone",
-      "latitud": -0.69819,
-      "longitud": -80.09361,
-      "fecha_entrega": "2026-07-15"
+      "ubicacion": "Calceta Centro",
+      "latitud": -0.84582,
+      "longitud": -80.16389,
+      "fecha_entrega": null
     }
   ],
   "grafo": [
     {
       "origen": 1,
       "destino": 4,
-      "distancia": 64.2
+      "distancia": 5.4
     }
   ],
-  "velocidad_kmh": 40
+  "velocidad_kmh": 40,
+  "semilla": 42,
+  "benchmark": false,
+  "aco": {
+    "num_hormigas": 12,
+    "iteraciones": 30,
+    "iteraciones_sin_mejora": 12,
+    "semilla": 42
+  }
 }
 ```
 
-#### Salida resumida
+`semilla`, `benchmark` y `aco` son opcionales.
+
+Python no recibe choferes. Node limita previamente los camiones según los choferes disponibles y asigna cada chofer después de recibir la planificación.
+
+### Salida resumida
 
 ```json
 {
@@ -251,150 +344,123 @@ POST /api/jornadas/generar
         "geometria": [],
         "tramos": []
       },
-      "distancia_total_km": 128.4,
-      "tiempo_estimado_min": 193,
-      "entregas": []
+      "distancia_total_km": 10.8,
+      "tiempo_estimado_min": 17,
+      "entregas": [
+        {
+          "pedido_id": 10,
+          "orden_entrega": 1,
+          "ruta_parcial": {},
+          "distancia_acumulada_km": 5.4,
+          "tiempo_acumulado_min": 9
+        }
+      ]
     }
   ],
-  "pedidos_no_asignados": []
+  "pedidos_no_asignados": [],
+  "pedidos_no_asignados_detalle": []
 }
 ```
 
-La respuesta completa contiene la información necesaria para que el backend cree las jornadas y los despachos asociados.
+Node calcula después las fechas estimadas usando la fecha operativa, el inicio estimado, el tiempo de servicio, el margen y el límite de minutos operativos diarios.
 
 ---
 
-## Contratos
+## Errores
 
-Los modelos Pydantic se encuentran en:
+Los errores controlados mantienen este contrato:
 
-```text
-modelos/contratos.py
+```json
+{
+  "error": {
+    "code": "ROUTE_NOT_FOUND",
+    "message": "No existe una ruta entre el origen y el destino",
+    "details": {}
+  }
+}
 ```
 
-Contratos principales:
+Códigos contemplados:
 
-- `SolicitudRuta`
-- `SolicitudJornada`
-- `RutaEntrada`
-- `BodegaEntrada`
-- `CamionEntrada`
-- `PedidoJornadaEntrada`
+- `INVALID_INPUT`
+- `NODE_NOT_FOUND`
+- `ROUTE_NOT_FOUND`
+- `DISCONNECTED_GRAPH`
+- `INVALID_DISTANCE`
+- `INVALID_COORDINATES`
+- `INVALID_CAPACITY`
+- `DUPLICATE_ORDER`
+- `DUPLICATE_TRUCK`
+- `OSRM_TIMEOUT`
+- `OSRM_UNAVAILABLE`
+- `INVALID_RESULT`
 
----
-
-## Requisitos
-
-- Python 3.12 o superior.
-- FastAPI.
-- Uvicorn.
-- Pydantic.
-- Requests.
+Node traduce timeouts, indisponibilidad y contratos inválidos a errores operacionales del backend.
 
 ---
 
-## Instalación
+## Casos límite
 
-Crear el entorno virtual:
+- Sin pedidos: retorna jornadas vacías.
+- Sin camiones: todos los pedidos quedan no asignados.
+- Destino no alcanzable: el pedido queda no asignado con su razón.
+- Ruta individual inexistente: error controlado.
+- IDs, coordenadas, distancias, capacidades, velocidad y duplicados se validan antes del algoritmo.
+- OSRM depende de una red externa y puede usar fallback.
+
+---
+
+## Pruebas
+
+Desde la raíz:
 
 ```bash
-python -m venv .venv
+npm run test:python
 ```
 
-Activarlo en Windows:
+Desde `python/`:
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py"
 ```
 
-Activarlo en Linux o macOS:
+Línea base validada:
+
+- 24 pruebas Python aprobadas.
+
+Las pruebas cubren contratos, validaciones, A*, metaheurística, agrupación, geometría y fallos de OSRM mediante mocks.
+
+---
+
+## Benchmark
+
+Desde la raíz:
 
 ```bash
-source .venv/bin/activate
+npm run benchmark:python
 ```
 
-Instalar dependencias:
+El benchmark utiliza semilla fija, calentamiento y OSRM simulado para separar el tiempo algorítmico del tiempo de red.
 
-```bash
-pip install -r requirements.txt
-```
+Resultados de referencia:
+
+| Escenario | Antes | Después |
+|---|---:|---:|
+| 5 pedidos / 1 camión | 2,0253 s | 0,0183 s |
+| 14 pedidos / 3 camiones | 21,7033 s | 0,2184 s |
+| 30 pedidos / 5 camiones | más de 180 s | 1,0879 s |
+| Destinos repetidos | 1,3917 s | 0,0113 s |
+
+El cuello de botella corregido era la ejecución repetida de A* dentro del ciclo de ACO.
 
 ---
 
-## Ejecución
+## Decisiones que deben conservarse
 
-Desde la carpeta del servicio:
-
-```bash
-python -m uvicorn app:app --reload
-```
-
-El servicio quedará disponible en:
-
-```text
-http://127.0.0.1:8000
-```
-
----
-
-## Documentación automática
-
-Swagger UI:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-ReDoc:
-
-```text
-http://127.0.0.1:8000/redoc
-```
-
----
-
-## Responsabilidades del backend Node.js
-
-El backend es responsable de:
-
-- consultar PostgreSQL mediante Sequelize;
-- obtener pedidos, camiones, rutas y ubicaciones;
-- construir el contrato de entrada;
-- invocar FastAPI;
-- validar la respuesta;
-- persistir jornadas y despachos;
-- actualizar estados;
-- disparar automatizaciones mediante n8n.
-
----
-
-## Manejo de errores
-
-El servicio puede rechazar una solicitud cuando:
-
-- no existen camiones con capacidad válida;
-- la velocidad es menor o igual a cero;
-- no existe conexión entre dos ubicaciones;
-- no puede construirse una solución válida;
-- el contrato recibido no cumple los modelos Pydantic.
-
-FastAPI devuelve automáticamente errores de validación para contratos inválidos.
-
----
-
-## Estado actual
-
-**Versión del servicio:** 2.0.0
-
-El módulo se encuentra funcional para el MVP e implementa:
-
-- ruta individual con A\*;
-- generación de múltiples jornadas;
-- asignación de pedidos a camiones;
-- optimización mediante colonia de hormigas CVRP;
-- cálculo de tiempos y distancias;
-- geometría vial con OSRM;
-- retorno a bodega;
-- contratos HTTP con FastAPI.
-
-Las siguientes mejoras estarán orientadas a pruebas automatizadas, configuración externa de parámetros y observabilidad del servicio.
+- Python permanece desacoplado de PostgreSQL.
+- Python no modifica estados del negocio.
+- ACO usa una matriz de distancias precalculada.
+- OSRM se consulta solo para las soluciones finales.
+- El retorno a bodega forma parte de cada jornada.
+- Node valida el contrato recibido antes de persistir.
+- Python no recibe ni asigna choferes.

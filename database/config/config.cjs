@@ -1,25 +1,30 @@
+const path = require('path');
+
 require('dotenv').config({
-  path: require('path').resolve(__dirname, '../../.env'),
+  path: path.resolve(
+    __dirname,
+    '../../.env',
+  ),
 });
 
-if (!process.env.DATABASE_URL) {
+const databaseUrl =
+  process.env.DATABASE_URL?.trim();
+
+if (!databaseUrl) {
   throw new Error(
     'La variable DATABASE_URL no está configurada en el archivo .env',
   );
 }
 
+const useSsl =
+  String(process.env.DB_SSL ?? 'false')
+    .trim()
+    .toLowerCase() === 'true';
 
 const baseConfig = {
   use_env_variable: 'DATABASE_URL',
   dialect: 'postgres',
   logging: false,
-
-  dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false,
-    },
-  },
 
   pool: {
     max: 2,
@@ -29,16 +34,36 @@ const baseConfig = {
   },
 
   migrationStorage: 'sequelize',
-  migrationStorageTableName: 'SequelizeMeta',
+  migrationStorageTableName:
+    'SequelizeMeta',
 
   seederStorage: 'sequelize',
-  seederStorageTableName: 'SequelizeData',
+  seederStorageTableName:
+    'SequelizeData',
 };
 
+if (useSsl) {
+  baseConfig.dialectOptions = {
+    ssl: {
+      require: true,
+      rejectUnauthorized: false,
+    },
+  };
+}
 
 module.exports = {
-  development: baseConfig,
-  test: baseConfig,
-  production: baseConfig,
+  development: {
+    ...baseConfig,
+  },
+
+  test: {
+    ...baseConfig,
+  },
+
+  production: {
+    ...baseConfig,
+  },
 };
+
+
 

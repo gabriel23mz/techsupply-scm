@@ -67,36 +67,6 @@ const formatearFechaLocal = (
   return `${year}-${month}-${day}`;
 };
 
-const construirWhereJornadaActiva = ({
-  fecha,
-  camionId,
-  choferId,
-  excluirJornadaId,
-}) => {
-  const where = {
-    fecha: formatearFechaLocal(fecha),
-    estado: {
-      [Op.in]: ESTADOS_JORNADA_ACTIVA,
-    },
-  };
-
-  if (camionId !== undefined) {
-    where.camion_id = camionId;
-  }
-
-  if (choferId !== undefined) {
-    where.chofer_id = choferId;
-  }
-
-  if (excluirJornadaId !== undefined) {
-    where.id = {
-      [Op.ne]: excluirJornadaId,
-    };
-  }
-
-  return where;
-};
-
 const construirWhereConflictoRecurso = ({
   fecha,
   camionId,
@@ -1499,7 +1469,7 @@ export const iniciarJornada = async (
                   include: [
                     {
                       model: Ubicacion,
-                    as: 'ubicacion',
+                      as: 'ubicacion',
                     },
                   ],
                 },
@@ -1918,7 +1888,7 @@ export const finalizarJornada = async (
                   include: [
                     {
                       model: Ubicacion,
-                    as: 'ubicacion',
+                      as: 'ubicacion',
                     },
                   ],
                 },
@@ -2173,7 +2143,7 @@ export const obtenerJornadaPorId = async (
                 include: [
                   {
                     model: Ubicacion,
-                  as: 'ubicacion',
+                    as: 'ubicacion',
                   },
                 ],
               },
@@ -2251,7 +2221,7 @@ export const recalcularJornada = async (id) => {
                 include: [
                   {
                     model: Ubicacion,
-                  as: 'ubicacion',
+                    as: 'ubicacion',
                   },
                 ],
               },
@@ -2360,7 +2330,7 @@ export const recalcularJornada = async (id) => {
         include: [
           {
             model: Ubicacion,
-          as: 'ubicacion',
+            as: 'ubicacion',
           },
         ],
       },

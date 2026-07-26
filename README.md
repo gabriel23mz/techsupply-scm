@@ -1,300 +1,539 @@
-# TechSupply SCM - Backend
+# TechSupply SCM — Módulo Outbound
 
-Backend del módulo **Outbound** de **TechSupply SCM**, desarrollado como proyecto académico para la asignatura de Inteligencia Artificial.
+Sistema inteligente para la gestión comercial y logística de salida de una distribuidora de productos tecnológicos.
 
-El sistema implementa la lógica de negocio para la gestión completa de la logística de salida de una distribuidora de productos tecnológicos, integrando procesos comerciales, planificación logística, optimización mediante Inteligencia Artificial y seguimiento operativo.
+TechSupply SCM Outbound integra un backend Node.js, una base PostgreSQL, un motor de optimización logística en Python y una interfaz React. El flujo cubre la creación del pedido, preparación en bodega, planificación diaria de jornadas, carga de camiones, ejecución de entregas y cierre de la jornada.
 
----
-
-# Descripción
-
-TechSupply SCM se divide en dos módulos que comparten una misma base de datos:
-
-- **Inbound (Grupo 1):** Gestión de proveedores, órdenes de compra e ingresos de inventario.
-- **Outbound (Grupo 2):** Gestión de clientes, pedidos, rutas, jornadas de reparto, despachos y distribución.
-
-Este repositorio corresponde al desarrollo del módulo **Outbound**.
-
-Actualmente el backend implementa completamente el flujo operativo principal del sistema y se encuentra integrado con el frontend desarrollado en React.
+> Estado actual: backend, motor Python, migraciones y entorno demo reproducible estabilizados. El frontend está integrado con la API, pero requiere una reestructuración funcional y visual para representar completamente los permisos y flujos actuales por rol. n8n permanece como integración preparada mediante un stub local.
 
 ---
 
-# Tecnologías
+## Arquitectura general
 
-## Backend
+```text
+Frontend React + Vite
+        │
+        │ API REST + token
+        ▼
+Backend Node.js + Express
+        │
+        ├── Reglas de negocio
+        ├── Seguridad RBAC
+        ├── Transacciones y locks
+        ├── Trazabilidad temporal
+        ├── Migraciones y seeders
+        │
+        ├───────────────┐
+        ▼               ▼
+PostgreSQL         FastAPI / Python
+                        │
+                        ├── A*
+                        ├── ACO-CVRP
+                        └── OSRM
+
+Backend ── eventos post-commit ──> n8n stub
+```
+
+### Responsabilidades
+
+- **Frontend:** presenta datos, formularios, mapas y acciones permitidas.
+- **Backend:** autentica, autoriza, valida, persiste y controla los estados del dominio.
+- **PostgreSQL:** almacena el modelo relacional, JSONB, enums, índices parciales y restricciones.
+- **Python:** calcula rutas y distribuye pedidos entre camiones; no accede a la base.
+- **n8n:** integración futura para notificaciones y automatizaciones.
+
+La documentación técnica detallada se encuentra en [`docs/`](docs/README.md).
+
+---
+
+## Flujo operativo principal
+
+```text
+VENTAS
+PENDIENTE
+  └── crea y edita el pedido
+  └── envía a preparación
+        ↓
+BODEGA
+PREPARANDO
+  └── registra cantidades preparadas por detalle
+  └── finaliza la preparación
+        ↓
+LISTO_PARA_DESPACHO
+        ↓
+LOGÍSTICA
+  └── genera las jornadas operables del día
+  └── asigna camión y chofer
+        ↓
+BODEGA
+  └── carga las cajas en el camión
+  └── confirma la carga
+        ↓
+CHOFER
+  └── inicia la jornada
+  └── registra entregado o no entregado
+  └── confirma el retorno y finaliza
+```
+
+Reglas relevantes:
+
+- El pedido permanece `LISTO_PARA_DESPACHO` al planificar.
+- Pasa a `DESPACHADO` solamente cuando el chofer inicia físicamente la jornada.
+- Solo se generan rutas para la fecha operativa actual.
+- Solo participan camiones `EN_BODEGA` y choferes realmente disponibles.
+- Una jornada puede durar más de un día.
+- El cambio de fecha o el retorno estimado no liberan recursos.
+- Camión y chofer quedan disponibles al finalizar realmente la jornada.
+- Las fechas estimadas se conservan; no sustituyen las fechas reales.
+
+---
+
+## Roles y permisos
+
+| Rol | Responsabilidad principal |
+|---|---|
+| `ADMIN` | Acceso completo al sistema |
+| `VENTAS` | Clientes, pedidos propios y envío a preparación |
+| `BODEGA` | Preparación de pedidos y carga de camiones |
+| `LOGISTICA` | Jornadas, rutas, camiones, choferes y supervisión |
+| `CHOFER` | Jornadas propias, entregas, no entregas y finalización |
+| `COMPRAS` | Catálogo y dominio inbound existente |
+
+El backend usa permisos centralizados y distingue:
+
+- `401 Unauthorized`: sesión ausente, inválida, expirada o usuario inactivo.
+- `403 Forbidden`: sesión válida, pero sin permiso o sin propiedad sobre el recurso.
+
+---
+
+## Tecnologías
+
+### Backend
 
 - Node.js
-- Express.js
-- Sequelize ORM
+- Express 5
+- Sequelize 6
 - PostgreSQL
-- Supabase
+- Sequelize CLI
+- bcrypt
+- Axios
 
-## Inteligencia Artificial
+### Motor logístico
 
 - Python
 - FastAPI
-- Metaheurística de Colonia de Hormigas (CVRP)
-- Algoritmo A*
+- Pydantic
+- A*
+- Colonia de hormigas aplicada a CVRP
 - OSRM
 
-## Frontend
+### Frontend
 
-- React
-- Vite
+- React 19
+- Vite 8
+- React Router
+- Axios
+- Bootstrap y Bootstrap Icons
+- React Toastify
+- Leaflet y React Leaflet
 
-## Automatización
+### Persistencia e infraestructura
 
-- n8n (arquitectura preparada)
+- PostgreSQL local verificado con PostgreSQL 18
+- Compatibilidad con Supabase mediante `DATABASE_URL` y SSL configurable
+- Columnas JSONB para rutas y geometrías
+- Migraciones reproducibles desde una base vacía
+- Dataset demo verificable
 
 ---
 
-# Arquitectura General
+## Estructura principal
 
 ```text
-Cliente HTTP
-        │
-        ▼
- Controllers
-        │
-        ▼
- Servicios de negocio
-        │
-        ├──────────────────────────┐
-        ▼                          ▼
- Persistencia                Servicios externos
-        │                          │
-        ▼                          ▼
- PostgreSQL                 Python / n8n / OSRM
-        │
-        ▼
-     Supabase
+techsupply-outbound/
+├── database/
+│   ├── config/
+│   ├── migrations/
+│   ├── scripts/
+│   ├── seeders/
+│   └── support/
+├── docs/
+├── frontend/
+├── python/
+├── src/
+│   ├── config/
+│   ├── constants/
+│   ├── controllers/
+│   ├── middlewares/
+│   ├── models/
+│   ├── routes/
+│   ├── services/
+│   └── utils/
+├── tests/
+├── .env.example
+├── .sequelizerc
+├── package.json
+└── server.js
 ```
 
-La arquitectura se encuentra desacoplada mediante controladores, servicios y modelos, permitiendo que cada responsabilidad permanezca aislada y facilite futuras ampliaciones.
+---
+
+## Requisitos
+
+- Node.js y npm.
+- Python 3.13 o compatible.
+- PostgreSQL 18 o compatible.
+- Un entorno virtual Python.
+- Acceso a internet para OSRM cuando se requiera geometría vial real.
+
+Versiones verificadas durante la estabilización:
+
+- Node.js `24.15.0`.
+- Sequelize CLI `6.6.5`.
+- Sequelize ORM `6.37.8`.
+- PostgreSQL `18` en Windows.
 
 ---
 
-# Arquitectura del módulo logístico
+## Instalación
 
-Actualmente la operación logística gira alrededor de la entidad **Jornada de Reparto**, la cual representa una planificación completa realizada para un camión.
-
-```text
-Pedidos LISTOS PARA DESPACHO
-                │
-                ▼
-      JornadaRepartoService
-                │
-                ▼
-     Python Metaheurística
-                │
-                ▼
-      Jornada de reparto
-                │
-        ┌───────┴────────┐
-        ▼                ▼
-   Despachos        Ruta General
-        │
-        ▼
- Automatizaciones (n8n)
-```
-
-Cada jornada agrupa múltiples despachos, mantiene el recorrido completo, la posición actual del vehículo y el estado operativo de la distribución.
-
----
-
-# Modelo de Datos
-
-## Catálogos
-
-- Usuarios
-- Categorías
-- Productos
-- Ubicaciones
-- Rutas
-- Camiones
-
-## Gestión Comercial
-
-- Clientes
-- Pedidos
-- Detalles de Pedido
-
-## Gestión Logística
-
-- Jornadas de Reparto
-- Despachos
-
-Todas las entidades se encuentran modeladas mediante Sequelize y sincronizadas con PostgreSQL utilizando Supabase.
-
----
-
-# Funcionalidades implementadas
-
-## Gestión Comercial
-
-- CRUD de clientes.
-- CRUD de ubicaciones.
-- CRUD de rutas.
-- CRUD de categorías.
-- CRUD de productos.
-- CRUD de usuarios.
-- Gestión completa de pedidos.
-- Gestión de detalles de pedido.
-- Control automático de inventario.
-- Validaciones de negocio.
-
----
-
-## Gestión Logística
-
-- Generación automática de jornadas.
-- Asignación automática de camiones.
-- Creación automática de despachos.
-- Persistencia de rutas.
-- Estados operativos.
-- Seguimiento de jornadas.
-- Gestión de entregas.
-- Pedidos no entregados.
-- Cancelación de despachos.
-- Consulta histórica.
-
----
-
-## Inteligencia Artificial
-
-- Comunicación Node ↔ Python mediante FastAPI.
-- Metaheurística de Colonia de Hormigas para planificación logística.
-- Algoritmo A* disponible para cálculo de caminos.
-- Integración con OSRM para cálculo de geometrías y distancias reales.
-
----
-
-## Seguridad
-
-- Autenticación local.
-- Hash de contraseñas mediante bcrypt.
-- Login.
-- Protección básica de rutas.
-- Tokens de sesión.
-
----
-
-# Estado actual del proyecto
-
-## Implementado
-
-- Backend completamente funcional.
-- Frontend completamente integrado.
-- PostgreSQL mediante Supabase.
-- Arquitectura modular.
-- Gestión comercial completa.
-- Gestión logística completa.
-- Dashboard conectado.
-- Sistema de autenticación.
-- Integración Node ↔ Python.
-- Integración con mapas.
-- Servicios preparados para automatización mediante n8n.
-
----
-
-## En desarrollo
-
-Las siguientes funcionalidades ya poseen la arquitectura preparada, pero aún requieren implementación completa:
-
-- Automatizaciones mediante n8n.
-- Notificaciones automáticas a clientes.
-- Roles y permisos.
-- Auditoría de operaciones.
-- Mejoras de rendimiento.
-
----
-
-# Instalación
-
-Clonar el repositorio:
-
-```bash
-git clone <url-del-repositorio>
-```
-
-Instalar dependencias:
+### 1. Instalar dependencias raíz
 
 ```bash
 npm install
 ```
 
-Configurar el servicio Python:
+### 2. Instalar dependencias del frontend
 
 ```bash
-cd python
-
-python -m venv .venv
-
-.\.venv\Scripts\activate
-
-pip install -r requirements.txt
-
-deactivate
+npm --prefix frontend install
 ```
 
-Crear el archivo `.env`:
+### 3. Preparar Python
+
+En Windows PowerShell:
+
+```powershell
+cd python
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+cd ..
+```
+
+### 4. Configurar variables del backend
+
+Copia `.env.example` como `.env` y completa los valores privados.
 
 ```env
-DB_HOST=
-DB_PORT=
-DB_NAME=
-DB_USER=
-DB_PASSWORD=
+PORT=3000
 
-SUPABASE_URL=
-SUPABASE_KEY=
+DATABASE_URL=postgres://postgres:TU_PASSWORD@127.0.0.1:5432/techsupply_outbound_demo
+DB_SSL=false
 
 PYTHON_API=http://127.0.0.1:8000
+AUTH_SECRET=replace_with_a_long_random_secret
 
-AUTH_SECRET=
+APP_TIMEZONE=America/Guayaquil
+HORA_INICIO_OPERACION=08:00
+TIEMPO_SERVICIO_POR_ENTREGA_MIN=10
+MARGEN_OPERATIVO_PORCENTAJE=15
+MINUTOS_MAXIMOS_OPERACION_DIA=600
 ```
 
-Iniciar el proyecto:
+Configuración de conexión:
+
+```text
+DATABASE_URL → determina a qué base se conecta el sistema
+DB_SSL       → determina si esa conexión usa SSL
+```
+
+- PostgreSQL local: `DB_SSL=false`.
+- Supabase: `DB_SSL=true` y la cadena suministrada por Supabase.
+
+No deben existir dos variables `DATABASE_URL` activas en el mismo archivo.
+
+### 5. Configurar el frontend
+
+Copia `frontend/.env.example` como `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:3000/api
+```
+
+---
+
+## Base de datos
+
+### Consultar el estado de las migraciones
+
+```bash
+npm run db:migrate:status
+```
+
+### Ejecutar migraciones
+
+```bash
+npm run db:migrate
+```
+
+El historial actual incluye:
+
+1. Esquema inicial.
+2. Conversión de rutas a JSONB.
+3. Rol y entidad `Chofer`.
+4. Propiedad y trazabilidad de pedidos.
+5. Preparación por detalle.
+6. Carga y asignación de chofer.
+7. Integridad logística e índices parciales.
+8. Estimaciones temporales.
+
+La reconstrucción completa fue validada desde una base vacía en PostgreSQL 18.
+
+### Dataset demo
+
+Validar estáticamente los datos antes de insertarlos:
+
+```bash
+npm run db:demo:validate-static
+```
+
+Ejecutar los seeders:
+
+```bash
+npm run db:seed
+```
+
+Verificar conteos e invariantes del dataset cargado:
+
+```bash
+npm run db:demo:verify
+```
+
+Restaurar completamente la base demo:
+
+```bash
+npm run db:demo:reset
+```
+
+El reset se encuentra protegido y solamente se habilita cuando:
+
+- `ALLOW_DEMO_RESET=true`.
+- La base está en `localhost`, `127.0.0.1` o `::1`.
+- El nombre termina en `_demo` o `_test`.
+- `DB_SSL=false`.
+- `NODE_ENV` no es `production`.
+
+Después de usarlo, vuelve a establecer:
+
+```env
+ALLOW_DEMO_RESET=false
+```
+
+### Dataset validado
+
+| Entidad | Registros mínimos verificados |
+|---|---:|
+| Usuarios | 18 |
+| Categorías | 12 |
+| Ubicaciones | 30 |
+| Proveedores | 10 |
+| Camiones | 10 |
+| Choferes | 8 |
+| Productos | 72 |
+| Clientes | 48 |
+| Rutas dirigidas | 164 |
+| Pedidos | 72 |
+| Detalles de pedido | 214 |
+| Jornadas | 7 |
+| Despachos | 30 |
+| Órdenes de compra | 10 |
+| Detalles de orden | 29 |
+| Ingresos de inventario | 4 |
+| Detalles de ingreso | 12 |
+
+La ubicación con ID `1` es la **Bodega Central ESPAM MFL**, utilizada como origen y retorno del flujo logístico demo.
+
+### Usuarios demo
+
+| Rol | Correo | Contraseña |
+|---|---|---|
+| ADMIN | `admin@demo.techsupply.ec` | `Admin123*` |
+| VENTAS | `ventas1@demo.techsupply.ec` | `Ventas123*` |
+| BODEGA | `bodega1@demo.techsupply.ec` | `Bodega123*` |
+| LOGISTICA | `logistica1@demo.techsupply.ec` | `Logistica123*` |
+| COMPRAS | `compras1@demo.techsupply.ec` | `Compras123*` |
+| CHOFER | `chofer1@demo.techsupply.ec` | `Chofer123*` |
+
+Estas credenciales son exclusivamente de demostración.
+
+---
+
+## Ejecución
+
+### Levantar todos los servicios en Windows
 
 ```bash
 npm run dev
 ```
 
-El comando ejecuta simultáneamente:
+Este comando ejecuta en paralelo:
 
-- Backend Express.
-- Servicio Python (FastAPI).
+- Backend: `http://localhost:3000`.
+- Python: `http://127.0.0.1:8000`.
+- Frontend: `http://localhost:5173`.
 
----
+### Ejecutar servicios por separado
 
-# Estado del proyecto
+```bash
+npm run dev:node
+npm run dev:python
+npm run dev:frontend
+```
 
-**Versión actual:** MVP Funcional (Versión Base Estable)
-
-El sistema implementa completamente el flujo principal del módulo Outbound.
-
-Las siguientes iteraciones estarán enfocadas principalmente en:
-
-- refactorización del backend;
-- optimización del código;
-- automatización mediante n8n;
-- control de acceso por roles;
-- pruebas integrales del sistema.
+El script `dev:python` utiliza la ruta de entorno virtual de Windows. En otro sistema operativo, ejecuta Uvicorn manualmente desde `python/`.
 
 ---
 
-# Equipo de Desarrollo
+## API
 
-Proyecto académico desarrollado para la asignatura de Inteligencia Artificial.
+Todos los módulos operativos, excepto el login, requieren autenticación.
 
-**Universidad:** ESPAM MFL
+| Prefijo | Responsabilidad |
+|---|---|
+| `/api/auth` | Login y sesión |
+| `/api/usuarios` | Usuarios |
+| `/api/clientes` | Clientes |
+| `/api/categorias` | Categorías |
+| `/api/productos` | Productos |
+| `/api/ubicaciones` | Ubicaciones |
+| `/api/rutas` | Catálogo de rutas |
+| `/api/pedidos` | Pedidos |
+| `/api/detalles-pedido` | Detalles comerciales |
+| `/api/bodega` | Preparación y carga |
+| `/api/camiones` | Camiones |
+| `/api/choferes` | Choferes |
+| `/api/jornadas-reparto` | Jornadas |
+| `/api/despachos` | Entregas y no entregas asociadas a jornadas |
 
-**Carrera:** Computación
-
-**Año:** 2026
+Los endpoints heredados para crear, iniciar o cancelar un despacho individual fueron retirados. `JornadaReparto` es el flujo operativo central.
 
 ---
 
-# Licencia
+## Pruebas y benchmark
 
-Proyecto desarrollado con fines educativos y académicos.
+Ejecutar toda la suite:
+
+```bash
+npm test
+```
+
+Scripts específicos:
+
+```bash
+npm run test:backend
+npm run test:python
+npm run test:frontend
+npm run benchmark:python
+```
+
+Línea base validada antes de la fase de frontend:
+
+- Backend: 67 pruebas.
+- Python: 24 pruebas.
+- Frontend: 1 smoke test.
+- Total: 92 pruebas aprobadas.
+- Build de Vite aprobado.
+
+Las pruebas backend usan dobles y mocks para evitar conexiones accidentales a Supabase, Python, OSRM o n8n reales.
+
+---
+
+## Estado actual por componente
+
+### Backend
+
+- Seguridad RBAC implementada.
+- Controladores delgados y servicios de negocio.
+- Errores tipados y middleware central.
+- Transacciones y locks en operaciones críticas.
+- Aliases Sequelize explícitos.
+- Preparación, carga, choferes y temporalidad logística.
+- Flujo heredado de despacho individual eliminado.
+- Integridad reforzada mediante índices parciales.
+
+### Base de datos
+
+- Migraciones reproducibles.
+- PostgreSQL local validado.
+- Seeders completos y verificables.
+- Reset demo protegido.
+- Compatibilidad preparada con Supabase.
+
+### Python
+
+- A* para rutas individuales.
+- ACO-CVRP para jornadas.
+- Matriz de distancias y caché por solicitud.
+- OSRM únicamente en geometrías finales.
+- Errores estructurados.
+- Benchmarks reproducibles.
+
+### Frontend
+
+- Autenticación, permisos por ruta y cliente Axios.
+- Módulos existentes de clientes, pedidos, ubicaciones, rutas, logística y despachos.
+- Workspace comercial de pedidos.
+- Mapas con Leaflet.
+- Requiere reestructuración para dashboards, navegación, acciones y módulos específicos por rol.
+
+### n8n
+
+- Stub local desacoplado.
+- Webhooks reales, reintentos, idempotencia y trazabilidad pendientes.
+
+---
+
+## Trabajo pendiente priorizado
+
+1. Reestructurar el frontend según permisos y responsabilidades por rol.
+2. Crear módulos dedicados de Bodega, Camiones, Choferes y operación del Chofer.
+3. Unificar diseño visual, layout, componentes y estilos.
+4. Ampliar pruebas de renderizado y flujos frontend.
+5. Aplicar una estrategia controlada para Supabase cuando corresponda.
+6. Implementar n8n real después de estabilizar el frontend.
+
+Fuera del alcance actual del MVP:
+
+- Planificación automática de fechas futuras.
+- Uso de camiones próximos a regresar.
+- Calendarios laborales y feriados.
+- Tráfico en tiempo real.
+- Rastreo GPS satelital.
+
+---
+
+## Documentación canónica
+
+- [`docs/01-alcance-y-estado-del-mvp.md`](docs/01-alcance-y-estado-del-mvp.md)
+- [`docs/02-arquitectura-general.md`](docs/02-arquitectura-general.md)
+- [`docs/03-backend-y-reglas-de-negocio.md`](docs/03-backend-y-reglas-de-negocio.md)
+- [`docs/04-base-de-datos.md`](docs/04-base-de-datos.md)
+- [`docs/05-motor-logistico-python.md`](docs/05-motor-logistico-python.md)
+- [`docs/06-frontend.md`](docs/06-frontend.md)
+- [`docs/07-flujos-contratos-e-integraciones.md`](docs/07-flujos-contratos-e-integraciones.md)
+- [`docs/08-instalacion-configuracion-y-ejecucion.md`](docs/08-instalacion-configuracion-y-ejecucion.md)
+- [`docs/09-calidad-riesgos-y-trabajo-pendiente.md`](docs/09-calidad-riesgos-y-trabajo-pendiente.md)
+
+---
+
+## Avisos de seguridad
+
+- No compartas `.env`.
+- No incluyas credenciales reales en commits.
+- No ejecutes el reset demo sobre Supabase.
+- No uses las credenciales demo fuera de un entorno local.
+- No ejecutes migraciones destructivas sobre una base remota sin respaldo y revisión previa.
+
+
+

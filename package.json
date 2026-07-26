@@ -14,12 +14,14 @@
     "db:migrate:status": "sequelize-cli db:migrate:status",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:migrate:undo:all": "sequelize-cli db:migrate:undo:all",
+    
     "db:seed": "sequelize-cli db:seed:all",
     "db:seed:undo": "sequelize-cli db:seed:undo:all",
-
     "db:demo:clear": "node database/scripts/reset-demo.cjs",
-    "db:demo:reset": "node database/scripts/reset-demo.cjs && npm run db:seed",
-
+    "db:demo:validate-static": "node database/scripts/validate-demo-static.cjs",
+    "db:demo:verify": "node database/scripts/verify-demo.cjs",
+    "db:demo:reset": "node database/scripts/reset-demo.cjs && npm run db:seed && npm run db:demo:verify",
+    
     "test": "npm run test:backend && npm run test:python && npm run test:frontend",
     "test:backend": "node --test \"tests/backend/**/*.test.js\"",
     "test:python": "cd python && .venv\\Scripts\\python.exe -m unittest discover -s tests -p \"test_*.py\"",
