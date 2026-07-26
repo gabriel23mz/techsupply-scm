@@ -2,19 +2,20 @@ import {
   matchPath,
 } from 'react-router-dom';
 
-import ClientesPage from '../../modules/clientes/pages/ClientesPage';
-import DespachosPage from '../../modules/despachos/pages/DespachosPage';
-import DashboardPage from '../../modules/dashboard/pages/DashboardPage';
-import CentroLogisticoPage from '../../modules/logistica/pages/CentroLogisticoPage';
-import JornadaDetallePage from '../../modules/logistica/pages/JornadaDetallePage';
-import NuevoPedidoPage from '../../modules/pedidos/pages/NuevoPedidoPage';
-import PedidosPage from '../../modules/pedidos/pages/PedidosPage';
-import PedidoWorkspacePage from '../../modules/pedidos/pages/PedidoWorkspacePage';
-import RutasPage from '../../modules/rutas/pages/RutasPage';
-import UbicacionesPage from '../../modules/ubicaciones/pages/UbicacionesPage';
-
-import AccessDeniedPage from '../pages/AccessDeniedPage';
-import NotFoundPage from '../pages/NotFoundPage';
+import {
+  AccessDeniedPage,
+  CentroLogisticoPage,
+  ClientesPage,
+  DashboardPage,
+  DespachosPage,
+  JornadaDetallePage,
+  NotFoundPage,
+  NuevoPedidoPage,
+  PedidoWorkspacePage,
+  PedidosPage,
+  RutasPage,
+  UbicacionesPage,
+} from './routeComponents';
 
 import {
   PERMISSIONS,

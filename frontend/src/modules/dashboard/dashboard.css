@@ -110,17 +110,17 @@
 
 .dashboard-metric-icon.warning {
   background: rgba(245, 158, 11, 0.13);
-  color: #b45309;
+  color: var(--color-warning);
 }
 
 .dashboard-metric-icon.info {
   background: rgba(14, 165, 233, 0.12);
-  color: #0369a1;
+  color: var(--color-info);
 }
 
 .dashboard-metric-icon.success {
   background: rgba(34, 197, 94, 0.12);
-  color: #15803d;
+  color: var(--color-success);
 }
 
 .dashboard-metric-card span,
@@ -152,7 +152,7 @@
   position: absolute;
   top: 11px;
   right: 12px;
-  color: #cbd5e1;
+  color: var(--color-icon-muted);
   font-size: 10px;
 }
 
@@ -225,12 +225,12 @@
 
 .dashboard-operation-icon.step-1 {
   background: rgba(245, 158, 11, 0.13);
-  color: #b45309;
+  color: var(--color-warning);
 }
 
 .dashboard-operation-icon.step-2 {
   background: rgba(14, 165, 233, 0.12);
-  color: #0369a1;
+  color: var(--color-info);
 }
 
 .dashboard-operation-icon.step-3 {
@@ -240,12 +240,12 @@
 
 .dashboard-operation-icon.step-4 {
   background: rgba(139, 92, 246, 0.11);
-  color: #6d28d9;
+  color: var(--color-purple);
 }
 
 .dashboard-operation-icon.step-5 {
   background: rgba(34, 197, 94, 0.12);
-  color: #15803d;
+  color: var(--color-success);
 }
 
 .dashboard-operation-step strong,
@@ -267,8 +267,8 @@
 .dashboard-operation-arrow {
   position: absolute;
   right: -6px;
-  z-index: 2;
-  color: #cbd5e1;
+  z-index: var(--z-base);
+  color: var(--color-icon-muted);
 }
 
 .dashboard-content-grid {
@@ -313,7 +313,7 @@
 
 .dashboard-alert-item.warning > div {
   background: rgba(245, 158, 11, 0.13);
-  color: #b45309;
+  color: var(--color-warning);
 }
 
 .dashboard-alert-item.danger > div {
@@ -323,7 +323,7 @@
 
 .dashboard-alert-item.info > div {
   background: rgba(14, 165, 233, 0.11);
-  color: #0369a1;
+  color: var(--color-info);
 }
 
 .dashboard-alert-item strong,
@@ -343,7 +343,7 @@
 }
 
 .dashboard-alert-item > i {
-  color: #cbd5e1;
+  color: var(--color-icon-muted);
 }
 
 .dashboard-alert-empty {
@@ -403,7 +403,7 @@
 
 .dashboard-activity-icon.info {
   background: rgba(14, 165, 233, 0.1);
-  color: #0369a1;
+  color: var(--color-info);
 }
 
 .dashboard-activity-item strong,
@@ -552,7 +552,7 @@
 }
 
 .dashboard-quick-arrow {
-  color: #cbd5e1;
+  color: var(--color-icon-muted);
 }
 
 .dashboard-loading {

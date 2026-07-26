@@ -19,20 +19,46 @@
     content="TechSupply SCM"
   />
 
-  <title>TechSupply SCM</title>
+  <meta
+    name="theme-color"
+    content="#f4f7fb"
+  />
 
+  <script>
+    (() => {
+      try {
+        const stored = JSON.parse(
+          localStorage.getItem('techsupply_preferences') || '{}',
+        );
+        const preference = ['system', 'light', 'dark'].includes(stored.theme)
+          ? stored.theme
+          : 'system';
+        const systemDark = window.matchMedia(
+          '(prefers-color-scheme: dark)',
+        ).matches;
+        const theme = preference === 'system'
+          ? systemDark ? 'dark' : 'light'
+          : preference;
+
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.dataset.themePreference = preference;
+        document.documentElement.style.colorScheme = theme;
+      } catch {
+        document.documentElement.dataset.theme = 'light';
+      }
+    })();
+  </script>
+
+  <title>TechSupply SCM</title>
 </head>
 
 <body>
-
   <div id="root"></div>
 
   <script
     type="module"
     src="/src/main.jsx"
   ></script>
-
 </body>
 
 </html>
-

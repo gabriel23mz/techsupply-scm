@@ -1,11 +1,15 @@
 import {
+  lazy,
+  Suspense,
+} from 'react';
+
+import {
   Route,
   Routes,
 } from 'react-router-dom';
 
-import LoginPage from '../modules/auth/pages/LoginPage';
-
 import MainLayout from '../shared/layouts/MainLayout';
+import RouteLoadingScreen from '../shared/components/RouteLoadingScreen';
 
 import {
   routeRegistry,
@@ -14,43 +18,49 @@ import {
 import ProtectedRoute from './ProtectedRoute';
 import PublicOnlyRoute from './PublicOnlyRoute';
 
+const LoginPage = lazy(() =>
+  import('../modules/auth/pages/LoginPage'),
+);
+
 function Router() {
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={
-          <PublicOnlyRoute>
-            <LoginPage />
-          </PublicOnlyRoute>
-        }
-      />
+    <Suspense fallback={<RouteLoadingScreen />}>
+      <Routes>
+        <Route
+          path="/login"
+          element={
+            <PublicOnlyRoute>
+              <LoginPage />
+            </PublicOnlyRoute>
+          }
+        />
 
-      <Route
-        path="/*"
-        element={
-          <ProtectedRoute>
-            <MainLayout>
-              <Routes>
-                {routeRegistry.map((route) => (
-                  <Route
-                    key={route.id}
-                    path={route.path}
-                    element={
-                      <ProtectedRoute
-                        access={route.access}
-                      >
-                        {route.element}
-                      </ProtectedRoute>
-                    }
-                  />
-                ))}
-              </Routes>
-            </MainLayout>
-          </ProtectedRoute>
-        }
-      />
-    </Routes>
+        <Route
+          path="/*"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Routes>
+                  {routeRegistry.map((route) => (
+                    <Route
+                      key={route.id}
+                      path={route.path}
+                      element={
+                        <ProtectedRoute
+                          access={route.access}
+                        >
+                          {route.element}
+                        </ProtectedRoute>
+                      }
+                    />
+                  ))}
+                </Routes>
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+    </Suspense>
   );
 }
 

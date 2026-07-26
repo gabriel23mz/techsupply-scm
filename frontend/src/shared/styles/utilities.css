@@ -1,9 +1,58 @@
-/*
-|--------------------------------------------------------------------------
-| Utility Classes
-|--------------------------------------------------------------------------
-|
-| Clases CSS reutilizables de propósito general.
-| Se incorporarán conforme el proyecto las requiera.
-|
-*/
+.visually-hidden-focusable:not(:focus):not(:focus-within) {
+  width: 1px;
+  height: 1px;
+  position: absolute;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.app-page-container {
+  width: min(100%, var(--content-max-width));
+  margin-inline: auto;
+}
+
+.surface-card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.text-secondary-app {
+  color: var(--color-text-secondary) !important;
+}
+
+.text-muted-app {
+  color: var(--color-text-muted) !important;
+}
+
+.skeleton-line {
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-background-muted);
+}
+
+.skeleton-line::after {
+  content: '';
+  width: 45%;
+  height: 100%;
+  display: block;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(var(--color-primary-rgb), 0.1),
+    transparent
+  );
+  animation: skeletonSlide 1.15s ease-in-out infinite;
+}
+
+@keyframes skeletonSlide {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(240%);
+  }
+}

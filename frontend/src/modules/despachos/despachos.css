@@ -92,7 +92,7 @@
 
 .dispatch-metric-icon.warning {
   background: rgba(245, 158, 11, 0.13);
-  color: #b45309;
+  color: var(--color-warning);
 }
 
 .dispatch-metric-icon.info {
@@ -102,7 +102,7 @@
 
 .dispatch-metric-icon.success {
   background: rgba(34, 197, 94, 0.12);
-  color: #15803d;
+  color: var(--color-success);
 }
 
 .dispatch-metric-card span,
@@ -164,7 +164,7 @@
   position: absolute;
   top: 50%;
   left: 12px;
-  z-index: 2;
+  z-index: var(--z-base);
   color: var(--color-text-secondary);
   transform: translateY(-50%);
 }
@@ -279,22 +279,22 @@
 
 .dispatch-status--pendiente {
   background: rgba(245, 158, 11, 0.13);
-  color: #b45309;
+  color: var(--color-warning);
 }
 
 .dispatch-status--en_transito {
   background: rgba(14, 165, 233, 0.12);
-  color: #0369a1;
+  color: var(--color-info);
 }
 
 .dispatch-status--entregado {
   background: rgba(34, 197, 94, 0.12);
-  color: #15803d;
+  color: var(--color-success);
 }
 
 .dispatch-status--no_entregado {
   background: rgba(249, 115, 22, 0.12);
-  color: #c2410c;
+  color: var(--color-warning);
 }
 
 .dispatch-status--cancelado {
@@ -325,7 +325,7 @@
 }
 
 .dispatch-actions button.disabled {
-  color: #cbd5e1;
+  color: var(--color-icon-muted);
   cursor: default;
 }
 
@@ -414,7 +414,7 @@
 .dispatch-drawer-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1400;
+  z-index: var(--z-modal);
   display: flex;
   justify-content: flex-end;
   background: rgba(15, 23, 42, 0.5);

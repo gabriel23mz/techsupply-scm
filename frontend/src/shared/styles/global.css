@@ -1,8 +1,28 @@
+html {
+  min-height: 100%;
+  background: var(--color-background);
+  scroll-behavior: smooth;
+}
+
 body {
+  min-width: 320px;
+  min-height: 100vh;
   margin: 0;
   background: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-family-base);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-base);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background-color var(--transition-base),
+    color var(--transition-base);
+}
+
+body,
+#root {
+  min-height: 100vh;
 }
 
 *,
@@ -11,13 +31,20 @@ body {
   box-sizing: border-box;
 }
 
-html {
-  min-height: 100%;
+::selection {
+  background: var(--selection-background);
+  color: var(--selection-text);
+  text-shadow: none;
 }
 
-body,
-#root {
-  min-height: 100vh;
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+body.app-scroll-locked,
+body.settings-scroll-locked {
+  overflow: hidden;
 }
 
 a {
@@ -38,19 +65,26 @@ button {
 
 button:disabled {
   cursor: not-allowed;
+  opacity: 0.62;
 }
 
 input,
 select,
 textarea {
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--color-surface);
   color: var(--color-text);
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-text-muted);
 }
 
 input:focus,
@@ -58,7 +92,7 @@ select:focus,
 textarea:focus {
   border-color: var(--color-primary);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  box-shadow: var(--shadow-focus);
 }
 
 img,
@@ -66,12 +100,155 @@ svg {
   max-width: 100%;
 }
 
-/* ==========================================================================
-   React Toastify
-   ========================================================================== */
+hr {
+  border-color: var(--color-border);
+  opacity: 1;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--color-border-strong);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+  background-clip: padding-box;
+}
+
+/* Bootstrap alignment with the design system */
+.btn {
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  transition:
+    transform var(--transition-fast),
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-hover-bg: var(--color-primary-hover);
+  --bs-btn-hover-border-color: var(--color-primary-hover);
+  --bs-btn-active-bg: var(--color-primary-active);
+  --bs-btn-active-border-color: var(--color-primary-active);
+  --bs-btn-disabled-bg: var(--color-primary);
+  --bs-btn-disabled-border-color: var(--color-primary);
+}
+
+.btn-outline-primary {
+  --bs-btn-color: var(--color-primary);
+  --bs-btn-border-color: var(--color-primary);
+  --bs-btn-hover-bg: var(--color-primary);
+  --bs-btn-hover-border-color: var(--color-primary);
+}
+
+.btn-light,
+.btn-outline-secondary {
+  --bs-btn-color: var(--color-text);
+  --bs-btn-bg: var(--color-surface);
+  --bs-btn-border-color: var(--color-border);
+  --bs-btn-hover-color: var(--color-text);
+  --bs-btn-hover-bg: var(--color-surface-hover);
+  --bs-btn-hover-border-color: var(--color-border-strong);
+}
+
+.card,
+.modal-content,
+.dropdown-menu,
+.list-group-item {
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.table {
+  --bs-table-color: var(--color-text);
+  --bs-table-bg: transparent;
+  --bs-table-border-color: var(--color-border);
+  --bs-table-striped-color: var(--color-text);
+  --bs-table-striped-bg: rgba(var(--color-primary-rgb), 0.025);
+  --bs-table-hover-color: var(--color-text);
+  --bs-table-hover-bg: var(--color-surface-hover);
+}
+
+.form-control,
+.form-select {
+  border-color: var(--color-border);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-primary);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-focus);
+}
+
+.form-check-input {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-surface);
+}
+
+.form-check-input:checked {
+  border-color: var(--color-primary);
+  background-color: var(--color-primary);
+}
+
+/* Leaflet and map controls */
+.leaflet-container {
+  background: var(--color-background-muted);
+  color: var(--color-text);
+}
+
+.leaflet-control-zoom a,
+.leaflet-control-layers,
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  border-color: var(--color-border);
+  background: var(--map-control-background);
+  color: var(--color-text);
+}
+
+html[data-theme='dark'] .leaflet-tile-pane {
+  filter: brightness(0.72) saturate(0.82) contrast(1.08);
+}
+
+html[data-theme='dark'] .leaflet-control-attribution {
+  background: rgba(17, 28, 45, 0.86);
+  color: var(--color-text-secondary);
+}
+
+/* React Toastify */
+.Toastify {
+  position: relative;
+  z-index: var(--z-toast);
+}
 
 .Toastify__toast {
-  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
   font-family: var(--font-family-base);
   box-shadow: var(--shadow-md);
 }
@@ -90,4 +267,19 @@ svg {
 
 .Toastify__toast--info {
   color: var(--color-info);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }

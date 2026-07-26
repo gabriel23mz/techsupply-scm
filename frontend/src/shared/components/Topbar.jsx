@@ -7,21 +7,21 @@ import {
 } from 'react';
 
 import {
-  useInitialLoad,
-} from '../hooks/useInitialLoad';
-
-import {
   useLocation,
   useNavigate,
 } from 'react-router-dom';
 
 import {
-  showError,
-} from '../utils/toast';
+  useInitialLoad,
+} from '../hooks/useInitialLoad';
 
 import {
   useAuth,
 } from '../hooks/useAuth';
+
+import {
+  usePreferences,
+} from '../hooks/usePreferences';
 
 import {
   getRouteByPathname,
@@ -35,11 +35,14 @@ import {
   obtenerNotificacionesDashboard,
 } from '../../modules/dashboard/services/dashboard.service';
 
+import {
+  showError,
+} from '../utils/toast';
+
 import NotificationsPanel from './NotificationsPanel';
 import SettingsPanel from './SettingsPanel';
 
-
-function Topbar() {
+function Topbar({ onOpenNavigation }) {
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
 
@@ -51,20 +54,16 @@ function Topbar() {
     logout,
   } = useAuth();
 
-  const [showUserMenu, setShowUserMenu] =
-    useState(false);
+  const {
+    resolvedTheme,
+    setTheme,
+  } = usePreferences();
 
-  const [showNotifications, setShowNotifications] =
-    useState(false);
-
-  const [showSettings, setShowSettings] =
-    useState(false);
-
-  const [notifications, setNotifications] =
-    useState([]);
-
-  const [loadingNotifications, setLoadingNotifications] =
-    useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
 
   const currentRoute = useMemo(
     () => getRouteByPathname(location.pathname),
@@ -76,24 +75,17 @@ function Topbar() {
       try {
         setLoadingNotifications(true);
 
-        const result =
-          await obtenerNotificacionesDashboard(8);
+        const result = await obtenerNotificacionesDashboard(8);
 
         const items = Array.isArray(result?.items)
           ? result.items.map((item) =>
-            normalizeDashboardNotification(
-              item,
-              user?.rol,
-            ),
+            normalizeDashboardNotification(item, user?.rol),
           )
           : [];
 
         setNotifications(items);
       } catch (error) {
-        console.error(
-          'Error al cargar alertas:',
-          error,
-        );
+        console.error('Error al cargar alertas:', error);
 
         showError(
           error.message ||
@@ -125,30 +117,74 @@ function Topbar() {
       }
     }
 
-    document.addEventListener(
-      'mousedown',
-      handleOutside,
-    );
+    function handleEscape(event) {
+      if (event.key === 'Escape') {
+        setShowUserMenu(false);
+        setShowNotifications(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.removeEventListener(
-        'mousedown',
-        handleOutside,
-      );
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme(resolvedTheme === 'dark' ? 'light' : 'dark');
+  };
+
+  const closeSettings = useCallback(() => {
+    setShowSettings(false);
   }, []);
 
   return (
     <>
       <header className="app-topbar">
-        <div className="topbar-route">
-          <span>Módulo Outbound</span>
+        <div className="topbar-leading">
+          <button
+            type="button"
+            className="topbar-icon-button topbar-menu-button"
+            aria-label="Abrir navegación"
+            onClick={onOpenNavigation}
+          >
+            <i className="bi bi-list" />
+          </button>
 
-          <h2>{currentRoute.label}</h2>
-          <p>{currentRoute.description}</p>
+          <div className="topbar-route">
+            <h2>{currentRoute.label}</h2>
+            <p>{currentRoute.description}</p>
+          </div>
         </div>
 
         <div className="topbar-actions">
+          <button
+            type="button"
+            className="topbar-icon-button topbar-theme-button"
+            title={
+              resolvedTheme === 'dark'
+                ? 'Cambiar a tema claro'
+                : 'Cambiar a tema oscuro'
+            }
+            aria-label={
+              resolvedTheme === 'dark'
+                ? 'Cambiar a tema claro'
+                : 'Cambiar a tema oscuro'
+            }
+            onClick={toggleTheme}
+          >
+            <i
+              className={`bi ${
+                resolvedTheme === 'dark'
+                  ? 'bi-sun'
+                  : 'bi-moon-stars'
+              }`}
+            />
+          </button>
+
           <div
             className="topbar-notification-wrapper"
             ref={notificationRef}
@@ -157,10 +193,10 @@ function Topbar() {
               type="button"
               className="topbar-icon-button"
               title="Notificaciones"
+              aria-label="Abrir notificaciones"
+              aria-expanded={showNotifications}
               onClick={() => {
-                setShowNotifications(
-                  (current) => !current,
-                );
+                setShowNotifications((current) => !current);
                 setShowUserMenu(false);
               }}
             >
@@ -175,17 +211,16 @@ function Topbar() {
               open={showNotifications}
               notifications={notifications}
               isLoading={loadingNotifications}
-              onClose={() =>
-                setShowNotifications(false)
-              }
+              onClose={() => setShowNotifications(false)}
               onRefresh={loadNotifications}
             />
           </div>
 
           <button
             type="button"
-            className="topbar-icon-button"
+            className="topbar-icon-button topbar-settings-button"
             title="Configuración"
+            aria-label="Abrir configuración"
             onClick={() => {
               setShowSettings(true);
               setShowUserMenu(false);
@@ -202,10 +237,9 @@ function Topbar() {
             <button
               type="button"
               className="topbar-user-button"
+              aria-expanded={showUserMenu}
               onClick={() => {
-                setShowUserMenu(
-                  (current) => !current,
-                );
+                setShowUserMenu((current) => !current);
                 setShowNotifications(false);
               }}
             >
@@ -216,13 +250,8 @@ function Topbar() {
               </div>
 
               <span>
-                <strong>
-                  {user?.nombre ?? 'Usuario'}
-                </strong>
-
-                <small>
-                  {user?.rol ?? 'Sin rol'}
-                </small>
+                <strong>{user?.nombre ?? 'Usuario'}</strong>
+                <small>{user?.rol ?? 'Sin rol'}</small>
               </span>
 
               <i className="bi bi-chevron-down" />
@@ -275,7 +304,7 @@ function Topbar() {
 
       <SettingsPanel
         open={showSettings}
-        onClose={() => setShowSettings(false)}
+        onClose={closeSettings}
       />
     </>
   );

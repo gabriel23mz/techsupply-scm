@@ -79,7 +79,7 @@
   align-items: center;
   gap: 13px;
   position: relative;
-  z-index: 2;
+  z-index: var(--z-base);
 }
 
 .auth-brand-mark {
@@ -118,7 +118,7 @@
   max-width: 575px;
   margin: auto 0 38px;
   position: relative;
-  z-index: 2;
+  z-index: var(--z-base);
 }
 
 .auth-brand-message > span {
@@ -155,7 +155,7 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
   position: relative;
-  z-index: 2;
+  z-index: var(--z-base);
 }
 
 .auth-capabilities article {
@@ -194,7 +194,7 @@
 .auth-brand-panel > small {
   margin-top: 28px;
   position: relative;
-  z-index: 2;
+  z-index: var(--z-base);
   color: rgba(255, 255, 255, 0.5);
   font-size: 9px;
 }
@@ -215,7 +215,7 @@
   position: relative;
   border: 1px solid var(--color-border);
   border-radius: 20px;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--color-surface-glass);
   padding: 34px;
   box-shadow:
     0 26px 65px rgba(15, 23, 42, 0.1),
@@ -302,7 +302,7 @@
 }
 
 .auth-field-state.valid {
-  color: #15803d;
+  color: var(--color-success);
 }
 
 .auth-field-state.invalid {
@@ -421,7 +421,7 @@
 }
 
 .auth-helper--valid {
-  color: #15803d;
+  color: var(--color-success);
 }
 
 .auth-helper--invalid {
@@ -494,8 +494,8 @@
 
 .auth-submit:disabled {
   border-color: var(--color-border);
-  background: #e8edf5;
-  color: #94a3b8;
+  background: var(--color-background-muted);
+  color: var(--color-text-muted);
   box-shadow: none;
   opacity: 1;
 }

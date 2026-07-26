@@ -14,8 +14,31 @@ import {
   PreferencesProvider,
 } from '../shared/contexts/PreferencesContext';
 
+import {
+  usePreferences,
+} from '../shared/hooks/usePreferences';
+
 import 'react-toastify/dist/ReactToastify.css';
 import '../shared/pages/access-pages.css';
+
+function ThemedToastContainer() {
+  const {
+    resolvedTheme,
+  } = usePreferences();
+
+  return (
+    <ToastContainer
+      position="top-right"
+      autoClose={3000}
+      newestOnTop
+      closeOnClick
+      pauseOnHover
+      draggable
+      theme={resolvedTheme}
+      limit={4}
+    />
+  );
+}
 
 function AppProviders({ children }) {
   return (
@@ -23,16 +46,7 @@ function AppProviders({ children }) {
       <AuthProvider>
         <PreferencesProvider>
           {children}
-
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            newestOnTop
-            closeOnClick
-            pauseOnHover
-            draggable
-            theme="light"
-          />
+          <ThemedToastContainer />
         </PreferencesProvider>
       </AuthProvider>
     </BrowserRouter>
