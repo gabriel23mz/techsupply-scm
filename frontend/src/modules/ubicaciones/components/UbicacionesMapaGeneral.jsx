@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -12,8 +11,14 @@ import {
   Popup,
   TileLayer,
   Tooltip,
-  useMap,
 } from 'react-leaflet';
+
+import {
+  MapControls,
+  MapErrorState,
+  MapShell,
+  MapViewportController,
+} from '../../../shared/maps';
 
 function normalizePosition(
   ubicacion,
@@ -62,71 +67,6 @@ function createLocationIcon(
     iconAnchor: [17, 32],
     popupAnchor: [0, -28],
   });
-}
-
-function MapViewport({
-  positions,
-  selectedPosition,
-  focusRequest,
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    map.invalidateSize();
-
-    if (
-      selectedPosition
-    ) {
-      map.flyTo(
-        selectedPosition,
-        13,
-        {
-          animate: true,
-          duration: 0.6,
-        },
-      );
-
-      return;
-    }
-
-    if (!positions.length) {
-      return;
-    }
-
-    if (
-      positions.length === 1
-    ) {
-      map.flyTo(
-        positions[0],
-        13,
-        {
-          animate: true,
-          duration: 0.6,
-        },
-      );
-
-      return;
-    }
-
-    map.flyToBounds(
-      L.latLngBounds(
-        positions,
-      ),
-      {
-        padding: [36, 36],
-        maxZoom: 12,
-        animate: true,
-        duration: 0.6,
-      },
-    );
-  }, [
-    focusRequest,
-    map,
-    positions,
-    selectedPosition,
-  ]);
-
-  return null;
 }
 
 function UbicacionesMapaGeneral({
@@ -222,31 +162,17 @@ function UbicacionesMapaGeneral({
     );
   };
 
-  const handleCenterAll = () => {
-    setSelectedId(null);
-
-    setFocusRequest(
-      (current) =>
-        current + 1,
-    );
-  };
 
   if (
     !validLocations.length
   ) {
     return (
-      <div className="locations-map-empty">
-        <i className="bi bi-map" />
-
-        <h4>
-          No hay ubicaciones para mostrar
-        </h4>
-
-        <p>
-          Registra coordenadas válidas para visualizar
-          los nodos en el mapa.
-        </p>
-      </div>
+      <MapErrorState
+        description="Registra coordenadas válidas para visualizar los nodos en el mapa."
+        icon="bi-map"
+        title="No hay ubicaciones para mostrar"
+        tone="neutral"
+      />
     );
   }
 
@@ -358,12 +284,16 @@ function UbicacionesMapaGeneral({
       </aside>
 
       <section className="locations-general-map-card">
-        <div className="locations-general-map-container">
+        <MapShell
+          ariaLabel="Mapa general de ubicaciones"
+          className="locations-general-map-container"
+        >
           <MapContainer
             center={
               allPositions[0]
             }
             zoom={10}
+            zoomControl={false}
             className="locations-general-leaflet"
             scrollWheelZoom
           >
@@ -372,18 +302,21 @@ function UbicacionesMapaGeneral({
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
 
-            <MapViewport
-              positions={
-                allPositions
+            <MapViewportController
+              focusPositions={
+                selectedItem?.position
+                  ? [selectedItem.position]
+                  : []
               }
-              selectedPosition={
-                selectedItem
-                  ?.position ??
-                null
-              }
-              focusRequest={
-                focusRequest
-              }
+              positions={allPositions}
+              requestKey={focusRequest}
+              maxZoom={12}
+              singleZoom={13}
+            />
+
+            <MapControls
+              fitLabel="Centrar todas las ubicaciones"
+              fitPositions={allPositions}
             />
 
             {filteredLocations.map(
@@ -476,27 +409,7 @@ function UbicacionesMapaGeneral({
               },
             )}
           </MapContainer>
-
-          <div className="locations-general-map-actions">
-            <button
-              type="button"
-              title="Centrar todas"
-              onClick={
-                handleCenterAll
-              }
-            >
-              <i className="bi bi-arrows-fullscreen" />
-            </button>
-
-            <button
-              type="button"
-              title="Actualizar"
-              onClick={onRefresh}
-            >
-              <i className="bi bi-arrow-clockwise" />
-            </button>
-          </div>
-        </div>
+        </MapShell>
       </section>
     </section>
   );

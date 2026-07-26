@@ -1,0 +1,22 @@
+.ui-table-actions {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: var(--control-height-sm);
+  align-items: center;
+  justify-content: end;
+  gap: 0.25rem;
+}
+
+.ui-table-actions__slot {
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  display: inline-grid;
+  place-items: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  tr:not(:hover):not(:focus-within) .ui-table-actions .ui-button {
+    opacity: 0;
+    pointer-events: none;
+  }
+}

@@ -21,6 +21,12 @@ import {
 } from '../../../shared/hooks/usePermissions';
 
 import {
+  Button,
+  SearchField,
+  SelectField,
+} from '../../../shared/ui';
+
+import {
   showError,
   showSuccess,
 } from '../../../shared/utils/toast';
@@ -318,48 +324,31 @@ function UbicacionesPage() {
         {activeTab === 'catalogo' ? (
           <>
             <div className="locations-toolbar">
-              <div className="locations-search">
-                <i className="bi bi-search" />
-
-                <input
-                  type="search"
-                  className="form-control"
-                  value={searchTerm}
-                  placeholder="Buscar ubicación..."
-                  onChange={(event) =>
-                    handleSearchChange(
-                      event.target.value,
-                    )
-                  }
-                />
-              </div>
-
-              <select
-                className="form-select"
-                value={statusFilter}
+              <SearchField
+                className="locations-search"
+                value={searchTerm}
+                placeholder="Buscar ubicación..."
+                aria-label="Buscar ubicaciones"
                 onChange={(event) =>
-                  handleStatusChange(
-                    event.target.value,
-                  )
+                  handleSearchChange(event.target.value)
                 }
-              >
-                <option value="TODOS">
-                  Todos los estados
-                </option>
+                onClear={() => handleSearchChange('')}
+              />
 
-                <option value="ACTIVA">
-                  Activas
-                </option>
-
-                <option value="INACTIVA">
-                  Inactivas
-                </option>
-              </select>
+              <SelectField
+                value={statusFilter}
+                options={[
+                  { value: 'TODOS', label: 'Todos los estados' },
+                  { value: 'ACTIVA', label: 'Activas' },
+                  { value: 'INACTIVA', label: 'Inactivas' },
+                ]}
+                ariaLabel="Filtrar ubicaciones por estado"
+                onChange={handleStatusChange}
+              />
 
               <Can permission={PERMISSIONS.UBICACIONES_GESTIONAR}>
-                <button
-                  type="button"
-                  className="btn btn-primary"
+                <Button
+                  icon="bi bi-plus-lg"
                   onClick={() =>
                     setFormModal({
                       mode: 'create',
@@ -367,9 +356,8 @@ function UbicacionesPage() {
                     })
                   }
                 >
-                  <i className="bi bi-plus-lg me-2" />
                   Nueva ubicación
-                </button>
+                </Button>
               </Can>
             </div>
 

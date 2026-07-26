@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -10,9 +9,14 @@ import {
   MapContainer,
   Marker,
   TileLayer,
-  useMap,
   useMapEvents,
 } from 'react-leaflet';
+
+import {
+  MapControls,
+  MapShell,
+  MapViewportController,
+} from '../../../shared/maps';
 
 const MANABI_CENTER = [-1.05458, -80.45445];
 const MANABI_ZOOM = 9;
@@ -41,117 +45,6 @@ function MapClickHandler({ onPick }) {
   });
 
   return null;
-}
-
-function MapCenterController({
-  position,
-  focusRequest,
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    map.invalidateSize();
-
-    if (position) {
-      map.flyTo(position, 13, {
-        animate: true,
-        duration: 0.6,
-      });
-
-      return;
-    }
-
-    map.flyTo(
-      MANABI_CENTER,
-      MANABI_ZOOM,
-      {
-        animate: true,
-        duration: 0.6,
-      },
-    );
-  }, [
-    focusRequest,
-    map,
-    position,
-  ]);
-
-  return null;
-}
-
-function MapControls({
-  position,
-  onCenterRequest,
-}) {
-  const map = useMap();
-
-  const handleZoomIn = () => {
-    map.zoomIn();
-  };
-
-  const handleZoomOut = () => {
-    map.zoomOut();
-  };
-
-  const handleCenter = () => {
-    onCenterRequest();
-
-    if (position) {
-      map.flyTo(position, 13, {
-        animate: true,
-        duration: 0.6,
-      });
-
-      return;
-    }
-
-    map.flyTo(
-      MANABI_CENTER,
-      MANABI_ZOOM,
-      {
-        animate: true,
-        duration: 0.6,
-      },
-    );
-  };
-
-  return (
-    <div className="locations-form-map-controls">
-      <button
-        type="button"
-        title="Acercar"
-        aria-label="Acercar"
-        onClick={handleZoomIn}
-      >
-        <i className="bi bi-plus-lg" />
-      </button>
-
-      <button
-        type="button"
-        title="Alejar"
-        aria-label="Alejar"
-        onClick={handleZoomOut}
-      >
-        <i className="bi bi-dash-lg" />
-      </button>
-
-      <button
-        type="button"
-        title={
-          position
-            ? 'Centrar marcador'
-            : 'Centrar en Manabí'
-        }
-        aria-label={
-          position
-            ? 'Centrar marcador'
-            : 'Centrar en Manabí'
-        }
-        onClick={handleCenter}
-      >
-        <i className="bi bi-crosshair" />
-      </button>
-    </div>
-  );
 }
 
 function haversineDistanceMeters(
@@ -241,10 +134,6 @@ function UbicacionFormModal({
   const [errors, setErrors] =
     useState({});
 
-  const [
-    focusRequest,
-    setFocusRequest,
-  ] = useState(0);
 
   const duplicateByName =
     useMemo(() => {
@@ -367,10 +256,6 @@ function UbicacionFormModal({
     newPosition,
   ) => {
     setPosition(newPosition);
-
-    setFocusRequest(
-      (current) => current + 1,
-    );
 
     setErrors(
       (current) => ({
@@ -555,7 +440,10 @@ function UbicacionFormModal({
               )}
             </section>
 
-            <section className="locations-form-map">
+            <MapShell
+              ariaLabel="Selector geográfico de ubicación"
+              className="locations-form-map"
+            >
               <MapContainer
                 center={
                   position ??
@@ -579,21 +467,40 @@ function UbicacionFormModal({
                   onPick={handlePick}
                 />
 
-                <MapCenterController
-                  position={position}
-                  focusRequest={
-                    focusRequest
+                <MapViewportController
+                  focusPositions={
+                    position
+                      ? [position]
+                      : []
+                  }
+                  positions={[
+                    position ??
+                    MANABI_CENTER,
+                  ]}
+                  singleZoom={
+                    position
+                      ? 13
+                      : MANABI_ZOOM
                   }
                 />
 
                 <MapControls
-                  position={position}
-                  onCenterRequest={() =>
-                    setFocusRequest(
-                      (current) =>
-                        current + 1,
-                    )
+                  defaultCenter={
+                    position ??
+                    MANABI_CENTER
                   }
+                  defaultZoom={
+                    position
+                      ? 13
+                      : MANABI_ZOOM
+                  }
+                  resetLabel={
+                    position
+                      ? 'Centrar marcador'
+                      : 'Centrar en Manabí'
+                  }
+                  showFit={false}
+                  showReset
                 />
 
                 {position && (
@@ -641,7 +548,7 @@ function UbicacionFormModal({
 
                 Haz clic en el mapa o arrastra el marcador.
               </div>
-            </section>
+            </MapShell>
           </div>
 
           <footer className="locations-modal-footer">

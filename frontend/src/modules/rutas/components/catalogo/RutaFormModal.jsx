@@ -7,6 +7,10 @@ import {
 } from 'react';
 
 import {
+  Combobox,
+} from '../../../../shared/ui';
+
+import {
   calcularDistanciaVial,
 } from '../../services/rutas.service';
 
@@ -486,111 +490,47 @@ function RutaFormModal({
         <form onSubmit={handleSubmit}>
           <div className="routes-modal-body">
             <div className="routes-form-location-grid">
-              <div>
-                <label
-                  htmlFor="ruta-origen"
-                  className="form-label"
-                >
-                  Ubicación de origen
-                </label>
+              <Combobox
+                id="ruta-origen"
+                label="Ubicación de origen"
+                required
+                value={formData.origen_id}
+                options={ubicaciones.map((ubicacion) => ({
+                  value: ubicacion.id,
+                  label: ubicacion.nombre,
+                  icon: 'bi bi-geo-alt',
+                  disabled:
+                    Number(ubicacion.id) ===
+                    Number(formData.destino_id),
+                }))}
+                placeholder="Selecciona un origen"
+                searchPlaceholder="Buscar origen..."
+                error={errors.origen_id}
+                onChange={(value) =>
+                  updateLocation('origen_id', value)
+                }
+              />
 
-                <select
-                  id="ruta-origen"
-                  className={`form-select ${
-                    errors.origen_id
-                      ? 'is-invalid'
-                      : formData.origen_id
-                        ? 'routes-field-valid'
-                        : ''
-                  }`}
-                  value={formData.origen_id}
-                  onChange={(event) =>
-                    updateLocation(
-                      'origen_id',
-                      event.target.value,
-                    )
-                  }
-                >
-                  <option value="">
-                    Selecciona un origen
-                  </option>
-
-                  {ubicaciones.map(
-                    (ubicacion) => (
-                      <option
-                        key={ubicacion.id}
-                        value={ubicacion.id}
-                        disabled={
-                          Number(ubicacion.id) ===
-                          Number(
-                            formData.destino_id,
-                          )
-                        }
-                      >
-                        {ubicacion.nombre}
-                      </option>
-                    ),
-                  )}
-                </select>
-
-                {errors.origen_id && (
-                  <div className="invalid-feedback">
-                    {errors.origen_id}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="ruta-destino"
-                  className="form-label"
-                >
-                  Ubicación de destino
-                </label>
-
-                <select
-                  id="ruta-destino"
-                  className={`form-select ${
-                    errors.destino_id
-                      ? 'is-invalid'
-                      : formData.destino_id
-                        ? 'routes-field-valid'
-                        : ''
-                  }`}
-                  value={formData.destino_id}
-                  onChange={(event) =>
-                    updateLocation(
-                      'destino_id',
-                      event.target.value,
-                    )
-                  }
-                >
-                  <option value="">
-                    Selecciona un destino
-                  </option>
-
-                  {ubicaciones.map(
-                    (ubicacion) => (
-                      <option
-                        key={ubicacion.id}
-                        value={ubicacion.id}
-                        disabled={
-                          Number(ubicacion.id) ===
-                          Number(formData.origen_id)
-                        }
-                      >
-                        {ubicacion.nombre}
-                      </option>
-                    ),
-                  )}
-                </select>
-
-                {errors.destino_id && (
-                  <div className="invalid-feedback">
-                    {errors.destino_id}
-                  </div>
-                )}
-              </div>
+              <Combobox
+                id="ruta-destino"
+                label="Ubicación de destino"
+                required
+                value={formData.destino_id}
+                options={ubicaciones.map((ubicacion) => ({
+                  value: ubicacion.id,
+                  label: ubicacion.nombre,
+                  icon: 'bi bi-geo-alt-fill',
+                  disabled:
+                    Number(ubicacion.id) ===
+                    Number(formData.origen_id),
+                }))}
+                placeholder="Selecciona un destino"
+                searchPlaceholder="Buscar destino..."
+                error={errors.destino_id}
+                onChange={(value) =>
+                  updateLocation('destino_id', value)
+                }
+              />
             </div>
 
             <div className="routes-auto-distance">

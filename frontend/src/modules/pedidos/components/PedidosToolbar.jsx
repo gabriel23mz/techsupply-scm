@@ -4,6 +4,30 @@ import {
   PERMISSIONS,
 } from '../../../shared/constants/permissions';
 
+import {
+  Button,
+  SearchField,
+  SelectField,
+} from '../../../shared/ui';
+
+const STATUS_OPTIONS = [
+  { value: 'TODOS', label: 'Todos los estados' },
+  { value: 'PENDIENTE', label: 'Pendiente' },
+  { value: 'PREPARANDO', label: 'Preparando' },
+  { value: 'LISTO_PARA_DESPACHO', label: 'Listo para despacho' },
+  { value: 'DESPACHADO', label: 'Despachado' },
+  { value: 'ENTREGADO', label: 'Entregado' },
+  { value: 'CANCELADO', label: 'Cancelado' },
+  { value: 'REPROGRAMADO', label: 'Reprogramado' },
+];
+
+const DATE_OPTIONS = [
+  { value: 'TODAS', label: 'Todas las fechas' },
+  { value: 'HOY', label: 'Hoy' },
+  { value: 'SEMANA', label: 'Esta semana' },
+  { value: 'MES', label: 'Este mes' },
+];
+
 function PedidosToolbar({
   searchTerm,
   statusFilter,
@@ -17,111 +41,47 @@ function PedidosToolbar({
   return (
     <section className="pedidos-toolbar">
       <div className="pedidos-filters">
-        <div className="pedidos-search">
-          <i className="bi bi-search" />
+        <SearchField
+          className="pedidos-search"
+          value={searchTerm}
+          placeholder="Buscar pedido, cliente o responsable..."
+          aria-label="Buscar pedidos"
+          onChange={(event) =>
+            onSearchChange(event.target.value)
+          }
+          onClear={() => onSearchChange('')}
+        />
 
-          <input
-            type="search"
-            className="form-control"
-            value={searchTerm}
-            placeholder="Buscar pedido, cliente o responsable..."
-            onChange={(event) =>
-              onSearchChange(
-                event.target.value,
-              )
-            }
-          />
-
-          {searchTerm && (
-            <button
-              type="button"
-              aria-label="Limpiar búsqueda"
-              onClick={() =>
-                onSearchChange('')
-              }
-            >
-              <i className="bi bi-x-lg" />
-            </button>
-          )}
-        </div>
-
-        <select
-          className="form-select"
+        <SelectField
           value={statusFilter}
-          onChange={(event) =>
-            onStatusChange(
-              event.target.value,
-            )
-          }
-        >
-          <option value="TODOS">
-            Todos los estados
-          </option>
-          <option value="PENDIENTE">
-            Pendiente
-          </option>
-          <option value="PREPARANDO">
-            Preparando
-          </option>
-          <option value="LISTO_PARA_DESPACHO">
-            Listo para despacho
-          </option>
-          <option value="DESPACHADO">
-            Despachado
-          </option>
-          <option value="ENTREGADO">
-            Entregado
-          </option>
-          <option value="CANCELADO">
-            Cancelado
-          </option>
-          <option value="REPROGRAMADO">
-            Reprogramado
-          </option>
-        </select>
+          options={STATUS_OPTIONS}
+          ariaLabel="Filtrar pedidos por estado"
+          onChange={onStatusChange}
+        />
 
-        <select
-          className="form-select"
+        <SelectField
           value={dateFilter}
-          onChange={(event) =>
-            onDateChange(
-              event.target.value,
-            )
-          }
-        >
-          <option value="TODAS">
-            Todas las fechas
-          </option>
-          <option value="HOY">
-            Hoy
-          </option>
-          <option value="SEMANA">
-            Esta semana
-          </option>
-          <option value="MES">
-            Este mes
-          </option>
-        </select>
+          options={DATE_OPTIONS}
+          ariaLabel="Filtrar pedidos por fecha"
+          onChange={onDateChange}
+        />
 
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
+        <Button
+          tone="secondary"
+          icon="bi bi-eraser"
           onClick={onClear}
         >
-          <i className="bi bi-eraser me-2" />
           Limpiar
-        </button>
+        </Button>
       </div>
 
       <Can permission={PERMISSIONS.PEDIDOS_CREAR}>
-        <button
-          type="button"
-          className="btn btn-primary"
+        <Button
+          icon="bi bi-plus-lg"
           onClick={onCreate}
         >
-          <i className="bi bi-plus-lg me-2" />
           Nuevo pedido
-        </button>
+        </Button>
       </Can>
     </section>
   );

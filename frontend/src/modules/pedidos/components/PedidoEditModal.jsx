@@ -1,5 +1,9 @@
 import { useState } from 'react';
 
+import {
+  Combobox,
+} from '../../../shared/ui';
+
 
 function buildInitialForm(pedido) {
   return {
@@ -94,106 +98,51 @@ function PedidoEditModal({
 
         <form onSubmit={handleSubmit}>
           <div className="pedidos-modal-body">
-            <div className="mb-3">
-              <label className="form-label">
-                Cliente
-              </label>
+            <Combobox
+              className="mb-3"
+              label="Cliente"
+              required
+              value={formData.cliente_id}
+              options={clientes.map((cliente) => ({
+                value: cliente.id,
+                label: cliente.nombre,
+                description: cliente.identificacion,
+                icon: 'bi bi-person',
+              }))}
+              placeholder="Selecciona un cliente"
+              searchPlaceholder="Buscar cliente..."
+              error={errors.cliente_id}
+              onChange={(value) =>
+                setFormData((current) => ({
+                  ...current,
+                  cliente_id: value,
+                }))
+              }
+            />
 
-              <select
-                className={`form-select ${
-                  errors.cliente_id
-                    ? 'is-invalid'
-                    : ''
-                }`}
-                value={
-                  formData.cliente_id
-                }
-                onChange={(event) =>
-                  setFormData(
-                    (current) => ({
-                      ...current,
-                      cliente_id:
-                        event.target
-                          .value,
-                    }),
-                  )
-                }
-              >
-                <option value="">
-                  Selecciona un cliente
-                </option>
-
-                {clientes.map(
-                  (cliente) => (
-                    <option
-                      key={cliente.id}
-                      value={cliente.id}
-                    >
-                      {cliente.nombre}
-                    </option>
-                  ),
-                )}
-              </select>
-
-              {errors.cliente_id && (
-                <div className="invalid-feedback">
-                  {errors.cliente_id}
-                </div>
-              )}
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label">
-                Responsable
-              </label>
-
-              <select
-                className={`form-select ${
-                  errors.usuario_id
-                    ? 'is-invalid'
-                    : ''
-                }`}
-                value={
-                  formData.usuario_id
-                }
-                onChange={(event) =>
-                  setFormData(
-                    (current) => ({
-                      ...current,
-                      usuario_id:
-                        event.target
-                          .value,
-                    }),
-                  )
-                }
-              >
-                <option value="">
-                  Selecciona un responsable
-                </option>
-
-                {usuarios.map(
-                  (usuario) => (
-                    <option
-                      key={usuario.id}
-                      value={usuario.id}
-                    >
-                      {[
-                        usuario.nombre,
-                        usuario.apellido,
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                    </option>
-                  ),
-                )}
-              </select>
-
-              {errors.usuario_id && (
-                <div className="invalid-feedback">
-                  {errors.usuario_id}
-                </div>
-              )}
-            </div>
+            <Combobox
+              className="mb-3"
+              label="Responsable"
+              required
+              value={formData.usuario_id}
+              options={usuarios.map((usuario) => ({
+                value: usuario.id,
+                label: [usuario.nombre, usuario.apellido]
+                  .filter(Boolean)
+                  .join(' '),
+                description: usuario.correo,
+                icon: 'bi bi-person-badge',
+              }))}
+              placeholder="Selecciona un responsable"
+              searchPlaceholder="Buscar responsable..."
+              error={errors.usuario_id}
+              onChange={(value) =>
+                setFormData((current) => ({
+                  ...current,
+                  usuario_id: value,
+                }))
+              }
+            />
 
             <div>
               <label className="form-label">

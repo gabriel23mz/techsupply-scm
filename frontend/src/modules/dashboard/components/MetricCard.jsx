@@ -1,3 +1,5 @@
+import StatCard from '../../../shared/ui/StatCard/StatCard';
+
 function MetricCard({
   title,
   value,
@@ -6,40 +8,15 @@ function MetricCard({
   variant = 'primary',
   onClick,
 }) {
-  const Component = onClick
-    ? 'button'
-    : 'article';
-
   return (
-    <Component
-      type={
-        onClick
-          ? 'button'
-          : undefined
-      }
-      className={`dashboard-metric-card ${
-        onClick
-          ? 'clickable'
-          : ''
-      }`}
+    <StatCard
+      label={title}
+      value={value}
+      helper={description}
+      icon={`bi ${icon}`}
+      tone={variant}
       onClick={onClick}
-    >
-      <div
-        className={`dashboard-metric-icon ${variant}`}
-      >
-        <i className={`bi ${icon}`} />
-      </div>
-
-      <div>
-        <span>{title}</span>
-        <strong>{value}</strong>
-        <small>{description}</small>
-      </div>
-
-      {onClick && (
-        <i className="bi bi-arrow-up-right dashboard-metric-link" />
-      )}
-    </Component>
+    />
   );
 }
 

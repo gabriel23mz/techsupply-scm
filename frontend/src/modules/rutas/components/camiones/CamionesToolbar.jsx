@@ -1,3 +1,22 @@
+import {
+  Button,
+  SearchField,
+  SelectField,
+} from '../../../../shared/ui';
+
+const STATUS_OPTIONS = [
+  { value: 'TODOS', label: 'Todos los estados' },
+  { value: 'EN_BODEGA', label: 'En bodega' },
+  { value: 'EN_RUTA', label: 'En ruta' },
+  { value: 'INACTIVO', label: 'Inactivo' },
+];
+
+const CAPACITY_OPTIONS = [
+  { value: 'TODOS', label: 'Toda capacidad' },
+  { value: 'DISPONIBLE', label: 'Con capacidad disponible' },
+  { value: 'COMPLETA', label: 'Capacidad completa' },
+];
+
 function CamionesToolbar({
   searchTerm,
   statusFilter,
@@ -14,78 +33,39 @@ function CamionesToolbar({
 
   return (
     <div className="routes-trucks-toolbar">
-      <div className="routes-trucks-search">
-        <i className="bi bi-search" />
+      <SearchField
+        className="routes-trucks-search"
+        value={searchTerm}
+        placeholder="Buscar camión, placa o jornada..."
+        aria-label="Buscar camiones"
+        onChange={(event) =>
+          onSearchChange(event.target.value)
+        }
+        onClear={() => onSearchChange('')}
+      />
 
-        <input
-          type="search"
-          className="form-control"
-          value={searchTerm}
-          placeholder="Buscar camión, placa o jornada..."
-          onChange={(event) =>
-            onSearchChange(event.target.value)
-          }
-        />
-
-        {searchTerm && (
-          <button
-            type="button"
-            aria-label="Limpiar búsqueda"
-            onClick={() => onSearchChange('')}
-          >
-            <i className="bi bi-x-lg" />
-          </button>
-        )}
-      </div>
-
-      <select
-        className="form-select"
+      <SelectField
         value={statusFilter}
-        onChange={(event) =>
-          onStatusChange(event.target.value)
-        }
-      >
-        <option value="TODOS">
-          Todos los estados
-        </option>
-        <option value="EN_BODEGA">
-          En bodega
-        </option>
-        <option value="EN_RUTA">
-          En ruta
-        </option>
-        <option value="INACTIVO">
-          Inactivo
-        </option>
-      </select>
+        options={STATUS_OPTIONS}
+        ariaLabel="Filtrar camiones por estado"
+        onChange={onStatusChange}
+      />
 
-      <select
-        className="form-select"
+      <SelectField
         value={capacityFilter}
-        onChange={(event) =>
-          onCapacityChange(event.target.value)
-        }
-      >
-        <option value="TODOS">
-          Toda capacidad
-        </option>
-        <option value="DISPONIBLE">
-          Con capacidad disponible
-        </option>
-        <option value="COMPLETA">
-          Capacidad completa
-        </option>
-      </select>
+        options={CAPACITY_OPTIONS}
+        ariaLabel="Filtrar camiones por capacidad"
+        onChange={onCapacityChange}
+      />
 
-      <button
-        type="button"
-        className="btn btn-outline-secondary routes-clear-button"
+      <Button
+        tone="secondary"
+        icon="bi bi-eraser"
         disabled={!hasFilters}
         onClick={onClear}
       >
-        <i className="bi bi-eraser me-2" />
         Limpiar
-      </button>
+      </Button>
     </div>
   );
 }

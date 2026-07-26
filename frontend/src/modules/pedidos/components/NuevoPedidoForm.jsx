@@ -3,6 +3,10 @@ import {
   useState,
 } from 'react';
 
+import {
+  Combobox,
+} from '../../../shared/ui';
+
 function NuevoPedidoForm({
   clientes,
   user,
@@ -86,53 +90,26 @@ function NuevoPedidoForm({
         </div>
 
         <div className="nuevo-pedido-form-grid">
-          <div>
-            <label className="form-label">
-              Cliente
-            </label>
-
-            <select
-              className={`form-select ${
-                errors.cliente_id
-                  ? 'is-invalid'
-                  : ''
-              }`}
-              value={
-                formData.cliente_id
-              }
-              onChange={(event) =>
-                setFormData(
-                  (current) => ({
-                    ...current,
-                    cliente_id:
-                      event.target
-                        .value,
-                  }),
-                )
-              }
-            >
-              <option value="">
-                Selecciona un cliente
-              </option>
-
-              {clientes.map(
-                (cliente) => (
-                  <option
-                    key={cliente.id}
-                    value={cliente.id}
-                  >
-                    {cliente.nombre}
-                  </option>
-                ),
-              )}
-            </select>
-
-            {errors.cliente_id && (
-              <div className="invalid-feedback">
-                {errors.cliente_id}
-              </div>
-            )}
-          </div>
+          <Combobox
+            label="Cliente"
+            required
+            value={formData.cliente_id}
+            options={clientes.map((cliente) => ({
+              value: cliente.id,
+              label: cliente.nombre,
+              description: cliente.identificacion,
+              icon: 'bi bi-person',
+            }))}
+            placeholder="Selecciona un cliente"
+            searchPlaceholder="Buscar cliente..."
+            error={errors.cliente_id}
+            onChange={(value) =>
+              setFormData((current) => ({
+                ...current,
+                cliente_id: value,
+              }))
+            }
+          />
 
           <div>
             <label className="form-label">

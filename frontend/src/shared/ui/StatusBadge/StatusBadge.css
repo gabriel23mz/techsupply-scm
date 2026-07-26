@@ -1,0 +1,67 @@
+.ui-status-badge {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: 0.32rem 0.62rem;
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ui-status-badge--sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.6875rem;
+}
+
+.ui-status-badge--lg {
+  padding: 0.42rem 0.72rem;
+  font-size: var(--font-size-sm);
+}
+
+.ui-status-badge__dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ui-status-badge--neutral {
+  border-color: var(--color-border);
+  background: var(--color-background-muted);
+  color: var(--color-text-secondary);
+}
+
+.ui-status-badge--primary {
+  border-color: rgba(var(--color-primary-rgb), 0.22);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.ui-status-badge--success {
+  border-color: color-mix(in srgb, var(--color-success) 28%, transparent);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+.ui-status-badge--warning {
+  border-color: color-mix(in srgb, var(--color-warning) 30%, transparent);
+  background: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+
+.ui-status-badge--danger {
+  border-color: color-mix(in srgb, var(--color-danger) 28%, transparent);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+.ui-status-badge--info {
+  border-color: color-mix(in srgb, var(--color-info) 28%, transparent);
+  background: var(--color-info-soft);
+  color: var(--color-info);
+}

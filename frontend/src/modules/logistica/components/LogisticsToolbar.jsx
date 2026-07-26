@@ -4,6 +4,20 @@ import {
   PERMISSIONS,
 } from '../../../shared/constants/permissions';
 
+import {
+  Button,
+  SearchField,
+  SelectField,
+} from '../../../shared/ui';
+
+const JOURNEY_STATUS_OPTIONS = [
+  { value: 'todos', label: 'Todos los estados' },
+  { value: 'PLANIFICADA', label: 'Planificada' },
+  { value: 'EN_RUTA', label: 'En ruta' },
+  { value: 'FINALIZADA', label: 'Finalizada' },
+  { value: 'CANCELADA', label: 'Cancelada' },
+];
+
 function LogisticsToolbar({
   activeTab,
   searchTerm,
@@ -17,91 +31,54 @@ function LogisticsToolbar({
   onGenerate,
 }) {
   const isOrdersTab = activeTab === 'pedidos';
-
   const generateDisabled =
     isGenerating ||
     isLoading ||
     availableOrdersCount === 0;
-
   const hasFilters =
     Boolean(searchTerm.trim()) ||
     (!isOrdersTab && statusFilter !== 'todos');
-
   const searchPlaceholder = isOrdersTab
     ? 'Buscar pedido, cliente o ubicación...'
     : 'Buscar jornada, camión o placa...';
 
   return (
     <section className="logistics-toolbar">
-      <div className="logistics-search-box">
-        <i className="bi bi-search" />
-
-        <input
-          type="search"
-          className="form-control"
-          value={searchTerm}
-          onChange={(event) =>
-            onSearchChange(event.target.value)
-          }
-          placeholder={searchPlaceholder}
-          aria-label={searchPlaceholder}
-        />
-
-        {searchTerm && (
-          <button
-            type="button"
-            className="logistics-search-clear"
-            title="Limpiar búsqueda"
-            aria-label="Limpiar búsqueda"
-            onClick={() => onSearchChange('')}
-          >
-            <i className="bi bi-x-lg" />
-          </button>
-        )}
-      </div>
+      <SearchField
+        className="logistics-search-box"
+        value={searchTerm}
+        placeholder={searchPlaceholder}
+        aria-label={searchPlaceholder}
+        onChange={(event) =>
+          onSearchChange(event.target.value)
+        }
+        onClear={() => onSearchChange('')}
+      />
 
       {!isOrdersTab && (
-        <select
-          className="form-select"
+        <SelectField
           value={statusFilter}
-          onChange={(event) =>
-            onStatusChange(event.target.value)
-          }
-          aria-label="Filtrar jornadas por estado"
-        >
-          <option value="todos">
-            Todos los estados
-          </option>
-          <option value="PLANIFICADA">
-            Planificada
-          </option>
-          <option value="EN_RUTA">
-            En ruta
-          </option>
-          <option value="FINALIZADA">
-            Finalizada
-          </option>
-          <option value="CANCELADA">
-            Cancelada
-          </option>
-        </select>
+          options={JOURNEY_STATUS_OPTIONS}
+          ariaLabel="Filtrar jornadas por estado"
+          onChange={onStatusChange}
+        />
       )}
 
-      <button
-        type="button"
-        className="btn btn-outline-secondary logistics-clear-button"
+      <Button
+        tone="secondary"
+        icon="bi bi-eraser"
         disabled={!hasFilters}
         onClick={onClear}
       >
-        <i className="bi bi-eraser me-2" />
         Limpiar
-      </button>
+      </Button>
 
       {isOrdersTab && (
         <Can permission={PERMISSIONS.JORNADAS_GENERAR}>
-          <button
-            type="button"
-            className="btn btn-primary logistics-generate-btn"
+          <Button
+            icon="bi bi-stars"
+            loading={isGenerating}
+            loadingLabel="Planificando..."
             disabled={generateDisabled}
             onClick={onGenerate}
             title={
@@ -110,21 +87,8 @@ function LogisticsToolbar({
                 : 'Generar jornadas de reparto'
             }
           >
-            {isGenerating ? (
-              <>
-                <span className="spinner-border spinner-border-sm me-2" />
-                Planificando...
-              </>
-            ) : (
-              <>
-                <i className="bi bi-stars me-2" />
-                Generar jornadas
-                <span className="logistics-generate-count">
-                  {availableOrdersCount}
-                </span>
-              </>
-            )}
-          </button>
+            Generar jornadas ({availableOrdersCount})
+          </Button>
         </Can>
       )}
     </section>

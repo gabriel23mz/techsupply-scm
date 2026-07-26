@@ -2153,7 +2153,7 @@ Ajustes - Versión móvil
     grid-column: auto;
   }
 
-  .logistics-toolbar .btn {
+  .logistics-toolbar :is(.btn, .ui-button) {
     width: 100%;
   }
 }

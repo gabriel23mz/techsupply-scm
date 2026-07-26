@@ -935,7 +935,7 @@
     grid-column: 1 / -1;
   }
 
-  .clients-toolbar > .btn {
+  .clients-toolbar > :is(.btn, .ui-button) {
     justify-self: end;
   }
 
@@ -980,7 +980,7 @@
     grid-column: auto;
   }
 
-  .clients-toolbar > .btn {
+  .clients-toolbar > :is(.btn, .ui-button) {
     width: 100%;
   }
 

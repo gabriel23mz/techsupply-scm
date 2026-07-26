@@ -836,7 +836,7 @@
     grid-column: auto;
   }
 
-  .dispatch-toolbar .btn {
+  .dispatch-toolbar :is(.btn, .ui-button) {
     width: 100%;
   }
 

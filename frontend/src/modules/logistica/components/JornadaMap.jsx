@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import L from 'leaflet';
 
@@ -9,8 +9,15 @@ import {
   Popup,
   TileLayer,
   Tooltip,
-  useMap,
 } from 'react-leaflet';
+
+import {
+  MapControls,
+  MapErrorState,
+  MapLegend,
+  MapShell,
+  MapViewportController,
+} from '../../../shared/maps';
 
 /*
 |--------------------------------------------------------------------------
@@ -122,50 +129,6 @@ function createDeliveryIcon({
     iconAnchor: [16, 16],
     popupAnchor: [0, -15],
   });
-}
-
-/*
-|--------------------------------------------------------------------------
-| Ajuste automático del mapa
-|--------------------------------------------------------------------------
-*/
-function MapBoundsController({
-  positions,
-  focusRequest,
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (!positions.length) {
-      return;
-    }
-
-    map.invalidateSize();
-
-    if (positions.length === 1) {
-      map.flyTo(positions[0], 14, {
-        animate: true,
-        duration: 0.7,
-      });
-
-      return;
-    }
-
-    const bounds = L.latLngBounds(positions);
-
-    map.flyToBounds(bounds, {
-      padding: [36, 36],
-      maxZoom: 15,
-      animate: true,
-      duration: 0.7,
-    });
-  }, [
-    focusRequest,
-    map,
-    positions,
-  ]);
-
-  return null;
 }
 
 /*
@@ -331,10 +294,6 @@ function JornadaMap({
     warehousePosition,
   ]);
 
-  const [
-    focusRequest,
-    setFocusRequest,
-  ] = useState(0);
 
   const firstDeliveryPosition =
     deliveryPoints.length > 0
@@ -356,16 +315,12 @@ function JornadaMap({
     deliveryPoints.length === 0
   ) {
     return (
-      <div className="journey-map-empty">
-        <i className="bi bi-map" />
-
-        <h4>Mapa no disponible</h4>
-
-        <p>
-          La jornada no contiene coordenadas válidas
-          para representar su recorrido.
-        </p>
-      </div>
+      <MapErrorState
+        description="La jornada no contiene coordenadas válidas para representar su recorrido."
+        icon="bi-map"
+        title="Mapa no disponible"
+        tone="neutral"
+      />
     );
   }
 
@@ -383,10 +338,14 @@ function JornadaMap({
         </span>
       </header>
 
-      <div className="journey-map-container">
+      <MapShell
+        ariaLabel="Mapa de seguimiento de la jornada"
+        className="journey-map-container"
+      >
         <MapContainer
           center={defaultCenter}
           zoom={13}
+          zoomControl={false}
           scrollWheelZoom
           className="journey-leaflet-map"
         >
@@ -395,9 +354,15 @@ function JornadaMap({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          <MapBoundsController
+          <MapViewportController
             positions={allPositions}
-            focusRequest={focusRequest}
+            maxZoom={15}
+            singleZoom={14}
+          />
+
+          <MapControls
+            fitLabel="Centrar ruta completa"
+            fitPositions={allPositions}
           />
 
           {completedRoute.length > 1 && (
@@ -513,48 +478,43 @@ function JornadaMap({
             </Marker>
           )}
         </MapContainer>
-        
-        <button
-          type="button"
-          className="routes-map-recenter-button"
-          title="Centrar ruta completa"
-          aria-label="Centrar ruta completa"
-          onClick={() =>
-              setFocusRequest(
-                (current) => current + 1,
-              )
-            }
-        >
-          <i className="bi bi-crosshair" />
-        </button>
-      </div>
+      </MapShell>
 
-      <footer className="journey-map-legend">
-        <span>
-          <i className="legend-line completed" />
-          Recorrido completado
-        </span>
-
-        <span>
-          <i className="legend-line pending" />
-          Recorrido pendiente
-        </span>
-
-        <span>
-          <i className="legend-dot warehouse" />
-          Bodega
-        </span>
-
-        <span>
-          <i className="legend-dot truck" />
-          Camión
-        </span>
-
-        <span>
-          <i className="legend-dot delivery" />
-          Punto de entrega
-        </span>
-      </footer>
+      <MapLegend
+        className="journey-map-legend"
+        items={[
+          {
+            id: 'completed',
+            label: 'Recorrido completado',
+            type: 'line',
+            tone: 'primary',
+          },
+          {
+            id: 'pending',
+            label: 'Recorrido pendiente',
+            type: 'dashed',
+            tone: 'primary',
+          },
+          {
+            id: 'warehouse',
+            label: 'Bodega',
+            type: 'dot',
+            tone: 'neutral',
+          },
+          {
+            id: 'truck',
+            label: 'Camión',
+            type: 'dot',
+            tone: 'info',
+          },
+          {
+            id: 'delivery',
+            label: 'Punto de entrega',
+            type: 'dot',
+            tone: 'success',
+          },
+        ]}
+      />
     </section>
   );
 }

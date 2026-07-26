@@ -3,10 +3,6 @@ import {
 } from 'react-router-dom';
 
 import {
-  ToastContainer,
-} from 'react-toastify';
-
-import {
   AuthProvider,
 } from '../shared/contexts/AuthContext';
 
@@ -14,31 +10,10 @@ import {
   PreferencesProvider,
 } from '../shared/contexts/PreferencesContext';
 
-import {
-  usePreferences,
-} from '../shared/hooks/usePreferences';
+import ToastViewport from '../shared/ui/ToastViewport/ToastViewport';
 
 import 'react-toastify/dist/ReactToastify.css';
 import '../shared/pages/access-pages.css';
-
-function ThemedToastContainer() {
-  const {
-    resolvedTheme,
-  } = usePreferences();
-
-  return (
-    <ToastContainer
-      position="top-right"
-      autoClose={3000}
-      newestOnTop
-      closeOnClick
-      pauseOnHover
-      draggable
-      theme={resolvedTheme}
-      limit={4}
-    />
-  );
-}
 
 function AppProviders({ children }) {
   return (
@@ -46,7 +21,7 @@ function AppProviders({ children }) {
       <AuthProvider>
         <PreferencesProvider>
           {children}
-          <ThemedToastContainer />
+          <ToastViewport />
         </PreferencesProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -1,0 +1,95 @@
+.ui-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  background: var(--color-overlay);
+  backdrop-filter: blur(3px);
+}
+
+.ui-drawer {
+  width: min(92vw, 28rem);
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  animation-duration: var(--transition-base);
+  animation-timing-function: ease;
+}
+
+.ui-drawer--right {
+  margin-left: auto;
+  border-top-left-radius: var(--radius-xl);
+  border-bottom-left-radius: var(--radius-xl);
+  animation-name: ui-drawer-right;
+}
+
+.ui-drawer--left {
+  margin-right: auto;
+  border-top-right-radius: var(--radius-xl);
+  border-bottom-right-radius: var(--radius-xl);
+  animation-name: ui-drawer-left;
+}
+
+.ui-drawer--sm { width: min(92vw, 22rem); }
+.ui-drawer--lg { width: min(96vw, 38rem); }
+
+.ui-drawer__header,
+.ui-drawer__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.ui-drawer__header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ui-drawer__header h2 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+}
+
+.ui-drawer__header p {
+  margin: 0.2rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.ui-drawer__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+.ui-drawer__footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+}
+
+@keyframes ui-drawer-right {
+  from { transform: translateX(100%); }
+}
+
+@keyframes ui-drawer-left {
+  from { transform: translateX(-100%); }
+}
+
+@media (max-width: 576px) {
+  .ui-drawer {
+    width: 100%;
+    border-radius: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-drawer { animation: none; }
+}

@@ -4,6 +4,12 @@ import {
   PERMISSIONS,
 } from '../../../../shared/constants/permissions';
 
+import {
+  Button,
+  Combobox,
+  SearchField,
+} from '../../../../shared/ui';
+
 function RutasCatalogoToolbar({
   searchTerm,
   originFilter,
@@ -19,94 +25,65 @@ function RutasCatalogoToolbar({
     Boolean(searchTerm.trim()) ||
     originFilter !== 'todos' ||
     destinationFilter !== 'todos';
+  const locationOptions = ubicaciones.map((ubicacion) => ({
+    value: ubicacion.id,
+    label: ubicacion.nombre,
+    icon: 'bi bi-geo-alt',
+  }));
 
   return (
     <div className="routes-catalog-toolbar">
-      <div className="routes-catalog-search">
-        <i className="bi bi-search" />
+      <SearchField
+        className="routes-catalog-search"
+        value={searchTerm}
+        placeholder="Buscar origen, destino o distancia..."
+        aria-label="Buscar rutas"
+        onChange={(event) =>
+          onSearchChange(event.target.value)
+        }
+        onClear={() => onSearchChange('')}
+      />
 
-        <input
-          type="search"
-          className="form-control"
-          value={searchTerm}
-          placeholder="Buscar origen, destino o distancia..."
-          onChange={(event) =>
-            onSearchChange(event.target.value)
-          }
-        />
-
-        {searchTerm && (
-          <button
-            type="button"
-            aria-label="Limpiar búsqueda"
-            onClick={() => onSearchChange('')}
-          >
-            <i className="bi bi-x-lg" />
-          </button>
-        )}
-      </div>
-
-      <select
-        className="form-select"
+      <Combobox
         value={originFilter}
-        onChange={(event) =>
-          onOriginChange(event.target.value)
-        }
-      >
-        <option value="todos">
-          Todos los orígenes
-        </option>
+        options={[
+          { value: 'todos', label: 'Todos los orígenes' },
+          ...locationOptions,
+        ]}
+        placeholder="Todos los orígenes"
+        searchPlaceholder="Buscar origen..."
+        ariaLabel="Filtrar por origen"
+        onChange={onOriginChange}
+      />
 
-        {ubicaciones.map((ubicacion) => (
-          <option
-            key={ubicacion.id}
-            value={ubicacion.id}
-          >
-            {ubicacion.nombre}
-          </option>
-        ))}
-      </select>
-
-      <select
-        className="form-select"
+      <Combobox
         value={destinationFilter}
-        onChange={(event) =>
-          onDestinationChange(event.target.value)
-        }
-      >
-        <option value="todos">
-          Todos los destinos
-        </option>
+        options={[
+          { value: 'todos', label: 'Todos los destinos' },
+          ...locationOptions,
+        ]}
+        placeholder="Todos los destinos"
+        searchPlaceholder="Buscar destino..."
+        ariaLabel="Filtrar por destino"
+        onChange={onDestinationChange}
+      />
 
-        {ubicaciones.map((ubicacion) => (
-          <option
-            key={ubicacion.id}
-            value={ubicacion.id}
-          >
-            {ubicacion.nombre}
-          </option>
-        ))}
-      </select>
-
-      <button
-        type="button"
-        className="btn btn-outline-secondary routes-clear-button"
+      <Button
+        tone="secondary"
+        icon="bi bi-eraser"
         disabled={!hasFilters}
         onClick={onClear}
       >
-        <i className="bi bi-eraser me-2" />
         Limpiar
-      </button>
+      </Button>
 
       <Can permission={PERMISSIONS.RUTAS_GESTIONAR}>
-        <button
-          type="button"
-          className="btn btn-primary"
+        <Button
+          icon="bi bi-plus-lg"
           onClick={onCreate}
         >
-          <i className="bi bi-plus-lg me-2" />
           Nueva ruta
-        </button>
+        </Button>
       </Can>
     </div>
   );

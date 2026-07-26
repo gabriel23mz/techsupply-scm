@@ -3,6 +3,10 @@ import {
   useState,
 } from 'react';
 
+import {
+  Combobox,
+} from '../../../../shared/ui';
+
 
 function buildInitialForm(editingDetail) {
   return editingDetail
@@ -177,51 +181,28 @@ function PedidoProductForm({
 
       <form onSubmit={handleSubmit}>
         <div className="pedido-product-form-grid">
-          <div>
-            <label className="form-label">
-              Producto
-            </label>
-
-            <select
-              className="form-select"
-              disabled={
-                Boolean(
-                  editingDetail,
-                )
-              }
-              value={
-                formData.producto_id
-              }
-              onChange={(event) => {
-                setFormData(
-                  (current) => ({
-                    ...current,
-                    producto_id:
-                      event.target
-                        .value,
-                  }),
-                );
-
-                setError('');
-              }}
-            >
-              <option value="">
-                Selecciona un producto
-              </option>
-
-              {availableProducts.map(
-                (producto) => (
-                  <option
-                    key={producto.id}
-                    value={producto.id}
-                  >
-                    {producto.nombre} — Stock:{' '}
-                    {producto.stock_actual}
-                  </option>
-                ),
-              )}
-            </select>
-          </div>
+          <Combobox
+            label="Producto"
+            required
+            disabled={Boolean(editingDetail)}
+            value={formData.producto_id}
+            options={availableProducts.map((producto) => ({
+              value: producto.id,
+              label: producto.nombre,
+              description: `Stock disponible: ${producto.stock_actual}`,
+              icon: 'bi bi-box-seam',
+            }))}
+            placeholder="Selecciona un producto"
+            searchPlaceholder="Buscar producto..."
+            error={error || undefined}
+            onChange={(value) => {
+              setFormData((current) => ({
+                ...current,
+                producto_id: value,
+              }));
+              setError('');
+            }}
+          />
 
           <div>
             <label className="form-label">

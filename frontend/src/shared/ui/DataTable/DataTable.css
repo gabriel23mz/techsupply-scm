@@ -1,0 +1,125 @@
+.ui-data-table {
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
+.ui-data-table__scroll {
+  overflow-x: auto;
+}
+
+.ui-data-table table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ui-data-table th,
+.ui-data-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: 0.8rem var(--spacing-md);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  vertical-align: middle;
+}
+
+.ui-data-table th {
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.ui-data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.ui-data-table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.ui-data-table tbody tr:hover,
+.ui-data-table tbody tr:focus-within {
+  background: var(--color-surface-hover);
+}
+
+.ui-data-table__row--interactive {
+  cursor: pointer;
+}
+
+.ui-data-table__row--interactive:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.ui-data-table__align-center { text-align: center; }
+.ui-data-table__align-right { text-align: right; }
+.ui-data-table__actions-heading,
+.ui-data-table__actions-cell {
+  width: 8.5rem;
+  text-align: right;
+}
+
+@media (max-width: 700px) {
+  .ui-data-table,
+  .ui-data-table__scroll {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .ui-data-table table,
+  .ui-data-table tbody,
+  .ui-data-table tr,
+  .ui-data-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .ui-data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .ui-data-table tbody {
+    display: grid;
+    gap: var(--spacing-md);
+  }
+
+  .ui-data-table tbody tr {
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-elevated);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .ui-data-table td {
+    display: grid;
+    grid-template-columns: minmax(7.5rem, 42%) minmax(0, 1fr);
+    gap: var(--spacing-sm);
+    border-bottom: 1px solid var(--color-border);
+    text-align: right;
+  }
+
+  .ui-data-table td::before {
+    content: attr(data-label);
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 800;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .ui-data-table__actions-cell {
+    width: 100%;
+  }
+}

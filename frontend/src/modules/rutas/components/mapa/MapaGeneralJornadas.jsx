@@ -1,5 +1,4 @@
 import {
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -13,8 +12,15 @@ import {
   Popup,
   TileLayer,
   Tooltip,
-  useMap,
 } from 'react-leaflet';
+
+import {
+  MapControls,
+  MapErrorState,
+  MapLegend,
+  MapShell,
+  MapViewportController,
+} from '../../../../shared/maps';
 
 const ROUTE_COLORS = [
   '#2563eb',
@@ -222,56 +228,6 @@ function createDeliveryIcon({
     iconAnchor: [15.5, 15.5],
     popupAnchor: [0, -15],
   });
-}
-
-function MapViewportController({
-  allPositions,
-  selectedPositions,
-  focusRequest,
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    const positions =
-      selectedPositions.length > 0
-        ? selectedPositions
-        : allPositions;
-
-    if (!positions.length) {
-      return;
-    }
-
-    /*
-     * invalidateSize corrige el tamaño cuando el mapa
-     * está dentro de pestañas, grids o contenedores flex.
-     */
-    map.invalidateSize();
-
-    if (positions.length === 1) {
-      map.flyTo(positions[0], 14, {
-        animate: true,
-        duration: 0.7,
-      });
-
-      return;
-    }
-
-    const bounds = L.latLngBounds(positions);
-
-    map.flyToBounds(bounds, {
-      padding: [42, 42],
-      maxZoom: 14,
-      animate: true,
-      duration: 0.7,
-    });
-  }, [
-    allPositions,
-    selectedPositions,
-    focusRequest,
-    map,
-  ]);
-
-  return null;
 }
 
 function buildDeliveryPoints(jornada) {
@@ -487,21 +443,6 @@ function MapaGeneralJornadas({
     });
   }, [jornadas]);
 
-  // Nueva funcion para el botón
-  const handleRecenterSelectedJourney = () => {
-    const selected =
-      normalizedJourneys.find(
-        (item) =>
-          Number(item.jornada.id) ===
-          Number(selectedJourneyId),
-      );
-
-    if (!selected?.jornada) {
-      return;
-    }
-
-    onSelectJourney(selected.jornada);
-  };
 
   const selectedJourney = useMemo(
     () =>
@@ -540,31 +481,23 @@ function MapaGeneralJornadas({
 
   if (!normalizedJourneys.length) {
     return (
-      <section className="routes-map-empty">
-        <i className="bi bi-map" />
-
-        <h4>No existen jornadas para mostrar</h4>
-
-        <p>
-          Las jornadas planificadas o en ruta aparecerán
-          automáticamente en este mapa.
-        </p>
-      </section>
+      <MapErrorState
+        description="Las jornadas planificadas o en ruta aparecerán automáticamente en este mapa."
+        icon="bi-map"
+        title="No existen jornadas para mostrar"
+        tone="neutral"
+      />
     );
   }
 
   if (!allPositions.length) {
     return (
-      <section className="routes-map-empty">
-        <i className="bi bi-map-fill" />
-
-        <h4>Mapa no disponible</h4>
-
-        <p>
-          Las jornadas existen, pero no contienen coordenadas
-          o geometrías válidas.
-        </p>
-      </section>
+      <MapErrorState
+        description="Las jornadas existen, pero no contienen coordenadas o geometrías válidas."
+        icon="bi-map-fill"
+        title="Mapa no disponible"
+        tone="neutral"
+      />
     );
   }
 
@@ -583,10 +516,14 @@ function MapaGeneralJornadas({
         </div>
       </header>
 
-      <div className="routes-general-map-container">
+      <MapShell
+        ariaLabel="Mapa general de jornadas"
+        className="routes-general-map-container"
+      >
         <MapContainer
           center={defaultCenter}
           zoom={11}
+          zoomControl={false}
           scrollWheelZoom
           className="routes-general-leaflet-map"
         >
@@ -600,9 +537,25 @@ function MapaGeneralJornadas({
           />
 
           <MapViewportController
-              allPositions={allPositions}
-              selectedPositions={selectedPositions}
-              focusRequest={focusRequest}
+            focusPositions={selectedPositions}
+            positions={allPositions}
+            requestKey={focusRequest}
+            maxZoom={14}
+            padding={42}
+            singleZoom={14}
+          />
+
+          <MapControls
+            fitLabel={
+              selectedPositions.length
+                ? 'Centrar jornada seleccionada'
+                : 'Ajustar todas las jornadas'
+            }
+            fitPositions={
+              selectedPositions.length
+                ? selectedPositions
+                : allPositions
+            }
           />
 
           {normalizedJourneys.map((item) => {
@@ -754,16 +707,6 @@ function MapaGeneralJornadas({
           )}
         </MapContainer>
 
-        <button
-          type="button"
-          className="routes-map-recenter-button"
-          title="Centrar jornada seleccionada"
-          aria-label="Centrar jornada seleccionada"
-          onClick={handleRecenterSelectedJourney}
-        >
-          <i className="bi bi-crosshair" />
-        </button>
-
         {tileError && (
           <div className="routes-map-tile-warning">
             <i className="bi bi-wifi-off" />
@@ -774,34 +717,44 @@ function MapaGeneralJornadas({
             </span>
           </div>
         )}
-      </div>
+      </MapShell>
 
-      <footer className="routes-general-map-legend">
-        <span>
-          <i className="routes-legend-line completed" />
-          Recorrido completado
-        </span>
+      <MapLegend
+        className="routes-general-map-legend"
+        items={[
+          {
+            id: 'completed',
+            label: 'Recorrido completado',
+            type: 'line',
+            tone: 'primary',
+          },
+          {
+            id: 'pending',
+            label: 'Recorrido pendiente',
+            type: 'dashed',
+            tone: 'primary',
+          },
+          {
+            id: 'warehouse',
+            label: 'Bodega',
+            type: 'dot',
+            tone: 'neutral',
+          },
+          {
+            id: 'truck',
+            label: 'Camión',
+            type: 'dot',
+            tone: 'info',
+          },
+          {
+            id: 'delivery',
+            label: 'Punto de entrega',
+            type: 'dot',
+            tone: 'success',
+          },
+        ]}
+      />
 
-        <span>
-          <i className="routes-legend-line pending" />
-          Recorrido pendiente
-        </span>
-
-        <span>
-          <i className="routes-legend-dot warehouse" />
-          Bodega
-        </span>
-
-        <span>
-          <i className="routes-legend-dot truck" />
-          Camión
-        </span>
-
-        <span>
-          <i className="routes-legend-dot delivery" />
-          Punto de entrega
-        </span>
-      </footer>
     </section>
   );
 }

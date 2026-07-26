@@ -4,6 +4,12 @@ import {
   PERMISSIONS,
 } from '../../../shared/constants/permissions';
 
+import {
+  Button,
+  Combobox,
+  SearchField,
+} from '../../../shared/ui';
+
 function ClientesToolbar({
   searchTerm,
   locationFilter,
@@ -12,66 +18,48 @@ function ClientesToolbar({
   onLocationChange,
   onCreate,
 }) {
+  const locationOptions = [
+    {
+      value: 'TODAS',
+      label: 'Todas las ubicaciones',
+      icon: 'bi bi-geo-alt',
+    },
+    ...ubicaciones.map((ubicacion) => ({
+      value: ubicacion.id,
+      label: ubicacion.nombre,
+      icon: 'bi bi-geo-alt',
+    })),
+  ];
+
   return (
     <div className="clients-toolbar">
-      <div className="clients-search">
-        <i className="bi bi-search" />
+      <SearchField
+        className="clients-search"
+        value={searchTerm}
+        placeholder="Buscar nombre, identificación, correo o teléfono..."
+        aria-label="Buscar clientes"
+        onChange={(event) =>
+          onSearchChange(event.target.value)
+        }
+        onClear={() => onSearchChange('')}
+      />
 
-        <input
-          type="search"
-          className="form-control"
-          value={searchTerm}
-          placeholder="Buscar nombre, identificación, correo o teléfono..."
-          onChange={(event) =>
-            onSearchChange(event.target.value)
-          }
-        />
-
-        {searchTerm && (
-          <button
-            type="button"
-            aria-label="Limpiar búsqueda"
-            onClick={() => onSearchChange('')}
-          >
-            <i className="bi bi-x-lg" />
-          </button>
-        )}
-      </div>
-
-      <div className="clients-location-filter">
-        <i className="bi bi-geo-alt" />
-
-        <select
-          className="form-select"
-          value={locationFilter}
-          onChange={(event) =>
-            onLocationChange(event.target.value)
-          }
-        >
-          <option value="TODAS">
-            Todas las ubicaciones
-          </option>
-
-          {ubicaciones.map((ubicacion) => (
-            <option
-              key={ubicacion.id}
-              value={ubicacion.id}
-            >
-              {ubicacion.nombre}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Combobox
+        className="clients-location-filter"
+        value={locationFilter}
+        options={locationOptions}
+        placeholder="Todas las ubicaciones"
+        searchPlaceholder="Buscar ubicación..."
+        onChange={onLocationChange}
+      />
 
       <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
-        <button
-          type="button"
-          className="btn btn-primary"
+        <Button
+          icon="bi bi-person-plus"
           onClick={onCreate}
         >
-          <i className="bi bi-person-plus me-2" />
           Nuevo cliente
-        </button>
+        </Button>
       </Can>
     </div>
   );

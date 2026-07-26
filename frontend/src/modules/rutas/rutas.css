@@ -2143,7 +2143,7 @@ Camiones
     grid-column: auto;
   }
 
-  .routes-trucks-toolbar .btn {
+  .routes-trucks-toolbar :is(.btn, .ui-button) {
     width: 100%;
   }
 
@@ -2386,8 +2386,8 @@ Paginación
     grid-column: auto;
   }
 
-  .routes-catalog-toolbar .btn,
-  .routes-trucks-toolbar .btn {
+  .routes-catalog-toolbar :is(.btn, .ui-button),
+  .routes-trucks-toolbar :is(.btn, .ui-button) {
     width: 100%;
   }
 

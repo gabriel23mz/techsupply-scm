@@ -1,22 +1,41 @@
-const LABELS = {
-  PENDIENTE: 'Pendiente',
-  EN_TRANSITO: 'En tránsito',
-  ENTREGADO: 'Entregado',
-  NO_ENTREGADO: 'No entregado',
-  CANCELADO: 'Cancelado',
+import StatusBadge from '../../../shared/ui/StatusBadge/StatusBadge';
+
+const STATUS_CONFIG = {
+  PENDIENTE: {
+    label: 'Pendiente',
+    tone: 'warning',
+  },
+  EN_TRANSITO: {
+    label: 'En tránsito',
+    tone: 'info',
+  },
+  ENTREGADO: {
+    label: 'Entregado',
+    tone: 'success',
+  },
+  NO_ENTREGADO: {
+    label: 'No entregado',
+    tone: 'danger',
+  },
+  CANCELADO: {
+    label: 'Cancelado',
+    tone: 'neutral',
+  },
 };
 
 function DespachoStatusBadge({ estado }) {
   const normalized = String(
     estado ?? 'PENDIENTE',
   );
+  const config = STATUS_CONFIG[normalized] ?? {
+    label: normalized,
+    tone: 'neutral',
+  };
 
   return (
-    <span
-      className={`dispatch-status dispatch-status--${normalized.toLowerCase()}`}
-    >
-      {LABELS[normalized] ?? normalized}
-    </span>
+    <StatusBadge tone={config.tone}>
+      {config.label}
+    </StatusBadge>
   );
 }
 

@@ -1,5 +1,11 @@
 import { useMemo, useState } from 'react';
 
+import {
+  IconButton,
+  SelectField,
+  SearchField,
+} from '../../../../shared/ui';
+
 import JornadaMapaCard from './JornadaMapaCard';
 
 function normalizeText(value) {
@@ -11,6 +17,14 @@ function normalizeText(value) {
 function getMap(jornada) {
   return jornada?.mapa ?? jornada?.mapa_jornada ?? jornada ?? {};
 }
+
+const STATUS_OPTIONS = [
+  { value: 'ACTIVAS', label: 'Activas' },
+  { value: 'TODAS', label: 'Todas' },
+  { value: 'PLANIFICADA', label: 'Planificadas' },
+  { value: 'EN_RUTA', label: 'En ruta' },
+  { value: 'FINALIZADA', label: 'Finalizadas' },
+];
 
 function JornadasMapaPanel({
   jornadas,
@@ -60,55 +74,34 @@ function JornadasMapaPanel({
           <h4>Jornadas visibles</h4>
         </div>
 
-        <button
-          type="button"
+        <IconButton
           className="routes-map-refresh"
-          title="Actualizar jornadas"
-          disabled={isRefreshing}
+          tone="ghost"
+          icon="bi bi-arrow-clockwise"
+          label="Actualizar jornadas"
+          loading={isRefreshing}
           onClick={onRefresh}
-        >
-          {isRefreshing ? (
-            <span className="spinner-border spinner-border-sm" />
-          ) : (
-            <i className="bi bi-arrow-clockwise" />
-          )}
-        </button>
+        />
       </header>
 
       <div className="routes-map-panel__filters">
-        <div className="routes-map-search">
-          <i className="bi bi-search" />
+        <SearchField
+          className="routes-map-search"
+          value={searchTerm}
+          placeholder="Buscar jornada o camión..."
+          aria-label="Buscar jornadas"
+          onChange={(event) =>
+            setSearchTerm(event.target.value)
+          }
+          onClear={() => setSearchTerm('')}
+        />
 
-          <input
-            type="search"
-            className="form-control form-control-sm"
-            value={searchTerm}
-            placeholder="Buscar jornada o camión..."
-            onChange={(event) => setSearchTerm(event.target.value)}
-          />
-
-          {searchTerm && (
-            <button
-              type="button"
-              aria-label="Limpiar búsqueda"
-              onClick={() => setSearchTerm('')}
-            >
-              <i className="bi bi-x-lg" />
-            </button>
-          )}
-        </div>
-
-        <select
-          className="form-select form-select-sm"
+        <SelectField
           value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
-        >
-          <option value="ACTIVAS">Activas</option>
-          <option value="TODAS">Todas</option>
-          <option value="PLANIFICADA">Planificadas</option>
-          <option value="EN_RUTA">En ruta</option>
-          <option value="FINALIZADA">Finalizadas</option>
-        </select>
+          options={STATUS_OPTIONS}
+          ariaLabel="Filtrar jornadas visibles"
+          onChange={setStatusFilter}
+        />
       </div>
 
       <div className="routes-map-panel__list">

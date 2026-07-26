@@ -3,6 +3,10 @@ import {
   useState,
 } from 'react';
 
+import {
+  Combobox,
+} from '../../../shared/ui';
+
 const INITIAL_FORM = {
   nombre: '',
   identificacion: '',
@@ -449,53 +453,23 @@ function ClienteFormModal({
                 </header>
 
                 <div className="client-form-grid">
-                  <div>
-                    <label
-                      htmlFor="client-location"
-                      className="form-label"
-                    >
-                      Ubicación
-                    </label>
-
-                    <select
-                      id="client-location"
-                      className={`form-select ${
-                        errors.ubicacion_id
-                          ? 'is-invalid'
-                          : ''
-                      }`}
-                      value={
-                        formData.ubicacion_id
-                      }
-                      onChange={(event) =>
-                        updateField(
-                          'ubicacion_id',
-                          event.target.value,
-                        )
-                      }
-                    >
-                      <option value="">
-                        Selecciona una ubicación
-                      </option>
-
-                      {ubicaciones.map(
-                        (ubicacion) => (
-                          <option
-                            key={ubicacion.id}
-                            value={ubicacion.id}
-                          >
-                            {ubicacion.nombre}
-                          </option>
-                        ),
-                      )}
-                    </select>
-
-                    {errors.ubicacion_id && (
-                      <div className="invalid-feedback">
-                        {errors.ubicacion_id}
-                      </div>
-                    )}
-                  </div>
+                  <Combobox
+                    id="client-location"
+                    label="Ubicación"
+                    required
+                    value={formData.ubicacion_id}
+                    options={ubicaciones.map((ubicacion) => ({
+                      value: ubicacion.id,
+                      label: ubicacion.nombre,
+                      icon: 'bi bi-geo-alt',
+                    }))}
+                    placeholder="Selecciona una ubicación"
+                    searchPlaceholder="Buscar ubicación..."
+                    error={errors.ubicacion_id}
+                    onChange={(value) =>
+                      updateField('ubicacion_id', value)
+                    }
+                  />
 
                   <div>
                     <label

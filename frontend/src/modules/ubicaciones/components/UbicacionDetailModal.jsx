@@ -6,6 +6,12 @@ import {
   TileLayer,
 } from 'react-leaflet';
 
+import {
+  MapControls,
+  MapShell,
+  MapViewportController,
+} from '../../../shared/maps';
+
 function createDetailIcon() {
   return L.divIcon({
     className: 'locations-map-div-icon',
@@ -89,16 +95,33 @@ function UbicacionDetailModal({
           </div>
 
           {hasCoordinates ? (
-            <div className="locations-detail-map">
+            <MapShell
+              ariaLabel={`Mapa de ${ubicacion.nombre}`}
+              className="locations-detail-map"
+            >
               <MapContainer
                 center={[latitud, longitud]}
                 zoom={13}
                 className="locations-detail-leaflet"
                 scrollWheelZoom={false}
+                zoomControl={false}
               >
                 <TileLayer
                   attribution="&copy; OpenStreetMap contributors"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+
+                <MapViewportController
+                  positions={[[latitud, longitud]]}
+                  singleZoom={13}
+                />
+
+                <MapControls
+                  defaultCenter={[latitud, longitud]}
+                  defaultZoom={13}
+                  resetLabel="Centrar ubicación"
+                  showFit={false}
+                  showReset
                 />
 
                 <Marker
@@ -106,7 +129,7 @@ function UbicacionDetailModal({
                   icon={createDetailIcon()}
                 />
               </MapContainer>
-            </div>
+            </MapShell>
           ) : (
             <div className="locations-detail-no-map">
               <i className="bi bi-map" />

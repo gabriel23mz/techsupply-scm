@@ -1,0 +1,32 @@
+.map-marker-div-icon {
+  border: 0;
+  background: transparent;
+}
+
+.map-marker {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.28);
+}
+
+.map-marker--success {
+  background: var(--color-success);
+}
+
+.map-marker--warning {
+  background: var(--color-warning);
+}
+
+.map-marker--danger {
+  background: var(--color-danger);
+}
+
+.map-marker--info {
+  background: var(--color-info);
+}

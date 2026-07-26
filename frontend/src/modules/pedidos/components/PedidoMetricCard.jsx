@@ -1,3 +1,5 @@
+import StatCard from '../../../shared/ui/StatCard/StatCard';
+
 function PedidoMetricCard({
   title,
   value,
@@ -6,19 +8,13 @@ function PedidoMetricCard({
   variant = 'primary',
 }) {
   return (
-    <article className="pedido-metric-card">
-      <div
-        className={`pedido-metric-icon ${variant}`}
-      >
-        <i className={`bi ${icon}`} />
-      </div>
-
-      <div>
-        <span>{title}</span>
-        <strong>{value}</strong>
-        <small>{helper}</small>
-      </div>
-    </article>
+    <StatCard
+      label={title}
+      value={value}
+      helper={helper}
+      icon={`bi ${icon}`}
+      tone={variant}
+    />
   );
 }
 

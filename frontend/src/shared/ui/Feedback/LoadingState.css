@@ -1,0 +1,51 @@
+.ui-loading-state {
+  min-height: 12rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  background: var(--color-surface-alt);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.ui-loading-state__spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--color-primary-soft);
+  border-right-color: var(--color-primary);
+  border-radius: 50%;
+  animation: ui-loading-spin 700ms linear infinite;
+}
+
+.ui-loading-state__skeletons {
+  width: min(100%, 24rem);
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.5rem;
+}
+
+.ui-loading-state__skeletons span {
+  height: 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-background-muted);
+}
+
+.ui-loading-state__skeletons span:nth-child(2) {
+  width: 82%;
+}
+
+.ui-loading-state__skeletons span:nth-child(3) {
+  width: 62%;
+}
+
+@keyframes ui-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-loading-state__spinner { animation-duration: 1.5s; }
+}

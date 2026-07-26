@@ -1,0 +1,110 @@
+.ui-scroll-locked {
+  overflow: hidden;
+}
+
+.ui-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+  background: var(--color-overlay);
+  backdrop-filter: blur(4px);
+}
+
+.ui-modal {
+  width: min(100%, 40rem);
+  max-height: min(90vh, 56rem);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  animation: ui-modal-enter var(--transition-base);
+}
+
+.ui-modal--sm { width: min(100%, 28rem); }
+.ui-modal--lg { width: min(100%, 54rem); }
+.ui-modal--xl { width: min(100%, 72rem); }
+.ui-modal--full { width: min(100%, 96rem); }
+
+.ui-modal__header,
+.ui-modal__footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+}
+
+.ui-modal__header {
+  justify-content: space-between;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ui-modal__heading {
+  min-width: 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.ui-modal__heading h2 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: 800;
+}
+
+.ui-modal__heading p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.ui-modal__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+}
+
+.ui-modal__footer {
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+}
+
+@keyframes ui-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.985);
+  }
+}
+
+@media (max-width: 576px) {
+  .ui-dialog-overlay {
+    align-items: end;
+    padding: 0;
+  }
+
+  .ui-modal {
+    width: 100%;
+    max-height: 94vh;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+
+  .ui-modal__header,
+  .ui-modal__body,
+  .ui-modal__footer {
+    padding-inline: var(--spacing-md);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-modal { animation: none; }
+}

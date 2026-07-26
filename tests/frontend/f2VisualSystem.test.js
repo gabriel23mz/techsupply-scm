@@ -86,7 +86,7 @@ test('F2 centraliza overlays y controles de mapa en tokens de capa', async () =>
     'frontend/src/shared/layouts/app-shell.css',
   );
   const confirm = await readSource(
-    'frontend/src/shared/components/ConfirmDialog/ConfirmDialog.css',
+    'frontend/src/shared/ui/Modal/Modal.css',
   );
   const routes = await readSource(
     'frontend/src/modules/rutas/rutas.css',
