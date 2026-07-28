@@ -2,6 +2,22 @@ import {
   lazy,
 } from 'react';
 
+export const BodegaCargasPage = lazy(() =>
+  import('../../modules/bodega/pages/CargasPage'),
+);
+
+export const BodegaCargaWorkspacePage = lazy(() =>
+  import('../../modules/bodega/pages/CargaWorkspacePage'),
+);
+
+export const BodegaPreparacionPage = lazy(() =>
+  import('../../modules/bodega/pages/PreparacionPage'),
+);
+
+export const BodegaPreparacionWorkspacePage = lazy(() =>
+  import('../../modules/bodega/pages/PreparacionWorkspacePage'),
+);
+
 export const ClientesPage = lazy(() =>
   import('../../modules/clientes/pages/ClientesPage'),
 );

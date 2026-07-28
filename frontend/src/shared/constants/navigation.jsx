@@ -13,6 +13,14 @@ export const navigationSections = [
     ],
   },
   {
+    id: 'bodega',
+    label: 'Bodega',
+    items: [
+      'bodega-preparacion',
+      'bodega-cargas',
+    ],
+  },
+  {
     id: 'logistica',
     label: 'Logística',
     items: [

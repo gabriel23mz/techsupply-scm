@@ -11,6 +11,14 @@ const ACCESS_CONFIG = Object.freeze({
     routeId: 'pedidos',
     icon: 'bi-receipt',
   },
+  PREPARACION: {
+    routeId: 'bodega-preparacion',
+    icon: 'bi-box-seam',
+  },
+  CARGA: {
+    routeId: 'bodega-cargas',
+    icon: 'bi-truck-flatbed',
+  },
   UBICACIONES: {
     routeId: 'ubicaciones',
     icon: 'bi-geo-alt',
@@ -114,6 +122,13 @@ export function getDashboardNotificationPath(
   const entityId = notification?.entidad_id;
 
   if (
+    accessId === 'CARGA' &&
+    entityId
+  ) {
+    return `/bodega/cargas/${entityId}`;
+  }
+
+  if (
     accessId === 'JORNADAS' &&
     entityId
   ) {
@@ -146,6 +161,8 @@ export function getDashboardNotificationPath(
     dashboard: '/',
     clientes: '/clientes',
     pedidos: '/pedidos',
+    'bodega-preparacion': '/bodega/preparacion',
+    'bodega-cargas': '/bodega/cargas',
     ubicaciones: '/ubicaciones',
     rutas: '/rutas',
     'centro-logistico': '/centro-logistico',

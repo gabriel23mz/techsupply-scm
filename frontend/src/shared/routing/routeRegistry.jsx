@@ -4,6 +4,10 @@ import {
 
 import {
   AccessDeniedPage,
+  BodegaCargasPage,
+  BodegaCargaWorkspacePage,
+  BodegaPreparacionPage,
+  BodegaPreparacionWorkspacePage,
   CentroLogisticoPage,
   ClientesPage,
   DashboardPage,
@@ -62,6 +66,68 @@ export const routeRegistry = [
       ],
     },
     element: <PedidosPage />,
+  },
+  {
+    id: 'bodega-preparacion',
+    path: '/bodega/preparacion',
+    label: 'Preparación',
+    description: 'Control físico de productos antes de liberar pedidos.',
+    icon: 'bi-box-seam',
+    access: {
+      permission: PERMISSIONS.PEDIDOS_PREPARAR,
+      roles: [
+        ROLES.ADMIN,
+        ROLES.BODEGA,
+      ],
+    },
+    element: <BodegaPreparacionPage />,
+  },
+  {
+    id: 'bodega-preparacion-workspace',
+    path: '/bodega/preparacion/:id',
+    label: 'Preparar pedido',
+    description: 'Actualización física de productos y cierre de preparación.',
+    icon: 'bi-clipboard2-check',
+    access: {
+      permission: PERMISSIONS.PEDIDOS_PREPARAR,
+      roles: [
+        ROLES.ADMIN,
+        ROLES.BODEGA,
+      ],
+    },
+    element: <BodegaPreparacionWorkspacePage />,
+    hidden: true,
+  },
+  {
+    id: 'bodega-cargas',
+    path: '/bodega/cargas',
+    label: 'Carga',
+    description: 'Control de despachos asignados a jornadas planificadas.',
+    icon: 'bi-truck-flatbed',
+    access: {
+      permission: PERMISSIONS.CARGAS_LEER,
+      roles: [
+        ROLES.ADMIN,
+        ROLES.BODEGA,
+      ],
+    },
+    element: <BodegaCargasPage />,
+  },
+  {
+    id: 'bodega-carga-workspace',
+    path: '/bodega/cargas/:id',
+    label: 'Cargar jornada',
+    description: 'Verificación y confirmación de la carga del camión.',
+    icon: 'bi-clipboard2-check',
+    access: {
+      permission: PERMISSIONS.CARGAS_LEER,
+      roles: [
+        ROLES.ADMIN,
+        ROLES.BODEGA,
+      ],
+    },
+    element: <BodegaCargaWorkspacePage />,
+    hidden: true,
   },
   {
     id: 'ubicaciones',
