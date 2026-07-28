@@ -2,7 +2,7 @@ const STEPS = [
   {
     title: 'Crear pedido',
     description:
-      'Selecciona cliente y responsable.',
+      'Selecciona el cliente; la sesión define al responsable.',
     icon: 'bi-pencil-square',
   },
   {
@@ -18,10 +18,10 @@ const STEPS = [
     icon: 'bi-cart-plus',
   },
   {
-    title: 'Finalizar preparación',
+    title: 'Enviar a preparación',
     description:
-      'El pedido queda listo para despacho.',
-    icon: 'bi-check2-circle',
+      'Bodega recibe el pedido y continúa el flujo operativo.',
+    icon: 'bi-send-check',
   },
 ];
 

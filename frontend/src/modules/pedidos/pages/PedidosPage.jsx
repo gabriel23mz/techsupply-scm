@@ -5,512 +5,297 @@ import {
 } from 'react';
 
 import {
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
+
+import {
+  PERMISSIONS,
+  ROLES,
+} from '../../../shared/constants/permissions';
+
+import {
   useInitialLoad,
 } from '../../../shared/hooks/useInitialLoad';
 
 import {
-  useNavigate,
-} from 'react-router-dom';
-
-import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialog';
-
-import {
-  PERMISSIONS,
-} from '../../../shared/constants/permissions';
-
-import {
-  useAuth,
-} from '../../../shared/hooks/useAuth';
+  usePageHeader,
+} from '../../../shared/hooks/usePageHeader';
 
 import {
   usePermissions,
 } from '../../../shared/hooks/usePermissions';
 
 import {
+  Button,
+  ConfirmDialog,
+  ErrorState,
+  LoadingState,
+  Pagination,
+  SearchField,
+  SelectField,
+  StatCard,
+} from '../../../shared/ui';
+
+import {
   showError,
   showSuccess,
 } from '../../../shared/utils/toast';
 
-import PedidoEditModal from '../components/PedidoEditModal';
-import PedidoFlowCard from '../components/PedidoFlowCard';
-import PedidoMetricCard from '../components/PedidoMetricCard';
-import PedidosPagination from '../components/PedidosPagination';
+import PedidoDetailDrawer from '../components/PedidoDetailDrawer';
 import PedidosTable from '../components/PedidosTable';
-import PedidosToolbar from '../components/PedidosToolbar';
 
 import {
-  actualizarPedido,
   cancelarPedido,
-  obtenerClientes,
   obtenerPedidos,
-  obtenerUsuarios,
 } from '../services/pedido.service';
+
+import {
+  buildReturnPath,
+  getOrderClient,
+  getOrderUser,
+  matchesOrderDate,
+  normalizePage,
+  normalizeText,
+  ORDER_DATE_OPTIONS,
+  ORDER_PAGE_SIZE,
+  ORDER_STATUS_OPTIONS,
+} from '../pedido.utils';
 
 import '../pedidos.css';
 
-const PAGE_SIZE = 10;
-
-function getCliente(pedido) {
-  return (
-    pedido?.cliente ??
-    null
-  );
-}
-
-function getUsuario(pedido) {
-  return (
-    pedido?.usuario ??
-    null
-  );
-}
-
-function normalizeText(value) {
-  return String(value ?? '')
-    .trim()
-    .toLowerCase();
-}
-
-function isDateMatch(
-  value,
-  filter,
-) {
-  if (
-    filter === 'TODAS'
-  ) {
-    return true;
-  }
-
-  const date = new Date(value);
-
-  if (
-    Number.isNaN(
-      date.getTime(),
-    )
-  ) {
-    return false;
-  }
-
-  const today = new Date();
-  const startToday = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate(),
-  );
-
-  if (filter === 'HOY') {
-    return (
-      date >= startToday &&
-      date <
-        new Date(
-          startToday.getTime() +
-            86400000,
-        )
-    );
-  }
-
-  if (filter === 'SEMANA') {
-    const startWeek =
-      new Date(startToday);
-
-    startWeek.setDate(
-      startToday.getDate() -
-        startToday.getDay(),
-    );
-
-    return date >= startWeek;
-  }
-
-  if (filter === 'MES') {
-    return (
-      date.getFullYear() ===
-        today.getFullYear() &&
-      date.getMonth() ===
-        today.getMonth()
-    );
-  }
-
-  return true;
-}
-
 function PedidosPage() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const {
-    user,
-  } = useAuth();
+  const { can, canAny, hasRole } = usePermissions();
 
-  const {
-    can,
-    canAny,
-  } = usePermissions();
-
-  const canCreateOrders = can(
-    PERMISSIONS.PEDIDOS_CREAR,
-  );
-
-  const canEditOrders = can(
-    PERMISSIONS.PEDIDOS_EDITAR,
-  );
-
-  const canCancelOrders = can(
-    PERMISSIONS.PEDIDOS_CANCELAR,
-  );
-
+  const canCreateOrders = can(PERMISSIONS.PEDIDOS_CREAR);
+  const canCancelOrders = can(PERMISSIONS.PEDIDOS_CANCELAR);
   const canOpenWorkspace = canAny(
     PERMISSIONS.PEDIDOS_EDITAR,
     PERMISSIONS.PEDIDOS_ENVIAR_PREPARACION,
   );
+  const isAdmin = hasRole(ROLES.ADMIN);
 
-  const [pedidos, setPedidos] =
-    useState([]);
+  const searchTerm = searchParams.get('q') ?? '';
+  const statusFilter = searchParams.get('estado') ?? 'TODOS';
+  const dateFilter = searchParams.get('fecha') ?? 'TODAS';
+  const currentPage = normalizePage(searchParams.get('page'));
 
-  const [clientes, setClientes] =
-    useState([]);
+  const [pedidos, setPedidos] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [selectedPedido, setSelectedPedido] = useState(null);
+  const [pendingCancel, setPendingCancel] = useState(null);
 
-  const [usuarios, setUsuarios] =
-    useState([]);
+  const updateQuery = useCallback(
+    (updates, { replace = true } = {}) => {
+      const nextParams = new URLSearchParams(searchParams);
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+      Object.entries(updates).forEach(([key, value]) => {
+        const normalizedValue = String(value ?? '').trim();
+        const shouldDelete =
+          !normalizedValue ||
+          (key === 'page' && normalizedValue === '1') ||
+          (key === 'estado' && normalizedValue === 'TODOS') ||
+          (key === 'fecha' && normalizedValue === 'TODAS');
 
-  const [isSaving, setIsSaving] =
-    useState(false);
+        if (shouldDelete) nextParams.delete(key);
+        else nextParams.set(key, normalizedValue);
+      });
 
-  const [searchTerm, setSearchTerm] =
-    useState('');
-
-  const [
-    statusFilter,
-    setStatusFilter,
-  ] = useState('TODOS');
-
-  const [
-    dateFilter,
-    setDateFilter,
-  ] = useState('TODAS');
-
-  const [currentPage, setCurrentPage] =
-    useState(1);
-
-  const [editingPedido, setEditingPedido] =
-    useState(null);
-
-  const [
-    pendingCancel,
-    setPendingCancel,
-  ] = useState(null);
+      setSearchParams(nextParams, { replace });
+    },
+    [searchParams, setSearchParams],
+  );
 
   const cargarDatos = useCallback(
     async ({ notify = false } = {}) => {
       try {
         setIsLoading(true);
+        setLoadError(null);
 
-        const shouldLoadClients =
-          canCreateOrders || canEditOrders;
-
-        const shouldLoadUsers = can(
-          PERMISSIONS.USUARIOS_GESTIONAR,
-        );
-
-        const results =
-          await Promise.allSettled([
-            obtenerPedidos(),
-            shouldLoadClients
-              ? obtenerClientes()
-              : Promise.resolve([]),
-            shouldLoadUsers
-              ? obtenerUsuarios()
-              : Promise.resolve(
-                user ? [user] : [],
-              ),
-          ]);
-
-        const [
-          pedidosResult,
-          clientesResult,
-          usuariosResult,
-        ] = results;
-
-        if (
-          pedidosResult.status ===
-          'fulfilled'
-        ) {
-          setPedidos(
-            Array.isArray(
-              pedidosResult.value,
-            )
-              ? pedidosResult.value
-              : [],
-          );
-        } else {
-          throw pedidosResult.reason;
-        }
-
-        setClientes(
-          clientesResult.status ===
-            'fulfilled' &&
-            Array.isArray(
-              clientesResult.value,
-            )
-            ? clientesResult.value
-            : [],
-        );
-
-        setUsuarios(
-          usuariosResult.status ===
-            'fulfilled' &&
-            Array.isArray(
-              usuariosResult.value,
-            )
-            ? usuariosResult.value
-            : [],
-        );
+        const pedidosResult = await obtenerPedidos();
+        setPedidos(Array.isArray(pedidosResult) ? pedidosResult : []);
 
         if (notify) {
-          showSuccess(
-            'Pedidos actualizados correctamente.',
-          );
+          showSuccess('Información de pedidos actualizada.');
         }
       } catch (error) {
-        console.error(
-          'Error al cargar pedidos:',
-          error,
-        );
+        console.error('Error al cargar pedidos:', error);
+        setLoadError(error);
 
-        showError(
-          error.message ||
-            'No fue posible cargar los pedidos.',
-        );
+        if (notify) {
+          showError(
+            error.message || 'No fue posible actualizar los pedidos.',
+          );
+        }
       } finally {
         setIsLoading(false);
       }
     },
-    [
-      can,
-      canCreateOrders,
-      canEditOrders,
-      user,
-    ],
+    [],
   );
 
   useInitialLoad(cargarDatos);
 
+  const openCreatePage = useCallback(() => {
+    if (!canCreateOrders) return;
+
+    const returnTo = encodeURIComponent(buildReturnPath(location));
+    navigate(`/pedidos/nuevo?returnTo=${returnTo}`);
+  }, [canCreateOrders, location, navigate]);
+
+  const openWorkspace = useCallback(
+    (pedido) => {
+      if (!canOpenWorkspace || pedido?.estado !== 'PENDIENTE') return;
+
+      const returnTo = encodeURIComponent(buildReturnPath(location));
+      navigate(
+        `/pedidos/${pedido.id}/workspace?returnTo=${returnTo}`,
+      );
+    },
+    [canOpenWorkspace, location, navigate],
+  );
+
+  const pageActions = useMemo(
+    () => (
+      <>
+        <Button
+          className="topbar-page-action topbar-page-action--refresh"
+          size="sm"
+          tone="secondary"
+          icon="bi bi-arrow-clockwise"
+          loading={isLoading}
+          loadingLabel="Actualizando"
+          onClick={() => cargarDatos({ notify: true })}
+        >
+          Actualizar
+        </Button>
+
+        {canCreateOrders && (
+          <Button
+            className="topbar-page-action topbar-page-action--primary"
+            size="sm"
+            icon="bi bi-plus-lg"
+            onClick={openCreatePage}
+          >
+            Nuevo pedido
+          </Button>
+        )}
+      </>
+    ),
+    [canCreateOrders, cargarDatos, isLoading, openCreatePage],
+  );
+
+  const pageHeader = useMemo(
+    () => ({
+      title: 'Pedidos',
+      description: canCreateOrders
+        ? 'Gestión comercial y seguimiento del ciclo de pedidos.'
+        : 'Consulta de pedidos disponibles para la operación logística.',
+      actions: pageActions,
+    }),
+    [canCreateOrders, pageActions],
+  );
+
+  usePageHeader(pageHeader);
+
   const filteredPedidos = useMemo(() => {
-    const search =
-      normalizeText(searchTerm);
+    const search = normalizeText(searchTerm);
 
     return pedidos.filter((pedido) => {
-      const cliente =
-        getCliente(pedido);
-
-      const usuario =
-        getUsuario(pedido);
+      const cliente = getOrderClient(pedido);
+      const usuario = getOrderUser(pedido);
 
       const matchesSearch =
         !search ||
         [
           pedido.id,
-          `PED-${String(
-            pedido.id,
-          ).padStart(5, '0')}`,
+          `PED-${String(pedido.id).padStart(5, '0')}`,
           cliente?.nombre,
           usuario?.nombre,
           usuario?.apellido,
-        ].some((value) =>
-          normalizeText(value).includes(
-            search,
-          ),
-        );
+        ].some((value) => normalizeText(value).includes(search));
 
       const matchesStatus =
-        statusFilter === 'TODOS' ||
-        pedido.estado ===
-          statusFilter;
-
-      const matchesDate =
-        isDateMatch(
-          pedido.fecha,
-          dateFilter,
-        );
+        statusFilter === 'TODOS' || pedido.estado === statusFilter;
 
       return (
         matchesSearch &&
         matchesStatus &&
-        matchesDate
+        matchesOrderDate(pedido.fecha, dateFilter)
       );
     });
-  }, [
-    dateFilter,
-    pedidos,
-    searchTerm,
-    statusFilter,
-  ]);
+  }, [dateFilter, pedidos, searchTerm, statusFilter]);
 
   const totalPages = Math.max(
-    Math.ceil(
-      filteredPedidos.length /
-        PAGE_SIZE,
-    ),
+    Math.ceil(filteredPedidos.length / ORDER_PAGE_SIZE),
     1,
   );
+  const safeCurrentPage = Math.min(currentPage, totalPages);
 
-  const safeCurrentPage = Math.min(
-    currentPage,
-    totalPages,
-  );
-
-  const paginatedPedidos =
-    useMemo(() => {
-      const start =
-        (safeCurrentPage - 1) *
-        PAGE_SIZE;
-
-      return filteredPedidos.slice(
-        start,
-        start + PAGE_SIZE,
-      );
-    }, [
-      safeCurrentPage,
-      filteredPedidos,
-    ]);
-
-  const handleSearchChange = (value) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  };
-
-  const handleStatusChange = (value) => {
-    setStatusFilter(value);
-    setCurrentPage(1);
-  };
-
-  const handleDateChange = (value) => {
-    setDateFilter(value);
-    setCurrentPage(1);
-  };
+  const paginatedPedidos = useMemo(() => {
+    const start = (safeCurrentPage - 1) * ORDER_PAGE_SIZE;
+    return filteredPedidos.slice(start, start + ORDER_PAGE_SIZE);
+  }, [filteredPedidos, safeCurrentPage]);
 
   const metrics = useMemo(
     () => [
       {
-        title: 'Pedidos registrados',
+        label: 'Pedidos registrados',
         value: pedidos.length,
-        helper: 'Total histórico',
-        icon: 'bi-receipt',
-        variant: 'primary',
+        helper: 'Dentro de tu alcance actual',
+        icon: 'bi bi-receipt',
+        tone: 'primary',
       },
       {
-        title: 'Pendientes',
-        value: pedidos.filter(
-          (pedido) =>
-            pedido.estado ===
-            'PENDIENTE',
-        ).length,
-        helper: 'Esperan preparación',
-        icon: 'bi-clock-history',
-        variant: 'warning',
+        label: 'Pendientes',
+        value: pedidos.filter((pedido) => pedido.estado === 'PENDIENTE')
+          .length,
+        helper: 'Disponibles para edición comercial',
+        icon: 'bi bi-clock-history',
+        tone: 'warning',
       },
       {
-        title: 'En preparación',
-        value: pedidos.filter(
-          (pedido) =>
-            pedido.estado ===
-            'PREPARANDO',
-        ).length,
-        helper: 'Workspace activo',
-        icon: 'bi-box-seam',
-        variant: 'info',
+        label: 'En preparación',
+        value: pedidos.filter((pedido) => pedido.estado === 'PREPARANDO')
+          .length,
+        helper: 'Atendidos actualmente por Bodega',
+        icon: 'bi bi-box-seam',
+        tone: 'info',
       },
       {
-        title: 'Listos para despacho',
+        label: 'Listos para despacho',
         value: pedidos.filter(
-          (pedido) =>
-            pedido.estado ===
-            'LISTO_PARA_DESPACHO',
+          (pedido) => pedido.estado === 'LISTO_PARA_DESPACHO',
         ).length,
-        helper: 'Disponibles en logística',
-        icon: 'bi-truck',
-        variant: 'success',
+        helper: 'Disponibles para planificación logística',
+        icon: 'bi bi-truck',
+        tone: 'success',
       },
     ],
     [pedidos],
   );
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setStatusFilter('TODOS');
-    setDateFilter('TODAS');
-    setCurrentPage(1);
-  };
-
-  const handleUpdate = async (
-    payload,
-  ) => {
-    if (!canEditOrders || !editingPedido?.id) {
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-
-      await actualizarPedido(
-        editingPedido.id,
-        payload,
-      );
-
-      showSuccess(
-        'Pedido actualizado correctamente.',
-      );
-
-      setEditingPedido(null);
-
-      await cargarDatos();
-    } catch (error) {
-      console.error(
-        'Error al actualizar pedido:',
-        error,
-      );
-
-      showError(
-        error.message ||
-          'No fue posible actualizar el pedido.',
-      );
-    } finally {
-      setIsSaving(false);
-    }
+    updateQuery({ q: '', estado: 'TODOS', fecha: 'TODAS', page: 1 });
   };
 
   const handleCancel = async () => {
-    if (
-      !canCancelOrders ||
-      !pendingCancel?.id
-    ) {
-      return;
-    }
+    if (!canCancelOrders || !pendingCancel?.id) return;
 
     try {
-      await cancelarPedido(
-        pendingCancel.id,
-      );
-
-      showSuccess(
-        `Pedido PED-${String(
-          pendingCancel.id,
-        ).padStart(5, '0')} cancelado correctamente.`,
-      );
-
+      await cancelarPedido(pendingCancel.id);
+      showSuccess('Pedido cancelado correctamente.');
       setPendingCancel(null);
-
       await cargarDatos();
     } catch (error) {
-      console.error(
-        'Error al cancelar pedido:',
-        error,
-      );
-
-      showError(
-        error.message ||
-          'No fue posible cancelar el pedido.',
-      );
+      console.error('Error al cancelar pedido:', error);
+      showError(error.message || 'No fue posible cancelar el pedido.');
     }
   };
 
@@ -520,185 +305,123 @@ function PedidosPage() {
     dateFilter !== 'TODAS';
 
   return (
-    <div className="pedidos-page">
-      <section className="pedidos-banner">
-        <div className="pedidos-banner__icon">
-          <i className="bi bi-receipt-cutoff" />
-        </div>
-
-        <div>
-          <strong>
-            Gestión comercial de pedidos
-          </strong>
-
-          <span>
-            Crea, prepara y consulta pedidos antes de su incorporación al flujo logístico.
-          </span>
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-outline-primary btn-sm"
-          disabled={isLoading}
-          onClick={() =>
-            cargarDatos({
-              notify: true,
-            })
-          }
-        >
-          {isLoading ? (
-            <span className="spinner-border spinner-border-sm me-2" />
-          ) : (
-            <i className="bi bi-arrow-clockwise me-2" />
-          )}
-          Actualizar
-        </button>
+    <div className="orders-page">
+      <section className="orders-metrics">
+        {metrics.map((metric) => (
+          <StatCard
+            key={metric.label}
+            {...metric}
+            loading={isLoading}
+          />
+        ))}
       </section>
 
-      <div className="pedidos-top-section">
-        <section className="pedidos-metrics-grid">
-          {metrics.map(
-            (metric) => (
-              <PedidoMetricCard
-                key={metric.title}
-                {...metric}
-              />
-            ),
-          )}
-        </section>
+      <section className="orders-directory">
+        <div className="orders-toolbar">
+          <div className="orders-toolbar__filters">
+            <SearchField
+              value={searchTerm}
+              placeholder="Buscar pedido, cliente o responsable"
+              aria-label="Buscar pedidos"
+              onChange={(event) =>
+                updateQuery({ q: event.target.value, page: 1 })
+              }
+              onClear={() => updateQuery({ q: '', page: 1 })}
+            />
 
-        <PedidoFlowCard />
-      </div>
+            <SelectField
+              value={statusFilter}
+              options={ORDER_STATUS_OPTIONS}
+              ariaLabel="Filtrar pedidos por estado"
+              onChange={(value) =>
+                updateQuery({ estado: value, page: 1 })
+              }
+            />
 
-      <section className="pedidos-workspace-card">
-        <PedidosToolbar
-          searchTerm={searchTerm}
-          statusFilter={
-            statusFilter
-          }
-          dateFilter={dateFilter}
-          onSearchChange={
-            handleSearchChange
-          }
-          onStatusChange={
-            handleStatusChange
-          }
-          onDateChange={
-            handleDateChange
-          }
-          onClear={clearFilters}
-          onCreate={() =>
-            navigate(
-              '/pedidos/nuevo',
-            )
-          }
-        />
+            <SelectField
+              value={dateFilter}
+              options={ORDER_DATE_OPTIONS}
+              ariaLabel="Filtrar pedidos por fecha"
+              onChange={(value) =>
+                updateQuery({ fecha: value, page: 1 })
+              }
+            />
 
-        {isLoading ? (
-          <div className="pedidos-loading">
-            <span className="spinner-border text-primary" />
-            <h4>
-              Cargando pedidos...
-            </h4>
-            <p>
-              Consultando la información comercial.
-            </p>
+            {hasFilters && (
+              <Button
+                size="sm"
+                tone="secondary"
+                icon="bi bi-eraser"
+                onClick={clearFilters}
+              >
+                Limpiar
+              </Button>
+            )}
           </div>
-        ) : (
-          <>
+
+          <p className="orders-toolbar__summary">
+            <strong>{filteredPedidos.length}</strong>{' '}
+            {filteredPedidos.length === 1 ? 'pedido' : 'pedidos'}
+          </p>
+        </div>
+
+        <div className="orders-directory__content">
+          {loadError ? (
+            <ErrorState
+              actionLabel="Reintentar"
+              onAction={() => cargarDatos()}
+            >
+              {loadError.message || 'No fue posible cargar los pedidos.'}
+            </ErrorState>
+          ) : isLoading ? (
+            <LoadingState label="Cargando pedidos..." />
+          ) : (
             <PedidosTable
-              pedidos={
-                paginatedPedidos
-              }
-              hasFilters={
-                hasFilters
-              }
-              onOpenWorkspace={(
-                pedido,
-              ) => {
-                if (!canOpenWorkspace) {
-                  return;
-                }
-
-                navigate(
-                  `/pedidos/${pedido.id}/workspace`,
-                );
-              }}
-              onEdit={(pedido) => {
-                if (canEditOrders) {
-                  setEditingPedido(pedido);
-                }
-              }}
-              onCancel={(pedido) => {
-                if (canCancelOrders) {
-                  setPendingCancel(pedido);
-                }
-              }}
-              onClearFilters={
-                clearFilters
-              }
-              onCreate={() => {
-                if (canCreateOrders) {
-                  navigate('/pedidos/nuevo');
-                }
-              }}
+              pedidos={paginatedPedidos}
+              hasFilters={hasFilters}
+              canCreateOrder={canCreateOrders}
+              canOpenWorkspace={canOpenWorkspace}
+              canCancelOrder={canCancelOrders}
+              isAdmin={isAdmin}
+              onView={setSelectedPedido}
+              onOpenWorkspace={openWorkspace}
+              onCancel={setPendingCancel}
+              onClearFilters={clearFilters}
+              onCreate={openCreatePage}
             />
+          )}
+        </div>
 
-            <PedidosPagination
-              currentPage={
-                safeCurrentPage
-              }
-              totalPages={
-                totalPages
-              }
-              totalItems={
-                filteredPedidos.length
-              }
-              pageSize={PAGE_SIZE}
-              onPageChange={
-                setCurrentPage
-              }
-            />
-          </>
+        {!loadError && !isLoading && filteredPedidos.length > 0 && (
+          <Pagination
+            page={safeCurrentPage}
+            pageSize={ORDER_PAGE_SIZE}
+            total={filteredPedidos.length}
+            onPageChange={(page) => updateQuery({ page })}
+          />
         )}
       </section>
 
-      <PedidoEditModal
-        key={editingPedido?.id ?? 'closed'}
-        open={canEditOrders && Boolean(
-          editingPedido,
-        )}
-        pedido={editingPedido}
-        clientes={clientes}
-        usuarios={usuarios}
-        isSaving={isSaving}
-        onSave={handleUpdate}
-        onClose={() => {
-          if (!isSaving) {
-            setEditingPedido(null);
-          }
+      <PedidoDetailDrawer
+        open={Boolean(selectedPedido)}
+        pedido={selectedPedido}
+        canOpenWorkspace={canOpenWorkspace}
+        onOpenWorkspace={(pedido) => {
+          setSelectedPedido(null);
+          openWorkspace(pedido);
         }}
+        onClose={() => setSelectedPedido(null)}
       />
 
       <ConfirmDialog
-        open={canCancelOrders && Boolean(
-          pendingCancel,
-        )}
+        open={canCancelOrders && Boolean(pendingCancel)}
         title="Cancelar pedido"
-        message={
-          pendingCancel
-            ? `El pedido PED-${String(
-              pendingCancel.id,
-            ).padStart(5, '0')} será cancelado y el stock de sus productos será restaurado.`
-            : ''
-        }
+        message="El pedido será cancelado y el stock reservado por sus productos será restaurado cuando corresponda."
         confirmText="Cancelar pedido"
         cancelText="Volver"
         variant="warning"
         onConfirm={handleCancel}
-        onCancel={() =>
-          setPendingCancel(null)
-        }
+        onCancel={() => setPendingCancel(null)}
       />
     </div>
   );

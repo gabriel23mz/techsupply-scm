@@ -46,6 +46,7 @@ function Combobox({
   required = false,
   searchable = true,
   searchPlaceholder = 'Buscar...',
+  success,
   value,
 }) {
   const generatedId = useId();
@@ -69,7 +70,7 @@ function Combobox({
     if (!trigger) return null;
 
     const viewportMargin = 8;
-    const panelGap = 4;
+    const panelGap = 5;
     const rect = trigger.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
@@ -325,8 +326,9 @@ function Combobox({
       label={label}
       optional={optional}
       required={required}
+      success={success}
     >
-      {({ describedBy, invalid }) => (
+      {({ describedBy, invalid, valid }) => (
         <div
           ref={rootRef}
           className={classNames(
@@ -334,6 +336,7 @@ function Combobox({
             {
               'ui-combobox--open': open,
               'ui-combobox--invalid': invalid,
+              'ui-combobox--valid': valid,
               'ui-combobox--disabled': disabled,
             },
           )}

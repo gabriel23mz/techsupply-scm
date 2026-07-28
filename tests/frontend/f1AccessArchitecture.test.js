@@ -165,10 +165,16 @@ test('F1 oculta y protege acciones sensibles en los módulos actuales', async ()
   const clients = await readSource(
     'frontend/src/modules/clientes/components/ClientesTable.jsx',
   );
-  const orders = await readSource(
+  const ordersPage = await readSource(
+    'frontend/src/modules/pedidos/pages/PedidosPage.jsx',
+  );
+  const ordersTable = await readSource(
     'frontend/src/modules/pedidos/components/PedidosTable.jsx',
   );
-  const locations = await readSource(
+  const locationsPage = await readSource(
+    'frontend/src/modules/ubicaciones/pages/UbicacionesPage.jsx',
+  );
+  const locationsTable = await readSource(
     'frontend/src/modules/ubicaciones/components/UbicacionesTable.jsx',
   );
   const routes = await readSource(
@@ -182,9 +188,12 @@ test('F1 oculta y protege acciones sensibles en los módulos actuales', async ()
   );
 
   assert.match(clients, /PERMISSIONS\.CLIENTES_GESTIONAR/);
-  assert.match(orders, /PERMISSIONS\.PEDIDOS_EDITAR/);
-  assert.match(orders, /PERMISSIONS\.PEDIDOS_CANCELAR/);
-  assert.match(locations, /PERMISSIONS\.UBICACIONES_GESTIONAR/);
+  assert.match(ordersPage, /PERMISSIONS\.PEDIDOS_EDITAR/);
+  assert.match(ordersPage, /PERMISSIONS\.PEDIDOS_CANCELAR/);
+  assert.match(ordersTable, /canOpenWorkspace/);
+  assert.match(ordersTable, /canCancelOrder/);
+  assert.match(locationsPage, /PERMISSIONS\.UBICACIONES_GESTIONAR/);
+  assert.match(locationsTable, /canManage/);
   assert.match(routes, /PERMISSIONS\.RUTAS_GESTIONAR/);
   assert.match(logistics, /PERMISSIONS\.JORNADAS_GENERAR/);
   assert.match(journey, /PERMISSIONS\.JORNADAS_INICIAR/);
@@ -197,15 +206,16 @@ test('F1 evita llamadas administrativas de usuarios en el flujo normal de Ventas
   const ordersPage = await readSource(
     'frontend/src/modules/pedidos/pages/PedidosPage.jsx',
   );
+  const newOrderPage = await readSource(
+    'frontend/src/modules/pedidos/pages/NuevoPedidoPage.jsx',
+  );
+  const workspace = await readSource(
+    'frontend/src/modules/pedidos/pages/PedidoWorkspacePage.jsx',
+  );
 
-  assert.match(
-    ordersPage,
-    /shouldLoadUsers = can\([\s\S]*?PERMISSIONS\.USUARIOS_GESTIONAR/,
-  );
-  assert.match(
-    ordersPage,
-    /shouldLoadUsers[\s\S]*?obtenerUsuarios\(\)[\s\S]*?Promise\.resolve\([\s\S]*?user \? \[user\] : \[\]/,
-  );
+  assert.doesNotMatch(ordersPage, /obtenerUsuarios/);
+  assert.doesNotMatch(newOrderPage, /obtenerUsuarios/);
+  assert.match(workspace, /isAdmin \? obtenerUsuarios\(\) : Promise\.resolve\(\[\]\)/);
 
   const ventas = getPermissionsForRole(ROLES.VENTAS);
   assert.ok(!ventas.includes(BACKEND_PERMISSIONS.USUARIOS_GESTIONAR));

@@ -18,6 +18,12 @@ import {
   MapViewportController,
 } from '../../../shared/maps';
 
+import {
+  Button,
+  Modal,
+  TextField,
+} from '../../../shared/ui';
+
 const MANABI_CENTER = [-1.05458, -80.45445];
 const MANABI_ZOOM = 9;
 
@@ -37,43 +43,20 @@ function createLocationIcon() {
 function MapClickHandler({ onPick }) {
   useMapEvents({
     click(event) {
-      onPick([
-        event.latlng.lat,
-        event.latlng.lng,
-      ]);
+      onPick([event.latlng.lat, event.latlng.lng]);
     },
   });
 
   return null;
 }
 
-function haversineDistanceMeters(
-  firstPosition,
-  secondPosition,
-) {
+function haversineDistanceMeters(firstPosition, secondPosition) {
   const earthRadius = 6371000;
-
-  const toRadians = (value) =>
-    (value * Math.PI) / 180;
-
-  const lat1 = toRadians(
-    firstPosition[0],
-  );
-
-  const lat2 = toRadians(
-    secondPosition[0],
-  );
-
-  const deltaLat = toRadians(
-    secondPosition[0] -
-      firstPosition[0],
-  );
-
-  const deltaLon = toRadians(
-    secondPosition[1] -
-      firstPosition[1],
-  );
-
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const lat1 = toRadians(firstPosition[0]);
+  const lat2 = toRadians(secondPosition[0]);
+  const deltaLat = toRadians(secondPosition[0] - firstPosition[0]);
+  const deltaLon = toRadians(secondPosition[1] - firstPosition[1]);
   const value =
     Math.sin(deltaLat / 2) ** 2 +
     Math.cos(lat1) *
@@ -83,20 +66,13 @@ function haversineDistanceMeters(
   return (
     2 *
     earthRadius *
-    Math.atan2(
-      Math.sqrt(value),
-      Math.sqrt(1 - value),
-    )
+    Math.atan2(Math.sqrt(value), Math.sqrt(1 - value))
   );
 }
 
-
 function getInitialLocation(mode, ubicacion) {
   if (mode !== 'edit' || !ubicacion) {
-    return {
-      nombre: '',
-      position: null,
-    };
+    return { nombre: '', position: null };
   }
 
   const latitud = Number(ubicacion.latitud);
@@ -112,474 +88,271 @@ function getInitialLocation(mode, ubicacion) {
 }
 
 function UbicacionFormModal({
-  open,
+  isSaving,
   mode = 'create',
+  onClose,
+  onSave,
+  open,
   ubicacion,
   ubicaciones,
-  isSaving,
-  onSave,
-  onClose,
 }) {
-  const initialLocation = getInitialLocation(
-    mode,
-    ubicacion,
-  );
+  const initialLocation = getInitialLocation(mode, ubicacion);
+  const [nombre, setNombre] = useState(initialLocation.nombre);
+  const [position, setPosition] = useState(initialLocation.position);
+  const [touched, setTouched] = useState({});
 
-  const [nombre, setNombre] =
-    useState(initialLocation.nombre);
+  const duplicateByName = useMemo(() => {
+    const normalized = nombre.trim().toLocaleLowerCase('es');
+    if (!normalized) return null;
 
-  const [position, setPosition] =
-    useState(initialLocation.position);
+    return (
+      ubicaciones.find(
+        (item) =>
+          Number(item.id) !== Number(ubicacion?.id) &&
+          String(item.nombre ?? '')
+            .trim()
+            .toLocaleLowerCase('es') === normalized,
+      ) ?? null
+    );
+  }, [nombre, ubicacion?.id, ubicaciones]);
 
-  const [errors, setErrors] =
-    useState({});
+  const duplicateByDistance = useMemo(() => {
+    if (!position) return null;
 
+    return (
+      ubicaciones.find((item) => {
+        if (Number(item.id) === Number(ubicacion?.id)) return false;
 
-  const duplicateByName =
-    useMemo(() => {
-      const normalized = nombre
-        .trim()
-        .toLowerCase();
+        const latitud = Number(item.latitud);
+        const longitud = Number(item.longitud);
 
-      if (!normalized) {
-        return null;
-      }
+        if (!Number.isFinite(latitud) || !Number.isFinite(longitud)) {
+          return false;
+        }
 
-      return (
-        ubicaciones.find(
-          (item) =>
-            Number(item.id) !==
-              Number(
-                ubicacion?.id,
-              ) &&
-            String(
-              item.nombre ?? '',
-            )
-              .trim()
-              .toLowerCase() ===
-              normalized,
-        ) ?? null
-      );
-    }, [
-      nombre,
-      ubicacion?.id,
-      ubicaciones,
-    ]);
+        return (
+          haversineDistanceMeters(position, [latitud, longitud]) < 500
+        );
+      }) ?? null
+    );
+  }, [position, ubicacion?.id, ubicaciones]);
 
-  const duplicateByDistance =
-    useMemo(() => {
-      if (!position) {
-        return null;
-      }
-
-      return (
-        ubicaciones.find(
-          (item) => {
-            if (
-              Number(item.id) ===
-              Number(
-                ubicacion?.id,
-              )
-            ) {
-              return false;
-            }
-
-            const latitud = Number(
-              item.latitud,
-            );
-
-            const longitud = Number(
-              item.longitud,
-            );
-
-            if (
-              !Number.isFinite(
-                latitud,
-              ) ||
-              !Number.isFinite(
-                longitud,
-              )
-            ) {
-              return false;
-            }
-
-            return (
-              haversineDistanceMeters(
-                position,
-                [
-                  latitud,
-                  longitud,
-                ],
-              ) < 500
-            );
-          },
-        ) ?? null
-      );
-    }, [
-      position,
-      ubicacion?.id,
-      ubicaciones,
-    ]);
-
-  const validate = () => {
+  const errors = useMemo(() => {
     const nextErrors = {};
 
     if (!nombre.trim()) {
-      nextErrors.nombre =
-        'El nombre del cantón es obligatorio.';
-    } else if (
-      duplicateByName
-    ) {
-      nextErrors.nombre =
-        `Ya existe la ubicación ${duplicateByName.nombre}.`;
+      nextErrors.nombre = 'El nombre del cantón o ciudad es obligatorio.';
+    } else if (duplicateByName) {
+      nextErrors.nombre = `Ya existe la ubicación ${duplicateByName.nombre}.`;
     }
 
     if (!position) {
-      nextErrors.position =
-        'Selecciona el punto central del cantón en el mapa.';
-    } else if (
-      duplicateByDistance
-    ) {
+      nextErrors.position = 'Selecciona el punto central en el mapa.';
+    } else if (duplicateByDistance) {
       nextErrors.position =
         `El punto está demasiado cerca de ${duplicateByDistance.nombre}.`;
     }
 
-    setErrors(nextErrors);
+    return nextErrors;
+  }, [duplicateByDistance, duplicateByName, nombre, position]);
 
-    return (
-      Object.keys(nextErrors)
-        .length === 0
-    );
-  };
+  const isValid = Object.keys(errors).length === 0;
+  const viewportPositions = useMemo(
+    () => [position ?? MANABI_CENTER],
+    [position],
+  );
+  const focusPositions = useMemo(
+    () => (position ? [position] : []),
+    [position],
+  );
 
-  const handlePick = (
-    newPosition,
-  ) => {
+  const handlePick = (newPosition) => {
     setPosition(newPosition);
-
-    setErrors(
-      (current) => ({
-        ...current,
-        position: null,
-      }),
-    );
+    setTouched((current) => ({ ...current, position: true }));
   };
 
-  const handleSubmit = (
-    event,
-  ) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
+    setTouched({ nombre: true, position: true });
 
-    if (!validate()) {
-      return;
-    }
+    if (!isValid) return;
 
     onSave({
       nombre: nombre.trim(),
-      latitud: Number(
-        position[0].toFixed(6),
-      ),
-      longitud: Number(
-        position[1].toFixed(6),
-      ),
+      latitud: Number(position[0].toFixed(6)),
+      longitud: Number(position[1].toFixed(6)),
     });
   };
 
-  if (!open) {
-    return null;
-  }
-
   return (
-    <div className="locations-modal-overlay">
-      <section className="locations-form-modal">
-        <header className="locations-modal-header">
-          <div>
-            <span>
-              Catálogo geográfico
-            </span>
-
-            <h4>
-              {mode === 'edit'
-                ? 'Editar ubicación'
-                : 'Nueva ubicación'}
-            </h4>
-
-            <p>
-              Selecciona el punto central del cantón
-              para registrar el nodo logístico.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            aria-label="Cerrar"
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={mode === 'edit' ? 'Editar ubicación' : 'Nueva ubicación'}
+      description="Registra el nombre y selecciona el punto central del nodo geográfico."
+      size="xl"
+      className="location-form-modal"
+      footer={
+        <>
+          <Button
+            tone="secondary"
             disabled={isSaving}
             onClick={onClose}
           >
-            <i className="bi bi-x-lg" />
-          </button>
-        </header>
+            Cancelar
+          </Button>
 
-        <form
-          className="locations-form-modal__form"
-          onSubmit={handleSubmit}
-        >
-          <div className="locations-form-layout">
-            <section className="locations-form-fields">
-              <div className="locations-form-section">
-                <div className="locations-form-section__heading">
-                  <span>Datos básicos</span>
+          <Button
+            type="submit"
+            form="location-form"
+            icon="bi bi-check-lg"
+            loading={isSaving}
+            loadingLabel="Guardando"
+            disabled={!isValid}
+          >
+            {mode === 'edit' ? 'Guardar cambios' : 'Registrar ubicación'}
+          </Button>
+        </>
+      }
+    >
+      <form
+        id="location-form"
+        className="location-form"
+        noValidate
+        onSubmit={handleSubmit}
+      >
+        <section className="location-form__fields">
+          <header className="location-form__section-heading">
+            <div>
+              <i className="bi bi-geo-alt" aria-hidden="true" />
+            </div>
+            <span>
+              <strong>Datos del nodo</strong>
+              <small>
+                Utiliza el centro del cantón o ciudad, no una dirección
+                específica.
+              </small>
+            </span>
+          </header>
 
-                  <strong>
-                    Identificación del nodo
-                  </strong>
-                </div>
+          <TextField
+            label="Nombre del cantón o ciudad"
+            required
+            value={nombre}
+            placeholder="Ej. Tosagua"
+            error={touched.nombre ? errors.nombre : undefined}
+            success={
+              touched.nombre && !errors.nombre
+                ? 'Nombre disponible.'
+                : undefined
+            }
+            onBlur={() =>
+              setTouched((current) => ({ ...current, nombre: true }))
+            }
+            onChange={(event) => setNombre(event.target.value)}
+          />
 
-                <div>
-                  <label
-                    htmlFor="location-name"
-                    className="form-label"
-                  >
-                    Nombre del cantón o ciudad
-                  </label>
-
-                  <input
-                    id="location-name"
-                    type="text"
-                    className={`form-control ${
-                      errors.nombre
-                        ? 'is-invalid'
-                        : ''
-                    }`}
-                    value={nombre}
-                    placeholder="Ej. Tosagua"
-                    onChange={(
-                      event,
-                    ) =>
-                      setNombre(
-                        event.target
-                          .value,
-                      )
-                    }
-                  />
-
-                  {errors.nombre && (
-                    <div className="invalid-feedback">
-                      {errors.nombre}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="locations-form-section">
-                <div className="locations-form-section__heading">
-                  <span>Coordenadas</span>
-
-                  <strong>
-                    Lectura del marcador
-                  </strong>
-                </div>
-
-                <div className="locations-coordinate-grid">
-                  <div>
-                    <label className="form-label">
-                      Latitud
-                    </label>
-
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={
-                        position
-                          ? position[0]
-                            .toFixed(6)
-                          : ''
-                      }
-                      placeholder="Selecciona en el mapa"
-                      readOnly
-                    />
-                  </div>
-
-                  <div>
-                    <label className="form-label">
-                      Longitud
-                    </label>
-
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={
-                        position
-                          ? position[1]
-                            .toFixed(6)
-                          : ''
-                      }
-                      placeholder="Selecciona en el mapa"
-                      readOnly
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="locations-form-note">
-                <i className="bi bi-info-circle" />
-
-                <p>
-                  <strong>
-                    Registra únicamente el centro del cantón.
-                  </strong>{' '}
-                  No selecciones parques, barrios, calles
-                  ni direcciones específicas.
-                </p>
-              </div>
-
-              {errors.position && (
-                <div className="alert alert-danger py-2 mb-0">
-                  {errors.position}
-                </div>
-              )}
-            </section>
-
-            <MapShell
-              ariaLabel="Selector geográfico de ubicación"
-              className="locations-form-map"
-            >
-              <MapContainer
-                center={
-                  position ??
-                  MANABI_CENTER
-                }
-                zoom={
-                  position
-                    ? 13
-                    : MANABI_ZOOM
-                }
-                className="locations-form-leaflet"
-                scrollWheelZoom
-                zoomControl={false}
-              >
-                <TileLayer
-                  attribution="&copy; OpenStreetMap contributors"
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-
-                <MapClickHandler
-                  onPick={handlePick}
-                />
-
-                <MapViewportController
-                  focusPositions={
-                    position
-                      ? [position]
-                      : []
-                  }
-                  positions={[
-                    position ??
-                    MANABI_CENTER,
-                  ]}
-                  singleZoom={
-                    position
-                      ? 13
-                      : MANABI_ZOOM
-                  }
-                />
-
-                <MapControls
-                  defaultCenter={
-                    position ??
-                    MANABI_CENTER
-                  }
-                  defaultZoom={
-                    position
-                      ? 13
-                      : MANABI_ZOOM
-                  }
-                  resetLabel={
-                    position
-                      ? 'Centrar marcador'
-                      : 'Centrar en Manabí'
-                  }
-                  showFit={false}
-                  showReset
-                />
-
-                {position && (
-                  <Marker
-                    position={position}
-                    draggable
-                    icon={createLocationIcon()}
-                    eventHandlers={{
-                      dragend(
-                        event,
-                      ) {
-                        const marker =
-                          event.target
-                            .getLatLng();
-
-                        handlePick([
-                          marker.lat,
-                          marker.lng,
-                        ]);
-                      },
-                    }}
-                  />
-                )}
-              </MapContainer>
-
-              {!position && (
-                <div className="locations-map-instruction">
-                  <div>
-                    <i className="bi bi-geo-alt" />
-                  </div>
-
-                  <strong>
-                    Selecciona el centro del cantón
-                  </strong>
-
-                  <span>
-                    Haz clic en el mapa para colocar
-                    el marcador.
-                  </span>
-                </div>
-              )}
-
-              <div className="locations-map-help">
-                <i className="bi bi-cursor" />
-
-                Haz clic en el mapa o arrastra el marcador.
-              </div>
-            </MapShell>
+          <div className="location-coordinate-grid">
+            <TextField
+              label="Latitud"
+              value={position ? position[0].toFixed(6) : ''}
+              placeholder="Selecciona en el mapa"
+              readOnly
+            />
+            <TextField
+              label="Longitud"
+              value={position ? position[1].toFixed(6) : ''}
+              placeholder="Selecciona en el mapa"
+              readOnly
+            />
           </div>
 
-          <footer className="locations-modal-footer">
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              disabled={isSaving}
-              onClick={onClose}
-            >
-              Cancelar
-            </button>
+          <div
+            className={`location-position-feedback ${
+              touched.position && errors.position
+                ? 'is-invalid'
+                : position
+                  ? 'is-valid'
+                  : ''
+            }`}
+          >
+            <i
+              className={`bi ${
+                touched.position && errors.position
+                  ? 'bi-exclamation-circle'
+                  : position
+                    ? 'bi-check-circle'
+                    : 'bi-info-circle'
+              }`}
+              aria-hidden="true"
+            />
+            <span>
+              {touched.position && errors.position
+                ? errors.position
+                : position
+                  ? 'Punto geográfico seleccionado.'
+                  : 'Haz clic en el mapa para colocar el marcador.'}
+            </span>
+          </div>
+        </section>
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <span className="spinner-border spinner-border-sm me-2" />
-              ) : (
-                <i className="bi bi-check-lg me-2" />
-              )}
+        <MapShell
+          ariaLabel="Selector geográfico de ubicación"
+          className="location-form__map"
+        >
+          <MapContainer
+            center={position ?? MANABI_CENTER}
+            zoom={position ? 13 : MANABI_ZOOM}
+            className="location-form__leaflet"
+            scrollWheelZoom
+            zoomControl={false}
+          >
+            <TileLayer
+              attribution="&copy; OpenStreetMap contributors"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
 
-              {mode === 'edit'
-                ? 'Guardar cambios'
-                : 'Registrar ubicación'}
-            </button>
-          </footer>
-        </form>
-      </section>
-    </div>
+            <MapClickHandler onPick={handlePick} />
+
+            <MapViewportController
+              focusPositions={focusPositions}
+              positions={viewportPositions}
+              singleZoom={position ? 13 : MANABI_ZOOM}
+            />
+
+            <MapControls
+              defaultCenter={position ?? MANABI_CENTER}
+              defaultZoom={position ? 13 : MANABI_ZOOM}
+              resetLabel={position ? 'Centrar marcador' : 'Centrar en Manabí'}
+              showFit={false}
+              showReset
+            />
+
+            {position && (
+              <Marker
+                position={position}
+                draggable
+                icon={createLocationIcon()}
+                eventHandlers={{
+                  dragend(event) {
+                    const marker = event.target.getLatLng();
+                    handlePick([marker.lat, marker.lng]);
+                  },
+                }}
+              />
+            )}
+          </MapContainer>
+
+          {!position && (
+            <div className="location-map-instruction">
+              <i className="bi bi-cursor" aria-hidden="true" />
+              <strong>Selecciona el centro del cantón</strong>
+              <span>Haz clic en el mapa para colocar el marcador.</span>
+            </div>
+          )}
+        </MapShell>
+      </form>
+    </Modal>
   );
 }
 

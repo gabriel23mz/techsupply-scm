@@ -1,3 +1,8 @@
+import {
+  useEffect,
+  useRef,
+} from 'react';
+
 import L from 'leaflet';
 import {
   useMap,
@@ -30,6 +35,17 @@ function MapControls({
   singleZoom = 13,
 }) {
   const map = useMap();
+  const controlsRef = useRef(null);
+
+  useEffect(() => {
+    const container = controlsRef.current;
+    if (!container) return undefined;
+
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.disableScrollPropagation(container);
+
+    return undefined;
+  }, []);
 
   const handleFit = () => {
     const positions = normalizeMapPositions(
@@ -72,6 +88,7 @@ function MapControls({
 
   return (
     <div
+      ref={controlsRef}
       className={classNames(
         'map-controls',
         `map-controls--${placement}`,

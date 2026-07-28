@@ -2,6 +2,7 @@ export { default as Button } from './Button/Button';
 export { default as IconButton } from './IconButton/IconButton';
 export { default as FormField } from './FormField/FormField';
 export { default as TextField } from './TextField/TextField';
+export { default as DateField } from './DateField/DateField';
 export { default as SearchField } from './SearchField/SearchField';
 export { default as Combobox } from './Combobox/Combobox';
 export { default as SelectField } from './SelectField/SelectField';

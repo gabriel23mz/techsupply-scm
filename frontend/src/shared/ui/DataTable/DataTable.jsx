@@ -22,6 +22,7 @@ function getValue(row, column) {
 
 function DataTable({
   actions,
+  actionsLabel = 'Acciones',
   caption,
   className,
   columns = [],
@@ -33,6 +34,7 @@ function DataTable({
   onEmptyAction,
   onRetry,
   onRowClick,
+  rowClassName,
   rowKey = 'id',
   rows = [],
 }) {
@@ -95,9 +97,7 @@ function DataTable({
                   scope="col"
                   className="ui-data-table__actions-heading"
                 >
-                  <span className="visually-hidden">
-                    Acciones
-                  </span>
+                  {actionsLabel}
                 </th>
               )}
             </tr>
@@ -113,10 +113,15 @@ function DataTable({
               return (
                 <tr
                   key={key}
-                  className={classNames({
-                    'ui-data-table__row--interactive':
-                      Boolean(onRowClick),
-                  })}
+                  className={classNames(
+                    {
+                      'ui-data-table__row--interactive':
+                        Boolean(onRowClick),
+                    },
+                    typeof rowClassName === 'function'
+                      ? rowClassName(row, rowIndex)
+                      : rowClassName,
+                  )}
                   tabIndex={onRowClick ? 0 : undefined}
                   onClick={() => onRowClick?.(row)}
                   onKeyDown={(event) => {
@@ -141,13 +146,15 @@ function DataTable({
                         column.cellClassName,
                       )}
                     >
-                      {getValue(row, column)}
+                      <div className="ui-data-table__cell-content">
+                        {getValue(row, column)}
+                      </div>
                     </td>
                   ))}
 
                   {actions && (
                     <td
-                      data-label="Acciones"
+                      data-label={actionsLabel}
                       className="ui-data-table__actions-cell"
                     >
                       <TableActions actions={rowActions} />

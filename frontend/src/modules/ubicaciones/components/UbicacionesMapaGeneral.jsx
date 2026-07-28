@@ -20,46 +20,21 @@ import {
   MapViewportController,
 } from '../../../shared/maps';
 
-function normalizePosition(
-  ubicacion,
-) {
-  const latitud = Number(
-    ubicacion?.latitud,
-  );
+import {
+  Button,
+  SearchField,
+  StatusBadge,
+} from '../../../shared/ui';
 
-  const longitud = Number(
-    ubicacion?.longitud,
-  );
+import {
+  getLocationPosition,
+} from '../ubicacion.utils';
 
-  if (
-    !Number.isFinite(
-      latitud,
-    ) ||
-    !Number.isFinite(
-      longitud,
-    )
-  ) {
-    return null;
-  }
-
-  return [
-    latitud,
-    longitud,
-  ];
-}
-
-function createLocationIcon(
-  selected,
-) {
+function createLocationIcon(selected) {
   return L.divIcon({
-    className:
-      'locations-map-div-icon',
+    className: 'locations-map-div-icon',
     html: `
-      <div class="locations-general-marker ${
-        selected
-          ? 'selected'
-          : ''
-      }">
+      <div class="locations-general-marker ${selected ? 'selected' : ''}">
         <i class="bi bi-geo-alt-fill"></i>
       </div>
     `,
@@ -70,105 +45,57 @@ function createLocationIcon(
 }
 
 function UbicacionesMapaGeneral({
-  ubicaciones,
   onView,
-  onRefresh,
+  ubicaciones,
 }) {
-  const [
-    searchTerm,
-    setSearchTerm,
-  ] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedId, setSelectedId] = useState(null);
+  const [focusRequest, setFocusRequest] = useState(0);
 
-  const [
-    selectedId,
-    setSelectedId,
-  ] = useState(null);
+  const validLocations = useMemo(
+    () =>
+      ubicaciones
+        .map((ubicacion) => ({
+          ubicacion,
+          position: getLocationPosition(ubicacion),
+        }))
+        .filter((item) => item.position),
+    [ubicaciones],
+  );
 
-  const [
-    focusRequest,
-    setFocusRequest,
-  ] = useState(0);
+  const filteredLocations = useMemo(() => {
+    const search = searchTerm.trim().toLocaleLowerCase('es');
+    if (!search) return validLocations;
 
-  const validLocations =
-    useMemo(
-      () =>
-        ubicaciones
-          .map(
-            (ubicacion) => ({
-              ubicacion,
-              position:
-                normalizePosition(
-                  ubicacion,
-                ),
-            }),
-          )
-          .filter(
-            (item) =>
-              item.position,
-          ),
-      [ubicaciones],
+    return validLocations.filter((item) =>
+      String(item.ubicacion.nombre ?? '')
+        .toLocaleLowerCase('es')
+        .includes(search),
     );
-
-  const filteredLocations =
-    useMemo(() => {
-      const search =
-        searchTerm
-          .trim()
-          .toLowerCase();
-
-      if (!search) {
-        return validLocations;
-      }
-
-      return validLocations.filter(
-        (item) =>
-          String(
-            item.ubicacion
-              .nombre ?? '',
-          )
-            .toLowerCase()
-            .includes(search),
-      );
-    }, [
-      searchTerm,
-      validLocations,
-    ]);
+  }, [searchTerm, validLocations]);
 
   const selectedItem =
     filteredLocations.find(
-      (item) =>
-        Number(
-          item.ubicacion.id,
-        ) ===
-        Number(selectedId),
+      (item) => Number(item.ubicacion.id) === Number(selectedId),
     ) ?? null;
+  const allPositions = useMemo(
+    () => filteredLocations.map((item) => item.position),
+    [filteredLocations],
+  );
+  const focusPositions = useMemo(
+    () => (selectedItem?.position ? [selectedItem.position] : []),
+    [selectedItem],
+  );
 
-  const allPositions =
-    filteredLocations.map(
-      (item) =>
-        item.position,
-    );
-
-  const handleSelect = (
-    item,
-  ) => {
-    setSelectedId(
-      item.ubicacion.id,
-    );
-
-    setFocusRequest(
-      (current) =>
-        current + 1,
-    );
+  const handleSelect = (item) => {
+    setSelectedId(item.ubicacion.id);
+    setFocusRequest((current) => current + 1);
   };
 
-
-  if (
-    !validLocations.length
-  ) {
+  if (!validLocations.length) {
     return (
       <MapErrorState
-        description="Registra coordenadas válidas para visualizar los nodos en el mapa."
+        description="Registra coordenadas válidas para visualizar los nodos."
         icon="bi-map"
         title="No hay ubicaciones para mostrar"
         tone="neutral"
@@ -181,236 +108,121 @@ function UbicacionesMapaGeneral({
       <aside className="locations-map-list">
         <header>
           <div>
-            <span>
-              Nodos geográficos
-            </span>
-
-            <h4>
-              Ubicaciones registradas
-            </h4>
+            <span>Nodos geográficos</span>
+            <h3>Ubicaciones registradas</h3>
           </div>
-
-          <button
-            type="button"
-            className="locations-map-refresh-button"
-            onClick={onRefresh}
-            title="Actualizar ubicaciones"
-            aria-label="Actualizar ubicaciones"
-          >
-            <i className="bi bi-arrow-clockwise" />
-          </button>
+          <strong>{filteredLocations.length}</strong>
         </header>
 
-        <div className="locations-map-search">
-          <i className="bi bi-search" />
-
-          <input
-            type="search"
-            className="form-control form-control-sm"
-            value={searchTerm}
-            placeholder="Buscar ubicación..."
-            onChange={(
-              event,
-            ) =>
-              setSearchTerm(
-                event.target
-                  .value,
-              )
-            }
-          />
-        </div>
+        <SearchField
+          value={searchTerm}
+          placeholder="Buscar ubicación"
+          aria-label="Buscar ubicación en el mapa"
+          onChange={(event) => setSearchTerm(event.target.value)}
+          onClear={() => setSearchTerm('')}
+        />
 
         <div className="locations-map-list__content">
-          {filteredLocations.map(
-            (item) => (
+          {filteredLocations.map((item) => {
+            const selected =
+              Number(item.ubicacion.id) === Number(selectedId);
+
+            return (
               <button
-                key={
-                  item.ubicacion.id
-                }
+                key={item.ubicacion.id}
                 type="button"
                 className={`locations-map-list-item ${
-                  Number(
-                    item.ubicacion
-                      .id,
-                  ) ===
-                  Number(
-                    selectedId,
-                  )
-                    ? 'selected'
-                    : ''
+                  selected ? 'selected' : ''
                 }`}
-                onClick={() =>
-                  handleSelect(
-                    item,
-                  )
-                }
+                onClick={() => handleSelect(item)}
               >
                 <div>
-                  <strong>
-                    {
-                      item.ubicacion
-                        .nombre
-                    }
-                  </strong>
-
+                  <strong>{item.ubicacion.nombre}</strong>
                   <span>
-                    {item.position[0]
-                      .toFixed(5)}
-                    ,{' '}
-                    {item.position[1]
-                      .toFixed(5)}
+                    {item.position[0].toFixed(5)},{' '}
+                    {item.position[1].toFixed(5)}
                   </span>
                 </div>
 
-                <span
-                  className={`locations-status ${
-                    item.ubicacion
-                      .estado ===
-                    false
-                      ? 'inactive'
-                      : 'active'
-                  }`}
+                <StatusBadge
+                  size="sm"
+                  tone={
+                    item.ubicacion.estado === false ? 'danger' : 'success'
+                  }
                 >
-                  {item.ubicacion
-                    .estado ===
-                  false
-                    ? 'Inactiva'
-                    : 'Activa'}
-                </span>
+                  {item.ubicacion.estado === false ? 'Inactiva' : 'Activa'}
+                </StatusBadge>
               </button>
-            ),
-          )}
+            );
+          })}
         </div>
       </aside>
 
-      <section className="locations-general-map-card">
-        <MapShell
-          ariaLabel="Mapa general de ubicaciones"
-          className="locations-general-map-container"
+      <MapShell
+        ariaLabel="Mapa general de ubicaciones"
+        className="locations-general-map"
+      >
+        <MapContainer
+          center={allPositions[0]}
+          zoom={10}
+          zoomControl={false}
+          className="locations-general-leaflet"
+          scrollWheelZoom
         >
-          <MapContainer
-            center={
-              allPositions[0]
-            }
-            zoom={10}
-            zoomControl={false}
-            className="locations-general-leaflet"
-            scrollWheelZoom
-          >
-            <TileLayer
-              attribution="&copy; OpenStreetMap contributors"
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
+          <TileLayer
+            attribution="&copy; OpenStreetMap contributors"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
 
-            <MapViewportController
-              focusPositions={
-                selectedItem?.position
-                  ? [selectedItem.position]
-                  : []
-              }
-              positions={allPositions}
-              requestKey={focusRequest}
-              maxZoom={12}
-              singleZoom={13}
-            />
+          <MapViewportController
+            focusPositions={focusPositions}
+            positions={allPositions}
+            requestKey={focusRequest}
+            maxZoom={12}
+            singleZoom={13}
+          />
 
-            <MapControls
-              fitLabel="Centrar todas las ubicaciones"
-              fitPositions={allPositions}
-            />
+          <MapControls
+            fitLabel="Centrar todas las ubicaciones"
+            fitPositions={allPositions}
+          />
 
-            {filteredLocations.map(
-              (item) => {
-                const selected =
-                  Number(
-                    item
-                      .ubicacion
-                      .id,
-                  ) ===
-                  Number(
-                    selectedId,
-                  );
+          {filteredLocations.map((item) => {
+            const selected =
+              Number(item.ubicacion.id) === Number(selectedId);
 
-                return (
-                  <Marker
-                    key={
-                      item
-                        .ubicacion
-                        .id
-                    }
-                    position={
-                      item.position
-                    }
-                    icon={createLocationIcon(
-                      selected,
-                    )}
-                    zIndexOffset={
-                      selected
-                        ? 1000
-                        : 500
-                    }
-                    eventHandlers={{
-                      click: () =>
-                        handleSelect(
-                          item,
-                        ),
-                    }}
-                  >
-                    <Popup>
-                      <div className="locations-map-popup">
-                        <strong>
-                          {
-                            item
-                              .ubicacion
-                              .nombre
-                          }
-                        </strong>
+            return (
+              <Marker
+                key={item.ubicacion.id}
+                position={item.position}
+                icon={createLocationIcon(selected)}
+                zIndexOffset={selected ? 1000 : 500}
+                eventHandlers={{
+                  click: () => handleSelect(item),
+                }}
+              >
+                <Popup>
+                  <div className="locations-map-popup">
+                    <strong>{item.ubicacion.nombre}</strong>
+                    <span>Latitud: {item.position[0].toFixed(6)}</span>
+                    <span>Longitud: {item.position[1].toFixed(6)}</span>
+                    <Button
+                      size="sm"
+                      onClick={() => onView?.(item.ubicacion)}
+                    >
+                      Ver detalle
+                    </Button>
+                  </div>
+                </Popup>
 
-                        <span>
-                          Latitud:{' '}
-                          {item.position[0]
-                            .toFixed(
-                              6,
-                            )}
-                        </span>
-
-                        <span>
-                          Longitud:{' '}
-                          {item.position[1]
-                            .toFixed(
-                              6,
-                            )}
-                        </span>
-
-                        <button
-                          type="button"
-                          className="btn btn-primary btn-sm mt-2"
-                          onClick={() =>
-                            onView(
-                              item
-                                .ubicacion,
-                            )
-                          }
-                        >
-                          Ver detalle
-                        </button>
-                      </div>
-                    </Popup>
-
-                    <Tooltip direction="top">
-                      {
-                        item
-                          .ubicacion
-                          .nombre
-                      }
-                    </Tooltip>
-                  </Marker>
-                );
-              },
-            )}
-          </MapContainer>
-        </MapShell>
-      </section>
+                <Tooltip direction="top">
+                  {item.ubicacion.nombre}
+                </Tooltip>
+              </Marker>
+            );
+          })}
+        </MapContainer>
+      </MapShell>
     </section>
   );
 }

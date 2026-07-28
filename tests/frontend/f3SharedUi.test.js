@@ -139,7 +139,7 @@ test('F3 centraliza métricas, estados y paginación mediante adaptadores compar
       /StatCard/,
     ],
     [
-      'frontend/src/modules/pedidos/components/PedidoMetricCard.jsx',
+      'frontend/src/modules/pedidos/pages/PedidosPage.jsx',
       /StatCard/,
     ],
     [
@@ -151,11 +151,11 @@ test('F3 centraliza métricas, estados y paginación mediante adaptadores compar
       /StatusBadge/,
     ],
     [
-      'frontend/src/modules/clientes/components/ClientesPagination.jsx',
+      'frontend/src/modules/clientes/pages/ClientesPage.jsx',
       /Pagination/,
     ],
     [
-      'frontend/src/modules/pedidos/components/PedidosPagination.jsx',
+      'frontend/src/modules/pedidos/pages/PedidosPage.jsx',
       /Pagination/,
     ],
     [
@@ -191,6 +191,9 @@ test('F3 prepara tablas responsive, acciones alineadas y pestañas accesibles', 
     'frontend/src/shared/ui/Tabs/Tabs.jsx',
   );
 
+  assert.match(table, /actionsLabel = 'Acciones'/);
+  assert.match(table, /\{actionsLabel\}/);
+  assert.match(table, /data-label=\{actionsLabel\}/);
   assert.match(table, /data-label=/);
   assert.match(table, /LoadingState/);
   assert.match(table, /EmptyState/);
@@ -198,7 +201,8 @@ test('F3 prepara tablas responsive, acciones alineadas y pestañas accesibles', 
   assert.match(tableCss, /@media \(max-width: 700px\)/);
   assert.match(tableCss, /content: attr\(data-label\)/);
   assert.match(actions, /DEFAULT_SLOTS = \['view', 'edit', 'delete'\]/);
-  assert.match(actionsCss, /tr:not\(:hover\):not\(:focus-within\)/);
+  assert.match(actionsCss, /opacity: 1/);
+  assert.match(actionsCss, /pointer-events: auto/);
   assert.match(tabs, /ArrowRight/);
   assert.match(tabs, /ArrowLeft/);
   assert.match(tabs, /Home/);
@@ -233,7 +237,7 @@ test('F3.1 alinea el panel del Combobox con su activador y evita separaciones al
     'frontend/src/shared/ui/Combobox/Combobox.css',
   );
 
-  assert.match(combobox, /const panelGap = 4;/);
+  assert.match(combobox, /const panelGap = 5;/);
   assert.match(combobox, /const panelWidth = Math\.min\(\s*rect\.width,/);
   assert.doesNotMatch(combobox, /Math\.max\(rect\.width,\s*240\)/);
   assert.match(

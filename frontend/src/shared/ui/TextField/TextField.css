@@ -27,6 +27,15 @@
   box-shadow: var(--shadow-danger-focus);
 }
 
+.ui-text-field--valid {
+  border-color: var(--color-success);
+}
+
+.ui-text-field--valid:focus-within {
+  border-color: var(--color-success);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.14);
+}
+
 .ui-text-field--disabled {
   background: var(--color-background-muted);
   opacity: 0.72;
@@ -71,4 +80,17 @@
 .ui-text-field__adornment--end {
   padding-right: 0.45rem;
   padding-left: 0;
+}
+
+.ui-text-field__control[type='search']::-webkit-search-cancel-button,
+.ui-text-field__control[type='search']::-webkit-search-decoration {
+  appearance: none;
+  display: none;
+}
+
+.ui-text-field__control[type='search']::-ms-clear,
+.ui-text-field__control[type='search']::-ms-reveal {
+  display: none;
+  width: 0;
+  height: 0;
 }

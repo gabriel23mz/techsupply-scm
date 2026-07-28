@@ -1,165 +1,111 @@
-function getProduct(detalle) {
-  return (
-    detalle?.producto ??
-    null
-  );
-}
+import {
+  DataTable,
+} from '../../../../shared/ui';
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat(
-    'es-EC',
-    {
-      style: 'currency',
-      currency: 'USD',
-    },
-  ).format(Number(value ?? 0));
-}
+import {
+  formatCurrency,
+  getDetailProduct,
+} from '../../pedido.utils';
 
 function PedidoProductsTable({
-  detalles,
+  activeDetailId,
   canEdit,
-  onEdit,
+  detalles,
   onDelete,
+  onEdit,
 }) {
+  const columns = [
+    {
+      id: 'producto',
+      header: 'Producto',
+      width: '38%',
+      cell: (detalle) => {
+        const producto = getDetailProduct(detalle);
+
+        return (
+          <div className="order-product-cell">
+            <strong>{producto?.nombre ?? 'Producto no disponible'}</strong>
+            <small>
+              <i className="bi bi-box-seam" aria-hidden="true" />
+              PROD-{String(detalle.producto_id).padStart(4, '0')}
+            </small>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'cantidad',
+      header: 'Cantidad',
+      align: 'center',
+      width: '12%',
+      cell: (detalle) => detalle.cantidad,
+    },
+    {
+      id: 'precio',
+      header: 'Precio unitario',
+      align: 'right',
+      width: '17%',
+      cell: (detalle) => formatCurrency(detalle.precio_unitario),
+    },
+    {
+      id: 'subtotal',
+      header: 'Subtotal',
+      align: 'right',
+      width: '17%',
+      cell: (detalle) => (
+        <strong>{formatCurrency(detalle.subtotal)}</strong>
+      ),
+    },
+  ];
+
   return (
-    <section className="pedido-products-card">
-      <header className="pedido-products-card__header">
+    <section className="order-products-card">
+      <header className="order-section-header order-section-header--compact">
         <div>
-          <span>
-            Detalle del pedido
-          </span>
-
-          <h4>
-            Productos registrados
-          </h4>
+          <h3>Detalle del pedido · Productos registrados</h3>
+          <p>Revisa cantidades, precios y subtotales antes de continuar.</p>
         </div>
-
         <strong>
-          {detalles.length}{' '}
-          {detalles.length === 1
-            ? 'producto'
-            : 'productos'}
+          {detalles.length} {detalles.length === 1 ? 'producto' : 'productos'}
         </strong>
       </header>
 
-      {!detalles.length ? (
-        <div className="pedido-products-empty">
-          <i className="bi bi-box-seam" />
-          <h5>
-            No hay productos agregados
-          </h5>
-          <p>
-            Utiliza el formulario inferior para comenzar a construir el pedido.
-          </p>
-        </div>
-      ) : (
-        <div className="table-responsive">
-          <table className="table pedido-products-table mb-0">
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th className="text-center">
-                  Cantidad
-                </th>
-                <th className="text-end">
-                  Precio unitario
-                </th>
-                <th className="text-end">
-                  Subtotal
-                </th>
-                <th className="text-center">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {detalles.map(
-                (detalle) => {
-                  const producto =
-                    getProduct(
-                      detalle,
-                    );
-
-                  return (
-                    <tr
-                      key={detalle.id}
-                    >
-                      <td>
-                        <strong>
-                          {producto?.nombre ??
-                            'Producto no disponible'}
-                        </strong>
-
-                        <span>
-                          PROD-
-                          {String(
-                            detalle.producto_id,
-                          ).padStart(
-                            4,
-                            '0',
-                          )}
-                        </span>
-                      </td>
-
-                      <td className="text-center">
-                        {detalle.cantidad}
-                      </td>
-
-                      <td className="text-end">
-                        {formatCurrency(
-                          detalle.precio_unitario,
-                        )}
-                      </td>
-
-                      <td className="text-end fw-bold">
-                        {formatCurrency(
-                          detalle.subtotal,
-                        )}
-                      </td>
-
-                      <td>
-                        <div className="pedido-product-actions">
-                          <button
-                            type="button"
-                            disabled={
-                              !canEdit
-                            }
-                            title="Editar cantidad"
-                            onClick={() =>
-                              onEdit(
-                                detalle,
-                              )
-                            }
-                          >
-                            <i className="bi bi-pencil-square" />
-                          </button>
-
-                          <button
-                            type="button"
-                            className="danger"
-                            disabled={
-                              !canEdit
-                            }
-                            title="Eliminar producto"
-                            onClick={() =>
-                              onDelete(
-                                detalle,
-                              )
-                            }
-                          >
-                            <i className="bi bi-trash" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                },
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <DataTable
+        className="order-products-table"
+        caption="Productos asociados al pedido"
+        columns={columns}
+        rows={detalles}
+        rowClassName={(detalle) =>
+          Number(detalle.id) === Number(activeDetailId)
+            ? 'order-products-table__row--editing'
+            : undefined
+        }
+        emptyTitle="No hay productos agregados"
+        emptyMessage="Utiliza el formulario para comenzar a construir el pedido."
+        actions={
+          canEdit
+            ? (detalle) => [
+              {
+                id: 'view',
+                visible: false,
+              },
+              {
+                id: 'edit',
+                icon: 'bi bi-pencil-square',
+                label: 'Editar cantidad',
+                onClick: () => onEdit?.(detalle),
+              },
+              {
+                id: 'delete',
+                icon: 'bi bi-trash',
+                label: 'Eliminar producto',
+                tone: 'danger',
+                onClick: () => onDelete?.(detalle),
+              },
+            ]
+            : undefined
+        }
+      />
     </section>
   );
 }

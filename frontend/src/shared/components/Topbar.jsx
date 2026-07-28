@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -23,6 +24,8 @@ import {
   usePreferences,
 } from '../hooks/usePreferences';
 
+import PageHeaderContext from '../contexts/page-header-context';
+
 import {
   getRouteByPathname,
 } from '../routing/routeRegistry';
@@ -42,7 +45,10 @@ import {
 import NotificationsPanel from './NotificationsPanel';
 import SettingsPanel from './SettingsPanel';
 
-function Topbar({ onOpenNavigation }) {
+function Topbar({
+  navigationOpen = false,
+  onToggleNavigation,
+}) {
   const menuRef = useRef(null);
   const notificationRef = useRef(null);
 
@@ -59,6 +65,10 @@ function Topbar({ onOpenNavigation }) {
     setTheme,
   } = usePreferences();
 
+  const {
+    pageHeader,
+  } = useContext(PageHeaderContext);
+
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -69,6 +79,12 @@ function Topbar({ onOpenNavigation }) {
     () => getRouteByPathname(location.pathname),
     [location.pathname],
   );
+
+  const pageTitle =
+    pageHeader?.title ?? currentRoute.label;
+
+  const pageDescription =
+    pageHeader?.description ?? currentRoute.description;
 
   const loadNotifications = useCallback(
     async () => {
@@ -148,19 +164,45 @@ function Topbar({ onOpenNavigation }) {
           <button
             type="button"
             className="topbar-icon-button topbar-menu-button"
-            aria-label="Abrir navegación"
-            onClick={onOpenNavigation}
+            aria-label={
+              navigationOpen
+                ? 'Cerrar navegación'
+                : 'Abrir navegación'
+            }
+            aria-controls="app-sidebar"
+            aria-expanded={navigationOpen}
+            onClick={onToggleNavigation}
           >
-            <i className="bi bi-list" />
+            <i
+              className={`bi ${
+                navigationOpen
+                  ? 'bi-x-lg'
+                  : 'bi-list'
+              }`}
+              aria-hidden="true"
+            />
           </button>
 
           <div className="topbar-route">
-            <h2>{currentRoute.label}</h2>
-            <p>{currentRoute.description}</p>
+            <h2>{pageTitle}</h2>
+            <p>{pageDescription}</p>
           </div>
         </div>
 
         <div className="topbar-actions">
+          {pageHeader?.actions && (
+            <>
+              <div className="topbar-page-actions">
+                {pageHeader.actions}
+              </div>
+
+              <span
+                className="topbar-actions-divider"
+                aria-hidden="true"
+              />
+            </>
+          )}
+
           <button
             type="button"
             className="topbar-icon-button topbar-theme-button"

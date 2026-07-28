@@ -4,151 +4,128 @@ import {
 } from 'react';
 
 import {
+  Button,
   Combobox,
+  ConfirmDialog,
+  FormField,
+  TextField,
 } from '../../../../shared/ui';
 
+import {
+  formatCurrency,
+} from '../../pedido.utils';
 
 function buildInitialForm(editingDetail) {
   return editingDetail
     ? {
       producto_id: String(editingDetail.producto_id),
-      cantidad: Number(editingDetail.cantidad),
+      cantidad: String(editingDetail.cantidad),
     }
     : {
       producto_id: '',
-      cantidad: 1,
+      cantidad: '1',
     };
 }
 
 function PedidoProductForm({
-  productos,
+  canEdit,
   detalles,
   editingDetail,
-  canEdit,
   isSaving,
-  onSave,
   onCancelEdit,
+  onSave,
+  productos,
 }) {
-  const [formData, setFormData] =
-    useState(() => buildInitialForm(editingDetail));
+  const [formData, setFormData] = useState(() =>
+    buildInitialForm(editingDetail),
+  );
+  const [touched, setTouched] = useState({});
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
-  const [error, setError] =
-    useState('');
+  const selectedProduct = useMemo(
+    () =>
+      productos.find(
+        (producto) => Number(producto.id) === Number(formData.producto_id),
+      ) ?? null,
+    [formData.producto_id, productos],
+  );
 
-  const selectedProduct =
-    useMemo(
-      () =>
-        productos.find(
-          (producto) =>
-            Number(producto.id) ===
-            Number(
-              formData.producto_id,
-            ),
-        ) ?? null,
-      [
-        formData.producto_id,
-        productos,
-      ],
+  const availableProducts = useMemo(() => {
+    const usedIds = new Set(
+      detalles.map((detalle) => Number(detalle.producto_id)),
     );
 
-  const availableProducts =
-    useMemo(() => {
-      const usedIds = new Set(
-        detalles.map(
-          (detalle) =>
-            Number(
-              detalle.producto_id,
-            ),
-        ),
-      );
+    return productos.filter(
+      (producto) =>
+        producto.estado !== false &&
+        (editingDetail || !usedIds.has(Number(producto.id))),
+    );
+  }, [detalles, editingDetail, productos]);
 
-      return productos.filter(
-        (producto) =>
-          producto.estado !== false &&
-          (editingDetail ||
-            !usedIds.has(
-              Number(producto.id),
-            )),
-      );
-    }, [
-      detalles,
-      editingDetail,
-      productos,
-    ]);
-
+  const quantity = Number(formData.cantidad);
   const price = Number(
-    selectedProduct?.precio_venta ??
-      editingDetail?.precio_unitario ??
-      0,
+    selectedProduct?.precio_venta ?? editingDetail?.precio_unitario ?? 0,
   );
+  const stock = Number(selectedProduct?.stock_actual ?? 0);
+  const previousQuantity = Number(editingDetail?.cantidad ?? 0);
+  const availableStock = editingDetail ? stock + previousQuantity : stock;
 
-  const subtotal =
-    Number(formData.cantidad) *
-    price;
-
-  const stock = Number(
-    selectedProduct?.stock_actual ??
-      0,
-  );
-
-  const handleSubmit = (
-    event,
-  ) => {
-    event.preventDefault();
-
-    const cantidad = Number(
-      formData.cantidad,
-    );
+  const errors = useMemo(() => {
+    const nextErrors = {};
 
     if (!formData.producto_id) {
-      setError(
-        'Selecciona un producto.',
-      );
+      nextErrors.producto_id = 'Selecciona un producto.';
+    }
+
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      nextErrors.cantidad = 'La cantidad debe ser un entero mayor a cero.';
+    } else if (selectedProduct && quantity > availableStock) {
+      nextErrors.cantidad = 'La cantidad supera el stock disponible.';
+    }
+
+    return nextErrors;
+  }, [availableStock, formData.producto_id, quantity, selectedProduct]);
+
+  const isValid = Object.keys(errors).length === 0;
+  const hasQuantityChanges = Boolean(
+    editingDetail &&
+    String(formData.cantidad) !== String(editingDetail.cantidad),
+  );
+
+  const handleCancelEdit = () => {
+    if (hasQuantityChanges) {
+      setConfirmCancelOpen(true);
       return;
     }
 
-    if (
-      !Number.isInteger(
-        cantidad,
-      ) ||
-      cantidad <= 0
-    ) {
-      setError(
-        'La cantidad debe ser un entero mayor a cero.',
-      );
-      return;
-    }
+    onCancelEdit?.();
+  };
 
-    if (
-      !editingDetail &&
-      cantidad > stock
-    ) {
-      setError(
-        'La cantidad supera el stock disponible.',
-      );
-      return;
-    }
+  const confirmCancelEdit = () => {
+    setConfirmCancelOpen(false);
+    onCancelEdit?.();
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    setTouched({ producto_id: true, cantidad: true });
+
+    if (!isValid) return;
 
     onSave({
-      producto_id: Number(
-        formData.producto_id,
-      ),
-      cantidad,
+      producto_id: Number(formData.producto_id),
+      cantidad: quantity,
     });
   };
 
   if (!canEdit) {
     return (
-      <section className="pedido-product-form-card pedido-product-form-card--locked">
-        <i className="bi bi-lock" />
-
+      <section className="order-product-form order-product-form--locked">
+        <i className="bi bi-lock" aria-hidden="true" />
         <div>
-          <strong>
-            Workspace de solo lectura
-          </strong>
-
+          <strong>Workspace de solo lectura</strong>
           <span>
-            El estado actual del pedido ya no permite modificar sus productos.
+            El estado actual ya no permite modificar los productos.
           </span>
         </div>
       </section>
@@ -156,31 +133,33 @@ function PedidoProductForm({
   }
 
   return (
-    <section className="pedido-product-form-card">
-      <div className="pedido-product-form-title">
-        <i
-          className={`bi ${
-            editingDetail
-              ? 'bi-pencil-square'
-              : 'bi-plus-circle'
-          }`}
-        />
-
+    <section
+      id="order-product-editor"
+      className={`order-product-form ${editingDetail ? 'order-product-form--editing' : ''}`}
+    >
+      <header className="order-section-header order-section-header--compact">
         <div>
-          <span>
-            Gestión inmediata
-          </span>
-
-          <h4>
+          <h3>
             {editingDetail
-              ? 'Editar cantidad'
-              : 'Agregar producto'}
-          </h4>
+              ? `Editando ${selectedProduct?.nombre ?? 'producto'}`
+              : 'Gestionar productos'}
+          </h3>
+          <p>
+            {editingDetail
+              ? 'Actualiza la cantidad y guarda para aplicar el cambio.'
+              : 'Selecciona un producto, define la cantidad y agrégalo al pedido.'}
+          </p>
         </div>
-      </div>
+        {editingDetail && (
+          <span className="order-product-form__editing-badge">
+            <i className="bi bi-pencil-square" aria-hidden="true" />
+            Edición activa
+          </span>
+        )}
+      </header>
 
-      <form onSubmit={handleSubmit}>
-        <div className="pedido-product-form-grid">
+      <form noValidate onSubmit={handleSubmit}>
+        <div className="order-product-form__grid">
           <Combobox
             label="Producto"
             required
@@ -194,137 +173,123 @@ function PedidoProductForm({
             }))}
             placeholder="Selecciona un producto"
             searchPlaceholder="Buscar producto..."
-            error={error || undefined}
+            error={
+              touched.producto_id ? errors.producto_id : undefined
+            }
+            success={
+              touched.producto_id && !errors.producto_id
+                ? 'Producto seleccionado.'
+                : undefined
+            }
             onChange={(value) => {
               setFormData((current) => ({
                 ...current,
                 producto_id: value,
               }));
-              setError('');
+              setTouched((current) => ({
+                ...current,
+                producto_id: true,
+              }));
             }}
           />
 
-          <div>
-            <label className="form-label">
-              Cantidad
-            </label>
-
-            <input
+          <div className="order-product-form__commerce-grid">
+            <TextField
+              className="order-product-form__quantity-field"
               type="number"
+              label="Cantidad"
+              required
               min="1"
               step="1"
-              className="form-control"
-              value={
-                formData.cantidad
+              value={formData.cantidad}
+              error={touched.cantidad ? errors.cantidad : undefined}
+              success={
+                touched.cantidad && !errors.cantidad
+                  ? 'Cantidad disponible.'
+                  : undefined
+              }
+              onBlur={() =>
+                setTouched((current) => ({
+                  ...current,
+                  cantidad: true,
+                }))
               }
               onChange={(event) => {
-                setFormData(
-                  (current) => ({
-                    ...current,
-                    cantidad:
-                      event.target
-                        .value,
-                  }),
-                );
-
-                setError('');
+                setFormData((current) => ({
+                  ...current,
+                  cantidad: event.target.value,
+                }));
+                setTouched((current) => ({
+                  ...current,
+                  cantidad: true,
+                }));
               }}
             />
-          </div>
 
-          <div>
-            <label className="form-label">
-              Precio unitario
-            </label>
+            <FormField
+              className="order-product-form__price-field"
+              label="Precio unitario"
+            >
+              <div className="order-readonly-field">
+                <strong>{formatCurrency(price)}</strong>
+              </div>
+            </FormField>
 
-            <div className="readonly-field">
-              {new Intl.NumberFormat(
-                'es-EC',
-                {
-                  style: 'currency',
-                  currency: 'USD',
-                },
-              ).format(price)}
-            </div>
-          </div>
-
-          <div>
-            <label className="form-label">
-              Subtotal
-            </label>
-
-            <div className="readonly-field strong">
-              {new Intl.NumberFormat(
-                'es-EC',
-                {
-                  style: 'currency',
-                  currency: 'USD',
-                },
-              ).format(subtotal)}
-            </div>
+            <FormField
+              className="order-product-form__subtotal-field"
+              label="Subtotal"
+            >
+              <div className="order-readonly-field">
+                <strong>{formatCurrency(quantity * price)}</strong>
+              </div>
+            </FormField>
           </div>
         </div>
 
-        {selectedProduct && (
-          <div className="pedido-product-stock">
-            <i className="bi bi-box-seam" />
+        <div className="order-product-form__footer">
+          <p>
+            <i className="bi bi-box-seam" aria-hidden="true" />
+            Stock disponible: <strong>{availableStock}</strong>
+          </p>
 
-            Stock disponible:{' '}
-            <strong>{stock}</strong>
-          </div>
-        )}
-
-        {error && (
-          <div className="alert alert-danger py-2 mt-3 mb-0">
-            {error}
-          </div>
-        )}
-
-        <div className="pedido-product-form-bottom">
-          <div className="pedido-save-info">
-            <i className="bi bi-info-circle" />
-
-            <span>
-              Cada cambio actualiza inmediatamente el stock y el total del pedido.
-            </span>
-          </div>
-
-          <div className="pedido-product-form-actions">
+          <div>
             {editingDetail && (
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
+              <Button
+                tone="secondary"
                 disabled={isSaving}
-                onClick={onCancelEdit}
+                onClick={handleCancelEdit}
               >
                 Cancelar edición
-              </button>
+              </Button>
             )}
 
-            <button
+            <Button
               type="submit"
-              className="btn btn-primary"
-              disabled={isSaving}
+              icon={
+                editingDetail
+                  ? 'bi bi-check-lg'
+                  : 'bi bi-plus-lg'
+              }
+              loading={isSaving}
+              loadingLabel="Guardando"
+              disabled={!isValid}
             >
-              {isSaving ? (
-                <span className="spinner-border spinner-border-sm me-2" />
-              ) : (
-                <i
-                  className={`bi ${
-                    editingDetail
-                      ? 'bi-check-lg'
-                      : 'bi-plus-lg'
-                  } me-2`}
-                />
-              )}
-
-              {editingDetail
-                ? 'Actualizar cantidad'
-                : 'Agregar producto'}
-            </button>
+              {editingDetail ? 'Actualizar cantidad' : 'Agregar producto'}
+            </Button>
           </div>
         </div>
       </form>
+
+      <ConfirmDialog
+        open={confirmCancelOpen}
+        title="Descartar cambio de cantidad"
+        message="La cantidad fue modificada. Si continúas, se descartará el valor escrito y se conservará la cantidad registrada."
+        confirmText="Descartar cambio"
+        cancelText="Continuar editando"
+        variant="warning"
+        onConfirm={confirmCancelEdit}
+        onCancel={() => setConfirmCancelOpen(false)}
+      />
     </section>
   );
 }

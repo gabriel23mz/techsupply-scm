@@ -1,60 +1,44 @@
-function UbicacionesMetrics({ ubicaciones }) {
-  const total = ubicaciones.length;
-  const conCoordenadas = ubicaciones.filter(
-    (item) =>
-      Number.isFinite(Number(item.latitud)) &&
-      Number.isFinite(Number(item.longitud)),
-  ).length;
-  const sinCoordenadas = total - conCoordenadas;
-  const activas = ubicaciones.filter(
-    (item) => item.estado !== false,
-  ).length;
+import {
+  StatCard,
+} from '../../../shared/ui';
 
-  const metrics = [
-    {
-      title: 'Ubicaciones registradas',
-      value: total,
-      helper: 'Nodos disponibles',
-      icon: 'bi-geo-alt',
-      variant: 'primary',
-    },
-    {
-      title: 'Ubicaciones activas',
-      value: activas,
-      helper: 'Disponibles para operar',
-      icon: 'bi-check-circle',
-      variant: 'success',
-    },
-    {
-      title: 'Con coordenadas',
-      value: conCoordenadas,
-      helper: 'Listas para mapas',
-      icon: 'bi-crosshair',
-      variant: 'info',
-    },
-    {
-      title: 'Sin coordenadas',
-      value: sinCoordenadas,
-      helper: 'Requieren revisión',
-      icon: 'bi-exclamation-circle',
-      variant: 'warning',
-    },
-  ];
+function UbicacionesMetrics({ loading = false, ubicaciones }) {
+  const georeferenced = ubicaciones.filter(
+    (ubicacion) =>
+      Number.isFinite(Number(ubicacion.latitud)) &&
+      Number.isFinite(Number(ubicacion.longitud)),
+  ).length;
+  const pendingCoordinates = Math.max(
+    ubicaciones.length - georeferenced,
+    0,
+  );
 
   return (
     <section className="locations-metrics">
-      {metrics.map((metric) => (
-        <article key={metric.title} className="locations-metric-card">
-          <div className={`locations-metric-icon ${metric.variant}`}>
-            <i className={`bi ${metric.icon}`} />
-          </div>
-          <div>
-            <span>{metric.title}</span>
-            <strong>{metric.value}</strong>
-            <small>{metric.helper}</small>
-          </div>
-        </article>
-      ))}
+      <StatCard
+        label="Ubicaciones disponibles"
+        value={ubicaciones.length}
+        helper="Nodos activos del catálogo operativo"
+        icon="bi bi-geo-alt"
+        tone="primary"
+        loading={loading}
+      />
+      <StatCard
+        label="Con coordenadas"
+        value={georeferenced}
+        helper="Visibles en el mapa general"
+        icon="bi bi-map"
+        tone="success"
+        loading={loading}
+      />
+      <StatCard
+        label="Pendientes de georreferencia"
+        value={pendingCoordinates}
+        helper="Nodos sin un punto completo en el mapa"
+        icon="bi bi-geo"
+        tone={pendingCoordinates > 0 ? 'warning' : 'info'}
+        loading={loading}
+      />
     </section>
   );
 }

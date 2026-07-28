@@ -133,6 +133,7 @@ function Sidebar({
 
   return (
     <aside
+      id="app-sidebar"
       className={`app-sidebar ${
         preferences.sidebarCollapsed
           ? 'collapsed'

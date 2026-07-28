@@ -1,8 +1,12 @@
+import {
+  StatCard,
+} from '../../../shared/ui';
+
 function getLocation(cliente) {
   return cliente?.ubicacion ?? null;
 }
 
-function ClientesMetrics({ clientes }) {
+function ClientesMetrics({ clientes, loading = false }) {
   const total = clientes.length;
 
   const activos = clientes.filter(
@@ -23,64 +27,41 @@ function ClientesMetrics({ clientes }) {
       .filter(Boolean),
   ).size;
 
-  const conCorreo = clientes.filter(
-    (cliente) =>
-      String(cliente.correo ?? '').trim(),
-  ).length;
-
   const metrics = [
     {
-      title: 'Clientes registrados',
+      label: 'Clientes registrados',
       value: total,
-      helper: 'Directorio disponible',
-      icon: 'bi-people',
-      variant: 'primary',
+      helper: 'Directorio comercial',
+      icon: 'bi bi-people',
+      tone: 'primary',
     },
     {
-      title: 'Clientes activos',
+      label: 'Clientes activos',
       value: activos,
-      helper: 'Disponibles para pedidos',
-      icon: 'bi-person-check',
-      variant: 'success',
+      helper: 'Disponibles para nuevos pedidos',
+      icon: 'bi bi-person-check',
+      tone: 'success',
     },
     {
-      title: 'Ubicaciones con clientes',
+      label: 'Cobertura geográfica',
       value: ubicacionesConClientes,
-      helper: 'Cobertura comercial',
-      icon: 'bi-geo-alt',
-      variant: 'warning',
-    },
-    {
-      title: 'Clientes con correo',
-      value: conCorreo,
-      helper:
-        total > 0
-          ? `${Math.round((conCorreo / total) * 100)}% del total`
-          : 'Sin registros',
-      icon: 'bi-envelope-check',
-      variant: 'info',
+      helper: 'Ubicaciones con clientes asociados',
+      icon: 'bi bi-geo-alt',
+      tone: 'info',
     },
   ];
 
   return (
-    <section className="clients-metrics">
+    <section
+      className="clients-metrics"
+      aria-label="Resumen de clientes"
+    >
       {metrics.map((metric) => (
-        <article
-          key={metric.title}
-          className="clients-metric-card"
-        >
-          <div
-            className={`clients-metric-icon ${metric.variant}`}
-          >
-            <i className={`bi ${metric.icon}`} />
-          </div>
-
-          <div>
-            <span>{metric.title}</span>
-            <strong>{metric.value}</strong>
-            <small>{metric.helper}</small>
-          </div>
-        </article>
+        <StatCard
+          key={metric.label}
+          {...metric}
+          loading={loading}
+        />
       ))}
     </section>
   );

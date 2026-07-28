@@ -361,12 +361,12 @@ function LoginPage() {
               TechSupply SCM
             </div>
 
+            <h2>Iniciar sesión</h2>
+
             <div className="auth-card-kicker">
               <i className="bi bi-shield-lock" />
               Acceso seguro
             </div>
-
-            <h2>Iniciar sesión</h2>
 
             <p>
               Ingresa las credenciales de un usuario

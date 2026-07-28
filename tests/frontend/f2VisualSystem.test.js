@@ -114,7 +114,7 @@ test('F2.3 integra un colapso compacto y profesional en la marca del sidebar', a
 
   assert.match(
     topbar,
-    /<div className="topbar-route">[\s\S]*?<h2>\{currentRoute\.label\}<\/h2>[\s\S]*?<p>\{currentRoute\.description\}<\/p>/,
+    /<div className="topbar-route">[\s\S]*?<h2>\{pageTitle\}<\/h2>[\s\S]*?<p>\{pageDescription\}<\/p>/,
   );
   assert.doesNotMatch(topbar, /Módulo Outbound/);
   assert.match(

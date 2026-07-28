@@ -1,8 +1,11 @@
-import Can from '../../../shared/components/Can';
-
 import {
   PERMISSIONS,
 } from '../../../shared/constants/permissions';
+
+import {
+  DataTable,
+  StatusBadge,
+} from '../../../shared/ui';
 
 function getLocation(cliente) {
   return cliente?.ubicacion ?? null;
@@ -23,212 +26,168 @@ function formatDate(value) {
     return 'Sin fecha';
   }
 
-  return new Intl.DateTimeFormat('es-EC').format(date);
+  return new Intl.DateTimeFormat('es-EC', {
+    dateStyle: 'medium',
+  }).format(date);
 }
 
 function ClientesTable({
+  canManage,
   clientes,
+  error,
   hasFilters,
-  onView,
-  onEdit,
-  onDeactivate,
+  isLoading,
   onClearFilters,
   onCreate,
+  onDeactivate,
+  onEdit,
+  onRetry,
+  onView,
 }) {
-  if (!clientes.length) {
-    return (
-      <div className="clients-empty">
-        <i
-          className={
-            hasFilters
-              ? 'bi bi-search'
-              : 'bi bi-people'
-          }
-        />
+  const columns = [
+    {
+      id: 'cliente',
+      header: 'Cliente',
+      width: '20%',
+      cell: (cliente) => (
+        <div className="clients-name-cell">
+          <strong title={cliente.nombre}>
+            {cliente.nombre}
+          </strong>
+          <small>
+            <i className="bi bi-person" aria-hidden="true" />
+            {formatClientCode(cliente.id)}
+          </small>
+        </div>
+      ),
+    },
+    {
+      id: 'identificacion',
+      header: 'Identificación',
+      accessor: 'identificacion',
+      width: '11%',
+      cellClassName: 'clients-identification',
+    },
+    {
+      id: 'contacto',
+      header: 'Contacto',
+      width: '19%',
+      cell: (cliente) => (
+        <div className="clients-contact-cell">
+          <span>
+            <i className="bi bi-telephone" aria-hidden="true" />
+            {cliente.telefono || 'Sin teléfono'}
+          </span>
+          <span title={cliente.correo}>
+            <i className="bi bi-envelope" aria-hidden="true" />
+            {cliente.correo || 'Sin correo'}
+          </span>
+        </div>
+      ),
+    },
+    {
+      id: 'ubicacion',
+      header: 'Ubicación y entrega',
+      width: '22%',
+      cell: (cliente) => {
+        const ubicacion = getLocation(cliente);
 
-        <h4>
-          {hasFilters
-            ? 'No se encontraron clientes'
-            : 'No existen clientes registrados'}
-        </h4>
-
-        <p>
-          {hasFilters
-            ? 'Prueba con otro nombre, identificación, correo o ubicación.'
-            : 'Registra el primer cliente para comenzar a gestionar pedidos y entregas.'}
-        </p>
-
-        {hasFilters ? (
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={onClearFilters}
-          >
-            <i className="bi bi-eraser me-2" />
-            Limpiar filtros
-          </button>
-        ) : (
-          <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={onCreate}
-            >
-              <i className="bi bi-person-plus me-2" />
-              Registrar primer cliente
-            </button>
-          </Can>
-        )}
-      </div>
-    );
-  }
+        return (
+          <div className="clients-location-cell">
+            <strong>
+              <i className="bi bi-geo-alt-fill" aria-hidden="true" />
+              {ubicacion?.nombre ?? 'No disponible'}
+            </strong>
+            <small title={cliente.direccion}>
+              {cliente.direccion || 'Sin dirección'}
+            </small>
+          </div>
+        );
+      },
+    },
+    {
+      id: 'estado',
+      header: 'Estado',
+      width: '9%',
+      cellClassName: 'clients-status-cell',
+      cell: (cliente) => (
+        <StatusBadge
+          tone={cliente.estado === false ? 'neutral' : 'success'}
+          size="sm"
+        >
+          {cliente.estado === false ? 'Inactivo' : 'Activo'}
+        </StatusBadge>
+      ),
+    },
+    {
+      id: 'registro',
+      header: 'Registro',
+      width: '9%',
+      cellClassName: 'clients-registration',
+      cell: (cliente) => formatDate(
+        cliente.created_at ?? cliente.createdAt,
+      ),
+    },
+  ];
 
   return (
-    <div className="clients-table-wrapper">
-      <table className="table clients-table mb-0">
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Identificación</th>
-            <th>Contacto</th>
-            <th>Ubicación</th>
-            <th>Dirección</th>
-            <th>Estado</th>
-            <th>Registro</th>
-            <th className="text-center">
-              Acciones
-            </th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {clientes.map((cliente) => {
-            const ubicacion =
-              getLocation(cliente);
-
-            return (
-              <tr key={cliente.id}>
-                <td>
-                  <div className="clients-name-cell">
-                    <span className="clients-name-cell__icon">
-                      <i className="bi bi-person" />
-                    </span>
-
-                    <div>
-                      <strong>
-                        {cliente.nombre}
-                      </strong>
-
-                      <small>
-                        {formatClientCode(
-                          cliente.id,
-                        )}
-                      </small>
-                    </div>
-                  </div>
-                </td>
-
-                <td className="clients-identification">
-                  {cliente.identificacion}
-                </td>
-
-                <td>
-                  <div className="clients-contact-cell">
-                    <span>
-                      <i className="bi bi-telephone" />
-                      {cliente.telefono}
-                    </span>
-
-                    <span title={cliente.correo}>
-                      <i className="bi bi-envelope" />
-                      {cliente.correo}
-                    </span>
-                  </div>
-                </td>
-
-                <td>
-                  <div className="clients-location-cell">
-                    <i className="bi bi-geo-alt-fill" />
-
-                    <span>
-                      {ubicacion?.nombre ??
-                        'No disponible'}
-                    </span>
-                  </div>
-                </td>
-
-                <td>
-                  <span
-                    className="clients-address-cell"
-                    title={cliente.direccion}
-                  >
-                    {cliente.direccion}
-                  </span>
-                </td>
-
-                <td>
-                  <span
-                    className={`clients-status ${
-                      cliente.estado === false
-                        ? 'inactive'
-                        : 'active'
-                    }`}
-                  >
-                    {cliente.estado === false
-                      ? 'Inactivo'
-                      : 'Activo'}
-                  </span>
-                </td>
-
-                <td>
-                  {formatDate(
-                    cliente.created_at ??
-                      cliente.createdAt,
-                  )}
-                </td>
-
-                <td>
-                  <div className="clients-table-actions">
-                    <button
-                      type="button"
-                      title="Ver detalle"
-                      onClick={() => onView(cliente)}
-                    >
-                      <i className="bi bi-eye" />
-                    </button>
-
-                    <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
-                      <button
-                        type="button"
-                        title="Editar cliente"
-                        onClick={() => onEdit(cliente)}
-                      >
-                        <i className="bi bi-pencil-square" />
-                      </button>
-                    </Can>
-
-                    {cliente.estado !== false && (
-                      <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
-                        <button
-                          type="button"
-                          className="danger"
-                          title="Desactivar cliente"
-                          onClick={() =>
-                            onDeactivate(cliente)
-                          }
-                        >
-                          <i className="bi bi-slash-circle" />
-                        </button>
-                      </Can>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      className="clients-data-table"
+      caption="Directorio de clientes"
+      columns={columns}
+      rows={clientes}
+      loading={isLoading}
+      error={error}
+      onRetry={onRetry}
+      emptyTitle={
+        hasFilters
+          ? 'No se encontraron clientes'
+          : 'No existen clientes registrados'
+      }
+      emptyMessage={
+        hasFilters
+          ? 'Ajusta la búsqueda o limpia los filtros para volver a consultar el directorio.'
+          : 'Registra el primer cliente para comenzar a gestionar pedidos y entregas.'
+      }
+      emptyActionLabel={
+        hasFilters
+          ? 'Limpiar filtros'
+          : canManage
+            ? 'Registrar cliente'
+            : undefined
+      }
+      onEmptyAction={
+        hasFilters
+          ? onClearFilters
+          : canManage
+            ? onCreate
+            : undefined
+      }
+      actions={(cliente) => [
+        {
+          id: 'view',
+          icon: 'bi bi-eye',
+          label: 'Ver detalle',
+          onClick: () => onView(cliente),
+        },
+        {
+          id: 'edit',
+          icon: 'bi bi-pencil-square',
+          label: 'Editar cliente',
+          permission: PERMISSIONS.CLIENTES_GESTIONAR,
+          visible: canManage,
+          onClick: () => onEdit(cliente),
+        },
+        {
+          id: 'delete',
+          icon: 'bi bi-slash-circle',
+          label: 'Desactivar cliente',
+          tone: 'danger',
+          visible: canManage && cliente.estado !== false,
+          onClick: () => onDeactivate(cliente),
+        },
+      ]}
+    />
   );
 }
 

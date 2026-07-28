@@ -31,8 +31,27 @@ dotenv.config();
 
 const app = express();
 
+const origins = ['http://localhost:5173'];
+
+if (process.env.ALLOW_NETWORK === 'true') {
+  origins.push(`http://${process.env.NETWORK_IP}:5173`);
+}
+
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin(origin, callback) {
+    // Permite herramientas como Postman o Insomnia
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (origins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(
+      new Error('Origen no permitido por CORS'),
+    );
+  },
   methods: [
     'GET',
     'POST',
@@ -97,6 +116,13 @@ async function startServer() {
         `🔗 URL: http://localhost:${PORT}/`,
       );
     });
+
+    console.log('🌐 Orígenes permitidos:');
+
+    origins.forEach((origin) => {
+      console.log(`   • ${origin}`);
+    });
+
   } catch (error) {
     console.error(
       '❌ Error al conectar con PostgreSQL Supabase:',

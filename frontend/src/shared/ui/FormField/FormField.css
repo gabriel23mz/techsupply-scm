@@ -26,7 +26,8 @@
 }
 
 .ui-form-field__description,
-.ui-form-field__error {
+.ui-form-field__error,
+.ui-form-field__success {
   margin: 0;
   font-size: var(--font-size-xs);
   line-height: 1.45;
@@ -36,10 +37,18 @@
   color: var(--color-text-secondary);
 }
 
-.ui-form-field__error {
+.ui-form-field__error,
+.ui-form-field__success {
   display: flex;
   align-items: flex-start;
   gap: 0.4rem;
-  color: var(--color-danger);
   font-weight: 650;
+}
+
+.ui-form-field__error {
+  color: var(--color-danger);
+}
+
+.ui-form-field__success {
+  color: var(--color-success);
 }

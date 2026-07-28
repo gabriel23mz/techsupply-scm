@@ -1,9 +1,3 @@
-import Can from '../../../shared/components/Can';
-
-import {
-  PERMISSIONS,
-} from '../../../shared/constants/permissions';
-
 import {
   Button,
   Combobox,
@@ -11,12 +5,15 @@ import {
 } from '../../../shared/ui';
 
 function ClientesToolbar({
-  searchTerm,
+  filteredCount,
+  hasFilters,
   locationFilter,
-  ubicaciones,
-  onSearchChange,
+  onClearFilters,
   onLocationChange,
-  onCreate,
+  onSearchChange,
+  searchTerm,
+  totalCount,
+  ubicaciones,
 }) {
   const locationOptions = [
     {
@@ -33,34 +30,46 @@ function ClientesToolbar({
 
   return (
     <div className="clients-toolbar">
-      <SearchField
-        className="clients-search"
-        value={searchTerm}
-        placeholder="Buscar nombre, identificación, correo o teléfono..."
-        aria-label="Buscar clientes"
-        onChange={(event) =>
-          onSearchChange(event.target.value)
-        }
-        onClear={() => onSearchChange('')}
-      />
+      <div className="clients-toolbar__filters">
+        <SearchField
+          className="clients-search"
+          value={searchTerm}
+          placeholder="Buscar cliente, identificación, correo o teléfono"
+          aria-label="Buscar clientes"
+          onChange={(event) =>
+            onSearchChange(event.target.value)
+          }
+          onClear={() => onSearchChange('')}
+        />
 
-      <Combobox
-        className="clients-location-filter"
-        value={locationFilter}
-        options={locationOptions}
-        placeholder="Todas las ubicaciones"
-        searchPlaceholder="Buscar ubicación..."
-        onChange={onLocationChange}
-      />
+        <Combobox
+          className="clients-location-filter"
+          value={locationFilter}
+          options={locationOptions}
+          placeholder="Todas las ubicaciones"
+          searchPlaceholder="Buscar ubicación..."
+          onChange={onLocationChange}
+        />
 
-      <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
-        <Button
-          icon="bi bi-person-plus"
-          onClick={onCreate}
-        >
-          Nuevo cliente
-        </Button>
-      </Can>
+        {hasFilters && (
+          <Button
+            size="sm"
+            tone="secondary"
+            icon="bi bi-eraser"
+            onClick={onClearFilters}
+          >
+            Limpiar
+          </Button>
+        )}
+      </div>
+
+      <p className="clients-toolbar__summary" aria-live="polite">
+        <strong>{filteredCount}</strong>
+        {filteredCount === 1 ? ' cliente' : ' clientes'}
+        {hasFilters && (
+          <span> de {totalCount}</span>
+        )}
+      </p>
     </div>
   );
 }

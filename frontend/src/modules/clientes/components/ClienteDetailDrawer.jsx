@@ -1,8 +1,8 @@
-import Can from '../../../shared/components/Can';
-
 import {
-  PERMISSIONS,
-} from '../../../shared/constants/permissions';
+  Button,
+  Drawer,
+  StatusBadge,
+} from '../../../shared/ui';
 
 function getLocation(cliente) {
   return cliente?.ubicacion ?? null;
@@ -28,186 +28,128 @@ function formatDate(value) {
   }).format(date);
 }
 
+function DetailItem({ className = '', label, value }) {
+  return (
+    <div
+      className={[
+        'client-detail-item',
+        className,
+      ].filter(Boolean).join(' ')}
+    >
+      <span>{label}</span>
+      <strong>{value || 'No disponible'}</strong>
+    </div>
+  );
+}
+
 function ClienteDetailDrawer({
-  open,
+  canManage = false,
   cliente,
   onClose,
   onEdit,
+  open,
 }) {
-  if (!open || !cliente) {
+  if (!cliente) {
     return null;
   }
 
-  const ubicacion =
-    getLocation(cliente);
+  const ubicacion = getLocation(cliente);
+  const active = cliente.estado !== false;
 
   return (
-    <div
-      className="client-drawer-overlay"
-      role="presentation"
-      onMouseDown={(event) => {
-        if (
-          event.target ===
-          event.currentTarget
-        ) {
-          onClose();
-        }
-      }}
+    <Drawer
+      open={open}
+      size="lg"
+      title={cliente.nombre}
+      description={formatClientCode(cliente.id)}
+      onClose={onClose}
+      footer={
+        canManage ? (
+          <Button
+            icon="bi bi-pencil-square"
+            onClick={() => onEdit(cliente)}
+          >
+            Editar cliente
+          </Button>
+        ) : null
+      }
     >
-      <aside
-        className="client-detail-drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Detalle de cliente"
-      >
-        <header className="client-detail-drawer__header">
+      <div className="client-detail-drawer">
+        <section className="client-detail-heading">
           <div>
-            <div className="client-detail-drawer__title">
-              <h4>{cliente.nombre}</h4>
-
-              <span
-                className={`clients-status ${
-                  cliente.estado === false
-                    ? 'inactive'
-                    : 'active'
-                }`}
-              >
-                {cliente.estado === false
-                  ? 'Inactivo'
-                  : 'Activo'}
-              </span>
-            </div>
-
-            <span>
-              {formatClientCode(
-                cliente.id,
-              )}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            aria-label="Cerrar"
-            onClick={onClose}
-          >
-            <i className="bi bi-x-lg" />
-          </button>
-        </header>
-
-        <div className="client-detail-drawer__body">
-          <section className="client-detail-section">
-            <h5>
-              Información general
-            </h5>
-
-            <div className="client-detail-grid">
-              <div>
-                <span>Identificación</span>
-                <strong>
-                  {cliente.identificacion}
-                </strong>
-              </div>
-
-              <div>
-                <span>Teléfono</span>
-                <strong>
-                  {cliente.telefono}
-                </strong>
-              </div>
-
-              <div className="wide">
-                <span>Correo electrónico</span>
-
-                <strong>
-                  <i className="bi bi-envelope me-2" />
-                  {cliente.correo}
-                </strong>
-              </div>
-
-              <div>
-                <span>Fecha de registro</span>
-
-                <strong>
-                  {formatDate(
-                    cliente.created_at ??
-                      cliente.createdAt,
-                  )}
-                </strong>
-              </div>
-
-              <div>
-                <span>Última actualización</span>
-
-                <strong>
-                  {formatDate(
-                    cliente.updated_at ??
-                      cliente.updatedAt,
-                  )}
-                </strong>
-              </div>
-            </div>
-          </section>
-
-          <section className="client-detail-section">
-            <h5>
-              Ubicación y entrega
-            </h5>
-
-            <div className="client-location-summary">
-              <div className="client-location-summary__icon">
-                <i className="bi bi-geo-alt-fill" />
-              </div>
-
-              <div>
-                <span>Ubicación base</span>
-
-                <strong>
-                  {ubicacion?.nombre ??
-                    'No disponible'}
-                </strong>
-
-                <p>
-                  {cliente.direccion}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <div className="client-detail-note">
-            <i className="bi bi-info-circle" />
-
-            <p>
-              Este cliente puede ser utilizado en nuevos
-              pedidos mientras permanezca activo y su
-              ubicación esté disponible.
-            </p>
-          </div>
-        </div>
-
-        <footer className="client-detail-drawer__footer">
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
-            onClick={onClose}
-          >
-            Cerrar
-          </button>
-
-          <Can permission={PERMISSIONS.CLIENTES_GESTIONAR}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() =>
-                onEdit(cliente)
-              }
+            <span>Estado comercial</span>
+            <StatusBadge
+              tone={active ? 'success' : 'neutral'}
+              size="sm"
             >
-              <i className="bi bi-pencil-square me-2" />
-              Editar cliente
-            </button>
-          </Can>
-        </footer>
-      </aside>
-    </div>
+              {active ? 'Activo' : 'Inactivo'}
+            </StatusBadge>
+          </div>
+
+          <div>
+            <span>Código del cliente</span>
+            <strong>{formatClientCode(cliente.id)}</strong>
+          </div>
+        </section>
+
+        <section className="client-detail-section">
+          <h3>Información general</h3>
+
+          <div className="client-detail-grid">
+            <DetailItem
+              label="Identificación"
+              value={cliente.identificacion}
+            />
+            <DetailItem
+              label="Teléfono"
+              value={cliente.telefono}
+            />
+            <DetailItem
+              className="client-detail-item--wide"
+              label="Correo electrónico"
+              value={cliente.correo}
+            />
+            <DetailItem
+              label="Fecha de registro"
+              value={formatDate(
+                cliente.created_at ?? cliente.createdAt,
+              )}
+            />
+            <DetailItem
+              label="Última actualización"
+              value={formatDate(
+                cliente.updated_at ?? cliente.updatedAt,
+              )}
+            />
+          </div>
+        </section>
+
+        <section className="client-detail-section">
+          <h3>Ubicación de entrega</h3>
+
+          <div className="client-location-summary">
+            <span className="client-location-summary__icon">
+              <i className="bi bi-geo-alt" aria-hidden="true" />
+            </span>
+
+            <div>
+              <span>Ubicación base</span>
+              <strong>{ubicacion?.nombre ?? 'No disponible'}</strong>
+              <p>{cliente.direccion || 'Sin dirección registrada'}</p>
+            </div>
+          </div>
+        </section>
+
+        <div className="client-detail-note">
+          <i className="bi bi-info-circle" aria-hidden="true" />
+          <p>
+            Los clientes activos pueden utilizarse en nuevos pedidos.
+            Los registros inactivos permanecen disponibles para consulta
+            histórica.
+          </p>
+        </div>
+      </div>
+    </Drawer>
   );
 }
 

@@ -1,22 +1,13 @@
-function getDetails(pedido) {
-  return (
-    pedido?.DetallePedidos ??
-    pedido?.DetallesPedido ??
-    pedido?.detalles ??
-    pedido?.detalle_pedidos ??
-    []
-  );
-}
+import PedidoStatusBadge from '../PedidoStatusBadge';
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat(
-    'es-EC',
-    {
-      style: 'currency',
-      currency: 'USD',
-    },
-  ).format(Number(value ?? 0));
-}
+import {
+  formatCurrency,
+  formatDate,
+  formatUser,
+  getOrderClient,
+  getOrderDetails,
+  getOrderUser,
+} from '../../pedido.utils';
 
 const FLOW = [
   'PENDIENTE',
@@ -28,121 +19,107 @@ const FLOW = [
 
 const LABELS = {
   PENDIENTE: 'Pedido registrado',
-  PREPARANDO: 'Preparando productos',
-  LISTO_PARA_DESPACHO:
-    'Listo para despacho',
+  PREPARANDO: 'Preparación en curso',
+  LISTO_PARA_DESPACHO: 'Listo para despacho',
   DESPACHADO: 'En despacho',
   ENTREGADO: 'Entregado',
 };
 
-function PedidoSummaryPanel({
-  pedido,
-}) {
-  const detalles =
-    getDetails(pedido);
-
+function PedidoSummaryPanel({ pedido }) {
+  const detalles = getOrderDetails(pedido);
   const unidades = detalles.reduce(
-    (total, detalle) =>
-      total +
-      Number(detalle.cantidad ?? 0),
+    (total, detalle) => total + Number(detalle.cantidad ?? 0),
     0,
   );
-
-  const currentIndex =
-    FLOW.indexOf(pedido.estado);
+  const currentIndex = FLOW.indexOf(pedido.estado);
+  const cliente = getOrderClient(pedido);
+  const usuario = getOrderUser(pedido);
 
   return (
-    <aside className="pedido-summary-panel">
-      <section className="pedido-summary-card">
-        <div className="pedido-summary-card-header">
-          <h4>
-            Resumen del pedido
-          </h4>
-        </div>
+    <div className="order-workspace-summary">
+      <section className="order-workspace-summary__card">
+        <header>
+          <span>Información comercial</span>
+          <PedidoStatusBadge status={pedido.estado} />
+        </header>
 
-        <div className="pedido-summary-content">
+        <div className="order-workspace-summary__grid">
           <div>
-            <span>Unidades totales</span>
-            <strong>
-              {unidades} u.
-            </strong>
+            <span>Cliente</span>
+            <strong>{cliente?.nombre ?? 'No disponible'}</strong>
           </div>
 
           <div>
-            <span>Productos</span>
-            <strong>
-              {detalles.length}{' '}
-              {detalles.length === 1
-                ? 'ítem'
-                : 'ítems'}
-            </strong>
+            <span>Responsable</span>
+            <strong>{formatUser(usuario)}</strong>
           </div>
 
-          <div className="pedido-summary-total">
-            <span>Total</span>
-            <strong>
-              {formatCurrency(
-                pedido.total,
-              )}
-            </strong>
+          <div>
+            <span>Fecha</span>
+            <strong>{formatDate(pedido.fecha)}</strong>
+          </div>
+
+          <div>
+            <span>Entrega</span>
+            <strong>{formatDate(pedido.fecha_entrega)}</strong>
           </div>
         </div>
       </section>
 
-      <section className="pedido-summary-card">
-        <div className="pedido-flow-panel">
-          <h4>
-            Estado del flujo
-          </h4>
+      <section className="order-workspace-summary__card">
+        <header>
+          <span>Resumen</span>
+          <strong>{formatCurrency(pedido.total)}</strong>
+        </header>
 
-          {FLOW.map(
-            (status, index) => {
-              const done =
-                currentIndex > index;
+        <div className="order-workspace-totals">
+          <div>
+            <span>Productos</span>
+            <strong>{detalles.length}</strong>
+          </div>
+          <div>
+            <span>Unidades</span>
+            <strong>{unidades}</strong>
+          </div>
+        </div>
+      </section>
 
-              const active =
-                pedido.estado ===
-                status;
+      <section className="order-workspace-summary__card">
+        <header>
+          <span>Progreso del pedido</span>
+        </header>
 
-              return (
-                <div
-                  className={`pedido-flow-step ${
-                    done
-                      ? 'done'
-                      : ''
-                  } ${
-                    active
-                      ? 'active'
-                      : ''
-                  }`}
-                  key={status}
-                >
-                  <div className="pedido-flow-dot">
-                    {done ? (
-                      <i className="bi bi-check" />
-                    ) : active ? (
-                      <span className="active-dot" />
-                    ) : null}
-                  </div>
+        <div className="order-workspace-flow">
+          {FLOW.map((status, index) => {
+            const done = currentIndex > index;
+            const active = pedido.estado === status;
 
-                  <span>
-                    {LABELS[status]}
-                  </span>
-                </div>
-              );
-            },
-          )}
+            return (
+              <div
+                key={status}
+                className={`order-workspace-flow__step ${
+                  done ? 'is-done' : ''
+                } ${active ? 'is-active' : ''}`}
+              >
+                <span>
+                  {done ? (
+                    <i className="bi bi-check" aria-hidden="true" />
+                  ) : null}
+                </span>
+                <strong>{LABELS[status]}</strong>
+              </div>
+            );
+          })}
 
-          {pedido.estado ===
-            'CANCELADO' && (
-            <div className="pedido-flow-cancelled">
-              <i className="bi bi-x-circle" />
+          {pedido.estado === 'CANCELADO' && (
+            <div className="order-workspace-flow__cancelled">
+              <i className="bi bi-x-circle" aria-hidden="true" />
               Pedido cancelado
             </div>
           )}
         </div>
       </section>
-    </aside>
+    </div>
   );
 }
 

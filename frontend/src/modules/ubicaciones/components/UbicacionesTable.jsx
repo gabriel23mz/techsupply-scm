@@ -1,136 +1,79 @@
-import Can from '../../../shared/components/Can';
+import {
+  DataTable,
+} from '../../../shared/ui';
 
 import {
-  PERMISSIONS,
-} from '../../../shared/constants/permissions';
-
-function formatCoordinate(value) {
-  const coordinate = Number(value);
-  return Number.isFinite(coordinate)
-    ? coordinate.toFixed(6)
-    : 'Sin definir';
-}
+  formatCoordinate,
+} from '../ubicacion.utils';
 
 function UbicacionesTable({
-  ubicaciones,
-  onView,
-  onEdit,
+  canManage,
   onDeactivate,
+  onEdit,
+  onView,
+  ubicaciones,
 }) {
-  if (!ubicaciones.length) {
-    return (
-      <div className="locations-empty">
-        <i className="bi bi-geo-alt" />
-        <h4>No existen ubicaciones registradas</h4>
-        <p>
-          Agrega el primer nodo geográfico para construir
-          la red logística.
-        </p>
-      </div>
-    );
-  }
+  const columns = [
+    {
+      id: 'ubicacion',
+      header: 'Ubicación',
+      width: '46%',
+      cell: (ubicacion) => (
+        <div className="locations-name-cell">
+          <strong>{ubicacion.nombre}</strong>
+          <small>
+            <i className="bi bi-geo-alt" aria-hidden="true" />
+            UBI-{String(ubicacion.id).padStart(4, '0')}
+          </small>
+        </div>
+      ),
+    },
+    {
+      id: 'latitud',
+      header: 'Latitud',
+      width: '21%',
+      cell: (ubicacion) => formatCoordinate(ubicacion.latitud),
+    },
+    {
+      id: 'longitud',
+      header: 'Longitud',
+      width: '21%',
+      cell: (ubicacion) => formatCoordinate(ubicacion.longitud),
+    },
+  ];
 
   return (
-    <div className="locations-table-wrapper">
-      <table className="table locations-table mb-0">
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Latitud</th>
-            <th>Longitud</th>
-            <th>Coordenadas</th>
-            <th>Estado</th>
-            <th className="text-center">Acciones</th>
-          </tr>
-        </thead>
-
-        <tbody>
-          {ubicaciones.map((ubicacion) => {
-            const hasCoordinates =
-              Number.isFinite(Number(ubicacion.latitud)) &&
-              Number.isFinite(Number(ubicacion.longitud));
-
-            return (
-              <tr key={ubicacion.id}>
-                <td>
-                  <div className="locations-name-cell">
-                    <span>
-                      <i className="bi bi-geo-alt-fill" />
-                    </span>
-                    <div>
-                      <strong>{ubicacion.nombre}</strong>
-                      <small>
-                        UBI-{String(ubicacion.id).padStart(4, '0')}
-                      </small>
-                    </div>
-                  </div>
-                </td>
-
-                <td>{formatCoordinate(ubicacion.latitud)}</td>
-                <td>{formatCoordinate(ubicacion.longitud)}</td>
-
-                <td>
-                  <span
-                    className={`locations-coordinate-status ${
-                      hasCoordinates ? 'ready' : 'missing'
-                    }`}
-                  >
-                    {hasCoordinates ? 'Configuradas' : 'Pendientes'}
-                  </span>
-                </td>
-
-                <td>
-                  <span
-                    className={`locations-status ${
-                      ubicacion.estado === false
-                        ? 'inactive'
-                        : 'active'
-                    }`}
-                  >
-                    {ubicacion.estado === false ? 'Inactiva' : 'Activa'}
-                  </span>
-                </td>
-
-                <td>
-                  <div className="locations-table-actions">
-                    <button
-                      type="button"
-                      title="Ver detalle"
-                      onClick={() => onView(ubicacion)}
-                    >
-                      <i className="bi bi-eye" />
-                    </button>
-
-                    <Can permission={PERMISSIONS.UBICACIONES_GESTIONAR}>
-                      <button
-                        type="button"
-                        title="Editar"
-                        onClick={() => onEdit(ubicacion)}
-                      >
-                        <i className="bi bi-pencil-square" />
-                      </button>
-                    </Can>
-
-                    {ubicacion.estado !== false && (
-                      <Can permission={PERMISSIONS.UBICACIONES_GESTIONAR}>
-                        <button
-                          type="button"
-                          className="danger"
-                          title="Desactivar"
-                          onClick={() => onDeactivate(ubicacion)}
-                        >
-                          <i className="bi bi-slash-circle" />
-                        </button>
-                      </Can>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      className="locations-data-table"
+      caption="Catálogo de ubicaciones"
+      columns={columns}
+      rows={ubicaciones}
+      emptyTitle="No hay ubicaciones para mostrar"
+      emptyMessage="Ajusta los filtros o registra una nueva ubicación."
+      actions={(ubicacion) => [
+        {
+          id: 'view',
+          icon: 'bi bi-eye',
+          label: 'Ver detalle',
+          onClick: () => onView?.(ubicacion),
+        },
+        {
+          id: 'edit',
+          icon: 'bi bi-pencil-square',
+          label: 'Editar ubicación',
+          visible: canManage,
+          onClick: () => onEdit?.(ubicacion),
+        },
+        {
+          id: 'delete',
+          icon: 'bi bi-slash-circle',
+          label: 'Desactivar ubicación',
+          tone: 'danger',
+          visible: canManage && ubicacion.estado !== false,
+          onClick: () => onDeactivate?.(ubicacion),
+        },
+      ]}
+    />
   );
 }
 

@@ -26,7 +26,21 @@
 }
 
 .ui-pagination__pages {
+  display: inline-grid;
+  grid-template-columns: repeat(
+    5,
+    var(--control-height-sm)
+  );
+  flex: 0 0 auto;
+  justify-content: center;
   gap: 0.2rem;
+}
+
+.ui-pagination__item {
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  flex: 0 0 var(--control-height-sm);
+  justify-content: center;
 }
 
 .ui-pagination__page {
@@ -54,7 +68,10 @@
 }
 
 .ui-pagination__ellipsis {
-  width: 1.4rem;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  display: grid;
+  place-items: center;
   color: var(--color-text-muted);
   text-align: center;
 }

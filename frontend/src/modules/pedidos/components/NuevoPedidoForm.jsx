@@ -4,92 +4,93 @@ import {
 } from 'react';
 
 import {
+  Button,
   Combobox,
+  DateField,
 } from '../../../shared/ui';
+
+import {
+  formatUser,
+} from '../pedido.utils';
 
 function NuevoPedidoForm({
   clientes,
-  user,
   isSaving,
-  onSubmit,
   onCancel,
+  onSubmit,
+  user,
 }) {
-  const [formData, setFormData] =
-    useState({
-      cliente_id: '',
-      fecha_entrega: '',
-    });
+  const [formData, setFormData] = useState({
+    cliente_id: '',
+    fecha_entrega: '',
+  });
+  const [touched, setTouched] = useState({});
 
-  const [errors, setErrors] =
-    useState({});
+  const selectedClient = useMemo(
+    () =>
+      clientes.find(
+        (cliente) => Number(cliente.id) === Number(formData.cliente_id),
+      ) ?? null,
+    [clientes, formData.cliente_id],
+  );
 
-  const selectedClient =
-    useMemo(
-      () =>
-        clientes.find(
-          (cliente) =>
-            Number(cliente.id) ===
-            Number(
-              formData.cliente_id,
-            ),
-        ) ?? null,
-      [
-        clientes,
-        formData.cliente_id,
-      ],
-    );
-
-  const handleSubmit = (
-    event,
-  ) => {
-    event.preventDefault();
-
+  const errors = useMemo(() => {
     const nextErrors = {};
 
     if (!formData.cliente_id) {
-      nextErrors.cliente_id =
-        'Selecciona un cliente.';
+      nextErrors.cliente_id = 'Selecciona un cliente.';
     }
 
-    setErrors(nextErrors);
+    if (formData.fecha_entrega) {
+      const selectedDate = new Date(`${formData.fecha_entrega}T00:00:00`);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-    if (
-      Object.keys(nextErrors).length
-    ) {
-      return;
+      if (selectedDate < today) {
+        nextErrors.fecha_entrega =
+          'La fecha estimada no puede estar en el pasado.';
+      }
     }
+
+    return nextErrors;
+  }, [formData]);
+
+  const isValid = Object.keys(errors).length === 0;
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    setTouched({ cliente_id: true, fecha_entrega: true });
+
+    if (!isValid) return;
 
     onSubmit({
-      cliente_id: Number(
-        formData.cliente_id,
-      ),
+      cliente_id: Number(formData.cliente_id),
       fecha: new Date().toISOString(),
-      fecha_entrega:
-        formData.fecha_entrega ||
-        null,
+      fecha_entrega: formData.fecha_entrega || null,
     });
   };
 
   return (
-    <section className="nuevo-pedido-card">
+    <section className="new-order-card">
       <form
-        className="nuevo-pedido-form"
+        className="new-order-form"
+        noValidate
         onSubmit={handleSubmit}
       >
-        <div className="nuevo-pedido-card-title">
-          <div>
-            <i className="bi bi-receipt" />
+        <header className="new-order-section-heading">
+          <div className="new-order-section-heading__icon">
+            <i className="bi bi-receipt" aria-hidden="true" />
           </div>
-
           <div>
-            <span>Registro inicial</span>
-            <h4>
-              Información del pedido
-            </h4>
+            <h3>Información inicial</h3>
+            <p>
+              El pedido se registrará como pendiente y los productos se
+              agregarán después en el Workspace.
+            </p>
           </div>
-        </div>
+        </header>
 
-        <div className="nuevo-pedido-form-grid">
+        <div className="new-order-form-grid">
           <Combobox
             label="Cliente"
             required
@@ -102,117 +103,90 @@ function NuevoPedidoForm({
             }))}
             placeholder="Selecciona un cliente"
             searchPlaceholder="Buscar cliente..."
-            error={errors.cliente_id}
-            onChange={(value) =>
+            error={touched.cliente_id ? errors.cliente_id : undefined}
+            success={
+              touched.cliente_id && !errors.cliente_id
+                ? 'Cliente seleccionado.'
+                : undefined
+            }
+            onChange={(value) => {
               setFormData((current) => ({
                 ...current,
                 cliente_id: value,
-              }))
-            }
+              }));
+              setTouched((current) => ({
+                ...current,
+                cliente_id: true,
+              }));
+            }}
           />
 
-          <div>
-            <label className="form-label">
-              Fecha del pedido
-            </label>
-
-            <div className="readonly-field">
-              <i className="bi bi-calendar-event" />
-              {new Intl.DateTimeFormat(
-                'es-EC',
-                {
-                  dateStyle: 'long',
-                },
-              ).format(new Date())}
-            </div>
-          </div>
-
-          <div>
-            <label className="form-label">
-              Fecha estimada de entrega
-            </label>
-
-            <input
-              type="date"
-              className="form-control"
-              value={
-                formData.fecha_entrega
-              }
-              min={
-                new Date()
-                  .toISOString()
-                  .split('T')[0]
-              }
-              onChange={(event) =>
-                setFormData(
-                  (current) => ({
-                    ...current,
-                    fecha_entrega:
-                      event.target
-                        .value,
-                  }),
-                )
-              }
-            />
-          </div>
+          <DateField
+            label="Fecha estimada de entrega"
+            optional
+            description="Puede dejarse vacía y definirse posteriormente."
+            value={formData.fecha_entrega}
+            min={new Date().toISOString().split('T')[0]}
+            error={
+              touched.fecha_entrega
+                ? errors.fecha_entrega
+                : undefined
+            }
+            onChange={(value) => {
+              setFormData((current) => ({
+                ...current,
+                fecha_entrega: value,
+              }));
+              setTouched((current) => ({
+                ...current,
+                fecha_entrega: true,
+              }));
+            }}
+          />
         </div>
 
-        <div className="nuevo-pedido-preview">
+        <section className="new-order-summary">
           <div>
-            <i className="bi bi-person-check" />
+            <i className="bi bi-person-check" aria-hidden="true" />
             <span>Cliente</span>
-            <strong>
-              {selectedClient?.nombre ??
-                'No seleccionado'}
-            </strong>
+            <strong>{selectedClient?.nombre ?? 'No seleccionado'}</strong>
           </div>
 
           <div>
-            <i className="bi bi-person-badge" />
+            <i className="bi bi-person-badge" aria-hidden="true" />
             <span>Responsable</span>
-            <strong>
-              {[
-                user?.nombre,
-                user?.apellido,
-              ]
-                .filter(Boolean)
-                .join(' ') ||
-                'Usuario autenticado'}
-            </strong>
+            <strong>{formatUser(user)}</strong>
           </div>
 
           <div>
-            <i className="bi bi-box-seam" />
-            <span>Productos</span>
+            <i className="bi bi-calendar-check" aria-hidden="true" />
+            <span>Fecha del pedido</span>
             <strong>
-              Se agregan en el Workspace
+              {new Intl.DateTimeFormat('es-EC', {
+                dateStyle: 'medium',
+              }).format(new Date())}
             </strong>
           </div>
-        </div>
+        </section>
 
-        <footer className="nuevo-pedido-actions">
-          <button
-            type="button"
-            className="btn btn-outline-secondary"
+        <footer className="new-order-actions">
+          <Button
+            tone="secondary"
             disabled={isSaving}
             onClick={onCancel}
           >
             Cancelar
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="submit"
-            className="btn btn-primary"
-            disabled={isSaving}
+            icon="bi bi-arrow-right-circle"
+            loading={isSaving}
+            loadingLabel="Registrando"
+            disabled={!isValid}
           >
-            {isSaving ? (
-              <span className="spinner-border spinner-border-sm me-2" />
-            ) : (
-              <i className="bi bi-arrow-right-circle me-2" />
-            )}
-
             Guardar y abrir Workspace
-          </button>
+          </Button>
         </footer>
       </form>
     </section>

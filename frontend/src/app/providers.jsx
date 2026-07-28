@@ -10,6 +10,10 @@ import {
   PreferencesProvider,
 } from '../shared/contexts/PreferencesContext';
 
+import {
+  PageHeaderProvider,
+} from '../shared/contexts/PageHeaderContext';
+
 import ToastViewport from '../shared/ui/ToastViewport/ToastViewport';
 
 import 'react-toastify/dist/ReactToastify.css';
@@ -20,8 +24,10 @@ function AppProviders({ children }) {
     <BrowserRouter>
       <AuthProvider>
         <PreferencesProvider>
-          {children}
-          <ToastViewport />
+          <PageHeaderProvider>
+            {children}
+            <ToastViewport />
+          </PageHeaderProvider>
         </PreferencesProvider>
       </AuthProvider>
     </BrowserRouter>

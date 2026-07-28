@@ -4,7 +4,10 @@ import {
 } from 'react';
 
 import {
+  Button,
   Combobox,
+  Modal,
+  TextField,
 } from '../../../shared/ui';
 
 const INITIAL_FORM = {
@@ -16,10 +19,27 @@ const INITIAL_FORM = {
   direccion: '',
 };
 
+const REQUIRED_FIELDS = [
+  'nombre',
+  'identificacion',
+  'telefono',
+  'correo',
+  'ubicacion_id',
+  'direccion',
+];
+
+const FIELD_SUCCESS = {
+  nombre: 'Nombre válido.',
+  identificacion: 'Identificación disponible.',
+  telefono: 'Teléfono válido.',
+  correo: 'Correo disponible.',
+  ubicacion_id: 'Ubicación seleccionada.',
+  direccion: 'Dirección válida.',
+};
+
 function getLocation(cliente) {
   return cliente?.ubicacion ?? null;
 }
-
 
 function buildInitialForm(mode, cliente) {
   if (mode !== 'edit' || !cliente) {
@@ -40,572 +60,344 @@ function buildInitialForm(mode, cliente) {
   };
 }
 
+function validateClientForm(
+  formData,
+  clientes,
+  currentClient,
+) {
+  const errors = {};
+
+  if (!formData.nombre.trim()) {
+    errors.nombre = 'El nombre es obligatorio.';
+  }
+
+  if (!/^\d{10}$/.test(formData.identificacion)) {
+    errors.identificacion =
+      'La identificación debe contener exactamente 10 dígitos.';
+  } else {
+    const duplicate = clientes.find(
+      (item) =>
+        Number(item.id) !== Number(currentClient?.id) &&
+        String(item.identificacion) === formData.identificacion,
+    );
+
+    if (duplicate) {
+      errors.identificacion =
+        'La identificación ya se encuentra registrada.';
+    }
+  }
+
+  if (!/^0\d{9}$/.test(formData.telefono)) {
+    errors.telefono =
+      'Ingresa un teléfono ecuatoriano de 10 dígitos.';
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo)) {
+    errors.correo = 'Ingresa un correo electrónico válido.';
+  } else {
+    const duplicate = clientes.find(
+      (item) =>
+        Number(item.id) !== Number(currentClient?.id) &&
+        String(item.correo ?? '')
+          .trim()
+          .toLowerCase() ===
+          formData.correo.trim().toLowerCase(),
+    );
+
+    if (duplicate) {
+      errors.correo =
+        'El correo ya se encuentra registrado.';
+    }
+  }
+
+  if (!formData.ubicacion_id) {
+    errors.ubicacion_id = 'Selecciona una ubicación.';
+  }
+
+  if (!formData.direccion.trim()) {
+    errors.direccion = 'La dirección es obligatoria.';
+  }
+
+  return errors;
+}
+
 function ClienteFormModal({
-  open,
-  mode = 'create',
   cliente,
   clientes,
-  ubicaciones,
   isSaving,
-  onSave,
+  mode = 'create',
   onClose,
+  onSave,
+  open,
+  ubicaciones,
 }) {
-  const [formData, setFormData] =
-    useState(() => buildInitialForm(mode, cliente));
+  const [formData, setFormData] = useState(
+    () => buildInitialForm(mode, cliente),
+  );
+  const [touched, setTouched] = useState({});
 
-  const [errors, setErrors] =
-    useState({});
+  const locationOptions = useMemo(
+    () => ubicaciones.map((ubicacion) => ({
+      value: ubicacion.id,
+      label: ubicacion.nombre,
+      description: ubicacion.descripcion,
+      icon: 'bi bi-geo-alt',
+    })),
+    [ubicaciones],
+  );
 
-  const selectedLocation =
-    useMemo(
-      () =>
-        ubicaciones.find(
-          (ubicacion) =>
-            Number(ubicacion.id) ===
-            Number(
-              formData.ubicacion_id,
-            ),
-        ) ?? null,
-      [
-        formData.ubicacion_id,
-        ubicaciones,
-      ],
-    );
+  const validationErrors = useMemo(
+    () => validateClientForm(
+      formData,
+      clientes,
+      cliente,
+    ),
+    [cliente, clientes, formData],
+  );
 
-  const updateField = (
-    field,
-    value,
-  ) => {
-    setFormData(
-      (current) => ({
-        ...current,
-        [field]: value,
-      }),
-    );
+  const isFormValid = REQUIRED_FIELDS.every(
+    (field) => !validationErrors[field],
+  );
 
-    setErrors(
-      (current) => ({
-        ...current,
-        [field]: null,
-      }),
-    );
+  const updateField = (field, value) => {
+    setFormData((current) => ({
+      ...current,
+      [field]: value,
+    }));
   };
 
-  const validate = () => {
-    const nextErrors = {};
-
-    if (!formData.nombre.trim()) {
-      nextErrors.nombre =
-        'El nombre es obligatorio.';
-    }
-
-    if (
-      !/^\d{10}$/.test(
-        formData.identificacion,
-      )
-    ) {
-      nextErrors.identificacion =
-        'La identificación debe contener exactamente 10 dígitos.';
-    } else {
-      const duplicate =
-        clientes.find(
-          (item) =>
-            Number(item.id) !==
-              Number(cliente?.id) &&
-            String(
-              item.identificacion,
-            ) ===
-              formData.identificacion,
-        );
-
-      if (duplicate) {
-        nextErrors.identificacion =
-          'La identificación ya se encuentra registrada.';
-      }
-    }
-
-    if (
-      !/^0\d{9}$/.test(
-        formData.telefono,
-      )
-    ) {
-      nextErrors.telefono =
-        'Ingresa un teléfono ecuatoriano de 10 dígitos.';
-    }
-
-    if (
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-        formData.correo,
-      )
-    ) {
-      nextErrors.correo =
-        'Ingresa un correo electrónico válido.';
-    } else {
-      const duplicate =
-        clientes.find(
-          (item) =>
-            Number(item.id) !==
-              Number(cliente?.id) &&
-            String(item.correo ?? '')
-              .trim()
-              .toLowerCase() ===
-              formData.correo
-                .trim()
-                .toLowerCase(),
-        );
-
-      if (duplicate) {
-        nextErrors.correo =
-          'El correo ya se encuentra registrado.';
-      }
-    }
-
-    if (!formData.ubicacion_id) {
-      nextErrors.ubicacion_id =
-        'Selecciona una ubicación.';
-    }
-
-    if (!formData.direccion.trim()) {
-      nextErrors.direccion =
-        'La dirección es obligatoria.';
-    }
-
-    setErrors(nextErrors);
-
-    return (
-      Object.keys(nextErrors).length === 0
-    );
+  const markTouched = (field) => {
+    setTouched((current) => ({
+      ...current,
+      [field]: true,
+    }));
   };
 
-  const handleSubmit = (
-    event,
-  ) => {
+  const getValidationProps = (field) => ({
+    error: touched[field]
+      ? validationErrors[field]
+      : undefined,
+    success:
+      touched[field] && !validationErrors[field]
+        ? FIELD_SUCCESS[field]
+        : undefined,
+  });
+
+  const handleSubmit = (event) => {
     event.preventDefault();
 
-    if (!validate()) {
+    setTouched(
+      Object.fromEntries(
+        REQUIRED_FIELDS.map((field) => [field, true]),
+      ),
+    );
+
+    if (!isFormValid) {
       return;
     }
 
     onSave({
       nombre: formData.nombre.trim(),
-      identificacion:
-        formData.identificacion,
+      identificacion: formData.identificacion,
       telefono: formData.telefono,
-      correo:
-        formData.correo
-          .trim()
-          .toLowerCase(),
-      ubicacion_id: Number(
-        formData.ubicacion_id,
-      ),
-      direccion:
-        formData.direccion.trim(),
+      correo: formData.correo.trim().toLowerCase(),
+      ubicacion_id: Number(formData.ubicacion_id),
+      direccion: formData.direccion.trim(),
     });
   };
 
-  if (!open) {
-    return null;
-  }
+  const formId = 'client-form';
 
   return (
-    <div className="clients-modal-overlay">
-      <section className="client-form-modal">
-        <header className="clients-modal-header">
-          <div className="clients-modal-header__icon">
-            <i
-              className={`bi ${
-                mode === 'edit'
-                  ? 'bi-person-gear'
-                  : 'bi-person-plus'
-              }`}
-            />
-          </div>
-
-          <div className="clients-modal-header__content">
-            <span>Directorio comercial</span>
-
-            <h4>
-              {mode === 'edit'
-                ? 'Editar cliente'
-                : 'Nuevo cliente'}
-            </h4>
-
-            <p>
-              {mode === 'edit'
-                ? 'Actualiza la información comercial y de entrega.'
-                : 'Completa los datos para registrar un nuevo cliente.'}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            aria-label="Cerrar"
+    <Modal
+      open={open}
+      size="lg"
+      title={mode === 'edit' ? 'Editar cliente' : 'Nuevo cliente'}
+      description={
+        mode === 'edit'
+          ? 'Actualiza los datos comerciales, de contacto y entrega.'
+          : 'Registra la información necesaria para crear pedidos y entregas.'
+      }
+      closeOnBackdrop={!isSaving}
+      closeOnEscape={!isSaving}
+      onClose={isSaving ? undefined : onClose}
+      className="client-form-modal"
+      footer={(
+        <>
+          <Button
+            tone="secondary"
             disabled={isSaving}
             onClick={onClose}
           >
-            <i className="bi bi-x-lg" />
-          </button>
-        </header>
+            Cancelar
+          </Button>
 
-        <form
-          className="client-form-modal__form"
-          onSubmit={handleSubmit}
-        >
-          <div className="client-form-layout">
-            <div className="client-form-content">
-              <section className="client-form-section">
-                <header>
-                  <span>1</span>
-
-                  <div>
-                    <strong>
-                      Identificación
-                    </strong>
-
-                    <small>
-                      Datos principales del cliente
-                    </small>
-                  </div>
-                </header>
-
-                <div className="client-form-grid">
-                  <div>
-                    <label
-                      htmlFor="client-name"
-                      className="form-label"
-                    >
-                      Nombre completo o razón social
-                    </label>
-
-                    <input
-                      id="client-name"
-                      type="text"
-                      className={`form-control ${
-                        errors.nombre
-                          ? 'is-invalid'
-                          : ''
-                      }`}
-                      value={formData.nombre}
-                      placeholder="Ej. Comercial Manabí S.A."
-                      onChange={(event) =>
-                        updateField(
-                          'nombre',
-                          event.target.value,
-                        )
-                      }
-                    />
-
-                    {errors.nombre && (
-                      <div className="invalid-feedback">
-                        {errors.nombre}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="client-identification"
-                      className="form-label"
-                    >
-                      Identificación
-                    </label>
-
-                    <input
-                      id="client-identification"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={10}
-                      className={`form-control ${
-                        errors.identificacion
-                          ? 'is-invalid'
-                          : ''
-                      }`}
-                      value={
-                        formData.identificacion
-                      }
-                      placeholder="1312345678"
-                      onChange={(event) =>
-                        updateField(
-                          'identificacion',
-                          event.target.value.replace(
-                            /\D/g,
-                            '',
-                          ),
-                        )
-                      }
-                    />
-
-                    <small className="form-text">
-                      Cédula sin espacios ni guiones.
-                    </small>
-
-                    {errors.identificacion && (
-                      <div className="invalid-feedback">
-                        {errors.identificacion}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              <section className="client-form-section">
-                <header>
-                  <span>2</span>
-
-                  <div>
-                    <strong>
-                      Información de contacto
-                    </strong>
-
-                    <small>
-                      Canales de comunicación
-                    </small>
-                  </div>
-                </header>
-
-                <div className="client-form-grid">
-                  <div>
-                    <label
-                      htmlFor="client-phone"
-                      className="form-label"
-                    >
-                      Teléfono
-                    </label>
-
-                    <input
-                      id="client-phone"
-                      type="text"
-                      inputMode="tel"
-                      maxLength={10}
-                      className={`form-control ${
-                        errors.telefono
-                          ? 'is-invalid'
-                          : ''
-                      }`}
-                      value={formData.telefono}
-                      placeholder="0987654321"
-                      onChange={(event) =>
-                        updateField(
-                          'telefono',
-                          event.target.value.replace(
-                            /\D/g,
-                            '',
-                          ),
-                        )
-                      }
-                    />
-
-                    {errors.telefono && (
-                      <div className="invalid-feedback">
-                        {errors.telefono}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="client-email"
-                      className="form-label"
-                    >
-                      Correo electrónico
-                    </label>
-
-                    <input
-                      id="client-email"
-                      type="email"
-                      className={`form-control ${
-                        errors.correo
-                          ? 'is-invalid'
-                          : ''
-                      }`}
-                      value={formData.correo}
-                      placeholder="cliente@empresa.com"
-                      onChange={(event) =>
-                        updateField(
-                          'correo',
-                          event.target.value,
-                        )
-                      }
-                    />
-
-                    {errors.correo && (
-                      <div className="invalid-feedback">
-                        {errors.correo}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              <section className="client-form-section">
-                <header>
-                  <span>3</span>
-
-                  <div>
-                    <strong>
-                      Ubicación y entrega
-                    </strong>
-
-                    <small>
-                      Destino base del cliente
-                    </small>
-                  </div>
-                </header>
-
-                <div className="client-form-grid">
-                  <Combobox
-                    id="client-location"
-                    label="Ubicación"
-                    required
-                    value={formData.ubicacion_id}
-                    options={ubicaciones.map((ubicacion) => ({
-                      value: ubicacion.id,
-                      label: ubicacion.nombre,
-                      icon: 'bi bi-geo-alt',
-                    }))}
-                    placeholder="Selecciona una ubicación"
-                    searchPlaceholder="Buscar ubicación..."
-                    error={errors.ubicacion_id}
-                    onChange={(value) =>
-                      updateField('ubicacion_id', value)
-                    }
-                  />
-
-                  <div>
-                    <label
-                      htmlFor="client-address"
-                      className="form-label"
-                    >
-                      Dirección de entrega
-                    </label>
-
-                    <input
-                      id="client-address"
-                      type="text"
-                      className={`form-control ${
-                        errors.direccion
-                          ? 'is-invalid'
-                          : ''
-                      }`}
-                      value={formData.direccion}
-                      placeholder="Av. Principal y calle Bolívar"
-                      onChange={(event) =>
-                        updateField(
-                          'direccion',
-                          event.target.value,
-                        )
-                      }
-                    />
-
-                    {errors.direccion && (
-                      <div className="invalid-feedback">
-                        {errors.direccion}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </section>
+          <Button
+            type="submit"
+            form={formId}
+            icon="bi bi-check-lg"
+            disabled={!isFormValid}
+            loading={isSaving}
+            loadingLabel="Guardando..."
+            title={
+              !isFormValid
+                ? 'Completa correctamente todos los campos obligatorios.'
+                : undefined
+            }
+          >
+            {mode === 'edit'
+              ? 'Guardar cambios'
+              : 'Registrar cliente'}
+          </Button>
+        </>
+      )}
+    >
+      <form
+        id={formId}
+        className="client-form"
+        noValidate
+        onSubmit={handleSubmit}
+      >
+        <section className="client-form-section">
+          <header>
+            <span className="client-form-section__icon">
+              <i className="bi bi-person-vcard" aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Datos principales</h3>
+              <p>Identificación comercial del cliente.</p>
             </div>
+          </header>
 
-            <aside className="client-form-summary">
-              <span className="client-form-summary__eyebrow">
-                Resumen del registro
-              </span>
+          <div className="client-form-grid">
+            <TextField
+              id="client-name"
+              label="Nombre completo o razón social"
+              required
+              value={formData.nombre}
+              placeholder="Ej. Comercial Manabí S.A."
+              {...getValidationProps('nombre')}
+              autoComplete="organization"
+              onBlur={() => markTouched('nombre')}
+              onChange={(event) =>
+                updateField('nombre', event.target.value)
+              }
+            />
 
-              <div className="client-form-summary__item">
-                <i className="bi bi-person-badge" />
-
-                <div>
-                  <span>Cliente</span>
-
-                  <strong>
-                    {formData.nombre.trim() ||
-                      'Sin nombre'}
-                  </strong>
-
-                  <small>
-                    {formData.identificacion ||
-                      'Sin identificación'}
-                  </small>
-                </div>
-              </div>
-
-              <div className="client-form-summary__item">
-                <i className="bi bi-telephone" />
-
-                <div>
-                  <span>Contacto</span>
-
-                  <strong>
-                    {formData.telefono ||
-                      'Sin teléfono'}
-                  </strong>
-
-                  <small>
-                    {formData.correo ||
-                      'Sin correo'}
-                  </small>
-                </div>
-              </div>
-
-              <div className="client-form-summary__item">
-                <i className="bi bi-geo-alt" />
-
-                <div>
-                  <span>Ubicación</span>
-
-                  <strong>
-                    {selectedLocation?.nombre ??
-                      'No definida'}
-                  </strong>
-
-                  <small>
-                    {formData.direccion ||
-                      'Sin dirección'}
-                  </small>
-                </div>
-              </div>
-
-              <div className="client-form-summary__note">
-                <i className="bi bi-info-circle" />
-
-                <span>
-                  La ubicación seleccionada será usada
-                  por pedidos, despachos y jornadas.
-                </span>
-              </div>
-            </aside>
+            <TextField
+              id="client-identification"
+              label="Identificación"
+              description="Cédula de 10 dígitos, sin espacios ni guiones."
+              required
+              value={formData.identificacion}
+              placeholder="1312345678"
+              inputMode="numeric"
+              maxLength={10}
+              {...getValidationProps('identificacion')}
+              onBlur={() => markTouched('identificacion')}
+              onChange={(event) =>
+                updateField(
+                  'identificacion',
+                  event.target.value.replace(/\D/g, ''),
+                )
+              }
+            />
           </div>
+        </section>
 
-          <footer className="clients-modal-footer">
-            <button
-              type="button"
-              className="btn btn-outline-secondary"
-              disabled={isSaving}
-              onClick={onClose}
-            >
-              Cancelar
-            </button>
+        <section className="client-form-section">
+          <header>
+            <span className="client-form-section__icon">
+              <i className="bi bi-chat-dots" aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Contacto</h3>
+              <p>Canales utilizados durante la atención comercial.</p>
+            </div>
+          </header>
 
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <span className="spinner-border spinner-border-sm me-2" />
-              ) : (
-                <i className="bi bi-check-lg me-2" />
-              )}
+          <div className="client-form-grid">
+            <TextField
+              id="client-phone"
+              label="Teléfono"
+              required
+              value={formData.telefono}
+              placeholder="0987654321"
+              inputMode="tel"
+              maxLength={10}
+              {...getValidationProps('telefono')}
+              autoComplete="tel"
+              onBlur={() => markTouched('telefono')}
+              onChange={(event) =>
+                updateField(
+                  'telefono',
+                  event.target.value.replace(/\D/g, ''),
+                )
+              }
+            />
 
-              {mode === 'edit'
-                ? 'Guardar cambios'
-                : 'Registrar cliente'}
-            </button>
-          </footer>
-        </form>
-      </section>
-    </div>
+            <TextField
+              id="client-email"
+              label="Correo electrónico"
+              type="email"
+              required
+              value={formData.correo}
+              placeholder="cliente@empresa.com"
+              {...getValidationProps('correo')}
+              autoComplete="email"
+              onBlur={() => markTouched('correo')}
+              onChange={(event) =>
+                updateField('correo', event.target.value)
+              }
+            />
+          </div>
+        </section>
+
+        <section className="client-form-section">
+          <header>
+            <span className="client-form-section__icon">
+              <i className="bi bi-geo-alt" aria-hidden="true" />
+            </span>
+            <div>
+              <h3>Ubicación de entrega</h3>
+              <p>Destino base utilizado en pedidos y planificación.</p>
+            </div>
+          </header>
+
+          <div className="client-form-grid">
+            <Combobox
+              id="client-location"
+              label="Ubicación"
+              required
+              value={formData.ubicacion_id}
+              options={locationOptions}
+              placeholder="Selecciona una ubicación"
+              searchPlaceholder="Buscar ubicación..."
+              emptyMessage="No hay ubicaciones activas disponibles."
+              {...getValidationProps('ubicacion_id')}
+              onChange={(value) => {
+                updateField('ubicacion_id', value);
+                markTouched('ubicacion_id');
+              }}
+            />
+
+            <TextField
+              id="client-address"
+              label="Dirección de entrega"
+              required
+              value={formData.direccion}
+              placeholder="Av. Principal y calle Bolívar"
+              {...getValidationProps('direccion')}
+              autoComplete="street-address"
+              onBlur={() => markTouched('direccion')}
+              onChange={(event) =>
+                updateField('direccion', event.target.value)
+              }
+            />
+          </div>
+        </section>
+      </form>
+    </Modal>
   );
 }
 

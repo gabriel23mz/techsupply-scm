@@ -1,16 +1,26 @@
-import L from 'leaflet';
-
 import {
   MapContainer,
   Marker,
   TileLayer,
 } from 'react-leaflet';
 
+import L from 'leaflet';
+
 import {
   MapControls,
   MapShell,
   MapViewportController,
 } from '../../../shared/maps';
+
+import {
+  Drawer,
+  StatusBadge,
+} from '../../../shared/ui';
+
+import {
+  formatCoordinate,
+  getLocationPosition,
+} from '../ubicacion.utils';
 
 function createDetailIcon() {
   return L.divIcon({
@@ -20,137 +30,103 @@ function createDetailIcon() {
         <i class="bi bi-geo-alt-fill"></i>
       </div>
     `,
-    iconSize: [36, 36],
-    iconAnchor: [18, 34],
+    iconSize: [38, 38],
+    iconAnchor: [19, 36],
   });
 }
 
+function LocationDetailRow({ label, children }) {
+  return (
+    <div className="location-detail-row">
+      <span>{label}</span>
+      <strong>{children}</strong>
+    </div>
+  );
+}
+
 function UbicacionDetailModal({
+  onClose,
   open,
   ubicacion,
-  onClose,
 }) {
-  if (!open || !ubicacion) return null;
+  if (!ubicacion) return null;
 
-  const latitud = Number(ubicacion.latitud);
-  const longitud = Number(ubicacion.longitud);
-
-  const hasCoordinates =
-    Number.isFinite(latitud) &&
-    Number.isFinite(longitud);
+  const position = getLocationPosition(ubicacion);
 
   return (
-    <div className="locations-modal-overlay">
-      <section className="locations-detail-modal">
-        <header className="locations-modal-header">
-          <div>
-            <span>Detalle geográfico</span>
-            <h4>{ubicacion.nombre}</h4>
-          </div>
-
-          <button
-            type="button"
-            aria-label="Cerrar"
-            onClick={onClose}
-          >
-            <i className="bi bi-x-lg" />
-          </button>
-        </header>
-
-        <div className="locations-detail-body">
-          <div className="locations-detail-grid">
-            <article>
-              <span>Código</span>
-              <strong>
-                UBI-{String(ubicacion.id).padStart(4, '0')}
-              </strong>
-            </article>
-
-            <article>
-              <span>Estado</span>
-              <strong>
-                {ubicacion.estado === false
-                  ? 'Inactiva'
-                  : 'Activa'}
-              </strong>
-            </article>
-
-            <article>
-              <span>Latitud</span>
-              <strong>
-                {hasCoordinates
-                  ? latitud.toFixed(6)
-                  : 'Sin definir'}
-              </strong>
-            </article>
-
-            <article>
-              <span>Longitud</span>
-              <strong>
-                {hasCoordinates
-                  ? longitud.toFixed(6)
-                  : 'Sin definir'}
-              </strong>
-            </article>
-          </div>
-
-          {hasCoordinates ? (
-            <MapShell
-              ariaLabel={`Mapa de ${ubicacion.nombre}`}
-              className="locations-detail-map"
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title={ubicacion.nombre}
+      description="Detalle geográfico del nodo operativo."
+      size="lg"
+    >
+      <div className="location-detail-drawer">
+        <section className="location-detail-summary">
+          <LocationDetailRow label="Estado">
+            <StatusBadge
+              tone={ubicacion.estado === false ? 'danger' : 'success'}
             >
-              <MapContainer
-                center={[latitud, longitud]}
-                zoom={13}
-                className="locations-detail-leaflet"
-                scrollWheelZoom={false}
-                zoomControl={false}
-              >
-                <TileLayer
-                  attribution="&copy; OpenStreetMap contributors"
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
+              {ubicacion.estado === false ? 'Inactiva' : 'Activa'}
+            </StatusBadge>
+          </LocationDetailRow>
 
-                <MapViewportController
-                  positions={[[latitud, longitud]]}
-                  singleZoom={13}
-                />
+          <LocationDetailRow label="Código">
+            UBI-{String(ubicacion.id).padStart(4, '0')}
+          </LocationDetailRow>
+        </section>
 
-                <MapControls
-                  defaultCenter={[latitud, longitud]}
-                  defaultZoom={13}
-                  resetLabel="Centrar ubicación"
-                  showFit={false}
-                  showReset
-                />
+        <section className="location-detail-section">
+          <h3>Coordenadas</h3>
+          <div className="location-detail-grid">
+            <LocationDetailRow label="Latitud">
+              {formatCoordinate(ubicacion.latitud)}
+            </LocationDetailRow>
+            <LocationDetailRow label="Longitud">
+              {formatCoordinate(ubicacion.longitud)}
+            </LocationDetailRow>
+          </div>
+        </section>
 
-                <Marker
-                  position={[latitud, longitud]}
-                  icon={createDetailIcon()}
-                />
-              </MapContainer>
-            </MapShell>
-          ) : (
-            <div className="locations-detail-no-map">
-              <i className="bi bi-map" />
-              <span>
-                Esta ubicación no tiene coordenadas configuradas.
-              </span>
-            </div>
-          )}
-        </div>
-
-        <footer className="locations-modal-footer">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={onClose}
+        {position && (
+          <MapShell
+            ariaLabel={`Mapa de ${ubicacion.nombre}`}
+            className="location-detail-map"
           >
-            Cerrar
-          </button>
-        </footer>
-      </section>
-    </div>
+            <MapContainer
+              center={position}
+              zoom={13}
+              zoomControl={false}
+              className="location-detail-leaflet"
+              scrollWheelZoom
+            >
+              <TileLayer
+                attribution="&copy; OpenStreetMap contributors"
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+
+              <MapViewportController
+                positions={[position]}
+                singleZoom={13}
+              />
+
+              <MapControls
+                defaultCenter={position}
+                defaultZoom={13}
+                showFit={false}
+                showReset
+                resetLabel="Centrar ubicación"
+              />
+
+              <Marker
+                position={position}
+                icon={createDetailIcon()}
+              />
+            </MapContainer>
+          </MapShell>
+        )}
+      </div>
+    </Drawer>
   );
 }
 

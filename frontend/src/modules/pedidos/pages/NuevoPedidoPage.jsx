@@ -1,21 +1,32 @@
 import {
   useCallback,
+  useMemo,
   useState,
 } from 'react';
+
+import {
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
+
+import {
+  useAuth,
+} from '../../../shared/hooks/useAuth';
 
 import {
   useInitialLoad,
 } from '../../../shared/hooks/useInitialLoad';
 
 import {
-  useNavigate,
-} from 'react-router-dom';
-
-import ConfirmDialog from '../../../shared/components/ConfirmDialog/ConfirmDialog';
+  usePageHeader,
+} from '../../../shared/hooks/usePageHeader';
 
 import {
-  useAuth,
-} from '../../../shared/hooks/useAuth';
+  Button,
+  ConfirmDialog,
+  ErrorState,
+  LoadingState,
+} from '../../../shared/ui';
 
 import {
   showError,
@@ -30,138 +41,108 @@ import {
   obtenerClientes,
 } from '../services/pedido.service';
 
+import {
+  getReturnPath,
+} from '../pedido.utils';
+
 import '../pedidos.css';
 
 function NuevoPedidoPage() {
   const navigate = useNavigate();
-  const {
-    user,
-  } = useAuth();
+  const [searchParams] = useSearchParams();
+  const returnTo = getReturnPath(searchParams);
+  const { user } = useAuth();
 
-  const [clientes, setClientes] =
-    useState([]);
+  const [clientes, setClientes] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
-  const [isLoading, setIsLoading] =
-    useState(true);
-
-  const [isSaving, setIsSaving] =
-    useState(false);
-
-  const [
-    showExitConfirm,
-    setShowExitConfirm,
-  ] = useState(false);
-
-  const cargarCatalogos =
-    useCallback(async () => {
-      try {
-        setIsLoading(true);
-
-        const clientesData =
-          await obtenerClientes();
-
-        setClientes(
-          Array.isArray(clientesData)
-            ? clientesData.filter(
-              (cliente) =>
-                cliente.estado !==
-                false,
-            )
-            : [],
-        );
-
-      } catch (error) {
-        console.error(
-          'Error al cargar catálogos:',
-          error,
-        );
-
-        showError(
-          error.message ||
-            'No fue posible preparar el formulario.',
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }, []);
+  const cargarCatalogos = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      const clientesData = await obtenerClientes();
+      setClientes(
+        Array.isArray(clientesData)
+          ? clientesData.filter((cliente) => cliente.estado !== false)
+          : [],
+      );
+    } catch (error) {
+      console.error('Error al cargar clientes:', error);
+      setLoadError(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useInitialLoad(cargarCatalogos);
 
-  const handleSubmit = async (
-    payload,
-  ) => {
+  const pageActions = useMemo(
+    () => (
+      <Button
+        className="topbar-page-action"
+        size="sm"
+        tone="secondary"
+        icon="bi bi-arrow-left"
+        onClick={() => setShowExitConfirm(true)}
+      >
+        Volver
+      </Button>
+    ),
+    [],
+  );
+
+  const pageHeader = useMemo(
+    () => ({
+      title: 'Nuevo pedido',
+      description:
+        'Registra la información inicial antes de agregar productos.',
+      actions: pageActions,
+    }),
+    [pageActions],
+  );
+
+  usePageHeader(pageHeader);
+
+  const handleSubmit = async (payload) => {
     try {
       setIsSaving(true);
-
-      const pedido =
-        await crearPedido(payload);
-
-      showSuccess(
-        'Pedido creado correctamente. Abriendo Workspace...',
-      );
-
+      const pedido = await crearPedido(payload);
+      showSuccess('Pedido creado correctamente. Abriendo Workspace...');
+      const encodedReturn = encodeURIComponent(returnTo);
       navigate(
-        `/pedidos/${pedido.id}/workspace`,
+        `/pedidos/${pedido.id}/workspace?returnTo=${encodedReturn}`,
+        { replace: true },
       );
     } catch (error) {
-      console.error(
-        'Error al crear pedido:',
-        error,
-      );
-
-      showError(
-        error.message ||
-          'No fue posible crear el pedido.',
-      );
+      console.error('Error al crear pedido:', error);
+      showError(error.message || 'No fue posible crear el pedido.');
     } finally {
       setIsSaving(false);
     }
   };
 
   return (
-    <div className="nuevo-pedido-page">
-      <section className="nuevo-pedido-heading">
-        <div>
-          <span>Nuevo pedido</span>
-
-          <h3>
-            Registro inicial
-          </h3>
-
-          <p>
-            Selecciona cliente y responsable antes de agregar productos en el Workspace.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-outline-secondary"
-          onClick={() =>
-            setShowExitConfirm(true)
-          }
+    <div className="new-order-page">
+      {loadError ? (
+        <ErrorState
+          actionLabel="Reintentar"
+          onAction={cargarCatalogos}
         >
-          <i className="bi bi-arrow-left me-2" />
-          Volver
-        </button>
-      </section>
-
-      {isLoading ? (
-        <div className="pedidos-loading nuevo-pedido-loading">
-          <span className="spinner-border text-primary" />
-          <h4>
-            Preparando formulario...
-          </h4>
-        </div>
+          {loadError.message || 'No fue posible preparar el formulario.'}
+        </ErrorState>
+      ) : isLoading ? (
+        <LoadingState label="Preparando formulario..." />
       ) : (
-        <div className="nuevo-pedido-grid">
+        <div className="new-order-layout">
           <NuevoPedidoForm
             clientes={clientes}
             user={user}
             isSaving={isSaving}
             onSubmit={handleSubmit}
-            onCancel={() =>
-              setShowExitConfirm(true)
-            }
+            onCancel={() => setShowExitConfirm(true)}
           />
 
           <PedidoProcessStepper />
@@ -175,12 +156,8 @@ function NuevoPedidoPage() {
         confirmText="Salir"
         cancelText="Permanecer"
         variant="warning"
-        onConfirm={() =>
-          navigate('/pedidos')
-        }
-        onCancel={() =>
-          setShowExitConfirm(false)
-        }
+        onConfirm={() => navigate(returnTo)}
+        onCancel={() => setShowExitConfirm(false)}
       />
     </div>
   );

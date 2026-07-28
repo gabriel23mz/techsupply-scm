@@ -94,7 +94,10 @@ function MainLayout({ children }) {
 
       <div className="app-main">
         <Topbar
-          onOpenNavigation={() => setMobileSidebarOpen(true)}
+          navigationOpen={mobileSidebarOpen}
+          onToggleNavigation={() =>
+            setMobileSidebarOpen((current) => !current)
+          }
         />
 
         <main

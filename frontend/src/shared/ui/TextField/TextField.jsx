@@ -21,6 +21,7 @@ const TextField = forwardRef(function TextField(
     optional,
     required,
     startAdornment,
+    success,
     type = 'text',
     ...props
   },
@@ -35,17 +36,20 @@ const TextField = forwardRef(function TextField(
       label={label}
       optional={optional}
       required={required}
+      success={success}
     >
       {({
         id: controlId,
         describedBy,
         invalid,
+        valid,
       }) => (
         <div
           className={classNames(
             'ui-text-field',
             {
               'ui-text-field--invalid': invalid,
+              'ui-text-field--valid': valid,
               'ui-text-field--disabled': props.disabled,
             },
           )}

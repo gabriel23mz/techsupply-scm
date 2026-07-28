@@ -14,9 +14,7 @@
   place-items: center;
 }
 
-@media (hover: hover) and (pointer: fine) {
-  tr:not(:hover):not(:focus-within) .ui-table-actions .ui-button {
-    opacity: 0;
-    pointer-events: none;
-  }
+.ui-table-actions .ui-button {
+  opacity: 1;
+  pointer-events: auto;
 }
