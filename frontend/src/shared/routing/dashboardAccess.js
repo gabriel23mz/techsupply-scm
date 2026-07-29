@@ -24,8 +24,8 @@ const ACCESS_CONFIG = Object.freeze({
     icon: 'bi-geo-alt',
   },
   JORNADAS: {
-    routeId: 'centro-logistico',
-    icon: 'bi-calendar2-event',
+    routeId: 'jornadas',
+    icon: 'bi-calendar2-week',
   },
   DESPACHOS: {
     routeId: 'despachos',
@@ -36,12 +36,31 @@ const ACCESS_CONFIG = Object.freeze({
     icon: 'bi-signpost-split',
   },
   CAMIONES: {
-    routeId: 'rutas',
+    routeId: 'camiones',
     icon: 'bi-truck-front',
   },
+  CHOFERES: {
+    routeId: 'choferes',
+    icon: 'bi-person-vcard',
+  },
   MI_JORNADA: {
-    routeId: 'mis-entregas',
+    routeId: 'mi-jornada',
     icon: 'bi-geo-alt-fill',
+  },
+  PRODUCTOS: {
+    routeId: 'help',
+    icon: 'bi-boxes',
+    informational: true,
+  },
+  CATEGORIAS: {
+    routeId: 'help',
+    icon: 'bi-tags',
+    informational: true,
+  },
+  USUARIOS: {
+    routeId: 'help',
+    icon: 'bi-person-gear',
+    informational: true,
   },
 });
 
@@ -78,9 +97,26 @@ const CONTEXT_LABELS = Object.freeze({
   usuarios_activos: 'Usuarios activos',
   fecha_operativa: 'Fecha operativa',
   jornada_id: 'Jornada asignada',
+  jornada_actual: 'Jornada actual',
   camion: 'Camión asignado',
   chofer: 'Chofer',
+  perfil_chofer: 'Perfil de chofer',
   proxima_parada: 'Próxima parada',
+  modulo: 'Dominio funcional',
+});
+
+const CONTEXT_ICONS = Object.freeze({
+  alcance_pedidos: 'bi-funnel',
+  clientes_activos: 'bi-people',
+  usuarios_activos: 'bi-person-check',
+  fecha_operativa: 'bi-calendar3',
+  jornada_id: 'bi-calendar2-week',
+  jornada_actual: 'bi-geo-alt-fill',
+  camion: 'bi-truck-front',
+  chofer: 'bi-person-vcard',
+  perfil_chofer: 'bi-person-badge',
+  proxima_parada: 'bi-signpost',
+  modulo: 'bi-diagram-3',
 });
 
 export function normalizeDashboardVariant(level) {
@@ -90,93 +126,63 @@ export function normalizeDashboardVariant(level) {
 export function getDashboardMetricIcon(metricId) {
   const normalized = String(metricId ?? '');
 
-  return (
-    METRIC_ICON_RULES.find(([pattern]) =>
-      pattern.test(normalized),
-    )?.[1] ?? 'bi-bar-chart'
-  );
+  return METRIC_ICON_RULES.find(([pattern]) =>
+    pattern.test(normalized))?.[1] ?? 'bi-bar-chart';
 }
 
-export function getDashboardAccessConfig(
-  accessId,
-  role,
-) {
-  if (
-    accessId === 'DESPACHOS' &&
-    role === ROLES.CHOFER
-  ) {
+export function getDashboardAccessConfig(accessId, role) {
+  if (accessId === 'DESPACHOS' && role === ROLES.CHOFER) {
     return {
-      routeId: 'mis-entregas',
-      icon: 'bi-truck',
+      routeId: 'mi-jornada',
+      icon: 'bi-geo-alt-fill',
     };
   }
 
   return ACCESS_CONFIG[accessId] ?? null;
 }
 
-export function getDashboardNotificationPath(
-  notification,
-  role,
-) {
+export function getDashboardNotificationPath(notification, role) {
   const accessId = notification?.acceso_id;
   const entityId = notification?.entidad_id;
 
-  if (
-    accessId === 'CARGA' &&
-    entityId
-  ) {
+  if (accessId === 'CARGA' && entityId) {
     return `/bodega/cargas/${entityId}`;
   }
 
-  if (
-    accessId === 'JORNADAS' &&
-    entityId
-  ) {
-    return `/centro-logistico/jornadas/${entityId}`;
+  if (accessId === 'PREPARACION' && entityId) {
+    return `/bodega/preparacion/${entityId}`;
   }
 
-  if (accessId === 'MI_JORNADA') {
-    const journeyNotificationTypes = [
-      'JORNADA_ASIGNADA',
-      'CARGA_PENDIENTE',
-      'CARGA_CONFIRMADA',
-    ];
-
-    if (
-      entityId &&
-      journeyNotificationTypes.includes(notification?.tipo)
-    ) {
-      return `/centro-logistico/jornadas/${entityId}`;
-    }
-
-    return '/mis-entregas';
+  if (accessId === 'JORNADAS' && entityId) {
+    return `/jornadas/${entityId}`;
   }
 
-  const config = getDashboardAccessConfig(
-    accessId,
-    role,
-  );
+  if (accessId === 'MI_JORNADA' || role === ROLES.CHOFER) {
+    return '/mi-jornada';
+  }
+
+  const config = getDashboardAccessConfig(accessId, role);
 
   const routePaths = {
     dashboard: '/',
+    help: '/ayuda?tab=rol',
     clientes: '/clientes',
     pedidos: '/pedidos',
     'bodega-preparacion': '/bodega/preparacion',
     'bodega-cargas': '/bodega/cargas',
     ubicaciones: '/ubicaciones',
-    rutas: '/rutas',
-    'centro-logistico': '/centro-logistico',
+    jornadas: '/jornadas',
     despachos: '/despachos',
-    'mis-entregas': '/mis-entregas',
+    camiones: '/camiones',
+    choferes: '/choferes',
+    rutas: '/rutas',
+    'mi-jornada': '/mi-jornada',
   };
 
   return routePaths[config?.routeId] ?? '/';
 }
 
-export function normalizeDashboardNotification(
-  item,
-  role,
-) {
+export function normalizeDashboardNotification(item, role) {
   const level = item?.nivel ?? 'INFO';
 
   return {
@@ -193,6 +199,10 @@ export function getDashboardContextLabel(key) {
   return CONTEXT_LABELS[key] ?? String(key)
     .replaceAll('_', ' ')
     .replace(/^./, (value) => value.toUpperCase());
+}
+
+export function getDashboardContextIcon(key) {
+  return CONTEXT_ICONS[key] ?? 'bi-info-circle';
 }
 
 export function formatDashboardContextValue(value) {
@@ -222,15 +232,14 @@ export function formatDashboardContextValue(value) {
       ].filter(Boolean).join(' · ');
     }
 
-    if (value.placa) {
-      return value.placa;
-    }
-
-    if (value.nombre) {
-      return value.nombre;
-    }
+    if (value.placa) return value.placa;
+    if (value.nombre) return value.nombre;
 
     return 'Información disponible';
+  }
+
+  if (value === 'INBOUND_PROVISIONAL') {
+    return 'Inbound informativo';
   }
 
   return String(value);

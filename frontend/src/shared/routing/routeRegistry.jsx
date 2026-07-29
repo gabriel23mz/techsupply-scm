@@ -14,6 +14,7 @@ import {
   ClientesPage,
   DashboardPage,
   DespachosPage,
+  HelpCenterPage,
   JornadaDetallePage,
   JornadasPage,
   MiJornadaPage,
@@ -41,6 +42,14 @@ export const routeRegistry = [
     description: 'Resumen operativo según tu rol y permisos vigentes.',
     icon: 'bi-grid-1x2-fill',
     element: <DashboardPage />,
+  },
+  {
+    id: 'help',
+    path: '/ayuda',
+    label: 'Centro de ayuda',
+    description: 'Información del sistema y orientación operativa para tu rol.',
+    icon: 'bi-life-preserver',
+    element: <HelpCenterPage />,
   },
   {
     id: 'clientes',

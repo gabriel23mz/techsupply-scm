@@ -34,6 +34,10 @@ export const DashboardPage = lazy(() =>
   import('../../modules/dashboard/pages/DashboardPage'),
 );
 
+export const HelpCenterPage = lazy(() =>
+  import('../../modules/help/pages/HelpCenterPage'),
+);
+
 export const JornadasPage = lazy(() =>
   import('../../modules/logistica/pages/JornadasPage'),
 );

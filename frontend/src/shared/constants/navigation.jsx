@@ -2,7 +2,10 @@ export const navigationSections = [
   {
     id: 'general',
     label: 'General',
-    items: ['dashboard'],
+    items: [
+      'dashboard',
+      'help',
+    ],
   },
   {
     id: 'ventas',

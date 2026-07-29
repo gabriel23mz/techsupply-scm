@@ -18,6 +18,7 @@ test('frontend conserva la navegación principal mediante secciones y registro d
 
   for (const id of [
     'dashboard',
+    'help',
     'clientes',
     'pedidos',
     'jornadas',
@@ -37,6 +38,7 @@ test('frontend conserva la navegación principal mediante secciones y registro d
 
   for (const path of [
     '/',
+    '/ayuda',
     '/clientes',
     '/pedidos',
     '/ubicaciones',

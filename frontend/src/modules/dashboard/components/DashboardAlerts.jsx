@@ -2,42 +2,27 @@ import {
   useNavigate,
 } from 'react-router-dom';
 
-function DashboardAlerts({
-  alerts,
-}) {
+function DashboardAlerts({ alerts }) {
   const navigate = useNavigate();
 
   return (
     <section className="dashboard-panel dashboard-alerts">
-      <header className="dashboard-section-header">
+      <header className="dashboard-panel__header">
         <div>
-          <span>
-            Atención operativa
-          </span>
-
-          <h4>
-            Alertas relevantes
-          </h4>
+          <span>Atención operativa</span>
+          <h3>Alertas relevantes</h3>
+          <p>Eventos recientes calculados según tu rol y alcance.</p>
         </div>
-
-        <strong>
-          {alerts.length}
-        </strong>
+        <strong className="dashboard-panel__count">{alerts.length}</strong>
       </header>
 
-      <div className="dashboard-alert-list">
+      <div className="dashboard-alerts__list">
         {!alerts.length ? (
-          <div className="dashboard-alert-empty">
-            <i className="bi bi-check2-circle" />
-
+          <div className="dashboard-empty-message">
+            <i className="bi bi-check2-circle" aria-hidden="true" />
             <div>
-              <strong>
-                Operación estable
-              </strong>
-
-              <span>
-                No existen alertas críticas en este momento.
-              </span>
+              <strong>Operación estable</strong>
+              <span>No existen alertas críticas en este momento.</span>
             </div>
           </div>
         ) : (
@@ -45,26 +30,17 @@ function DashboardAlerts({
             <button
               key={alert.id}
               type="button"
-              className={`dashboard-alert-item ${alert.variant}`}
-              onClick={() =>
-                navigate(alert.path)
-              }
+              className={`dashboard-alert dashboard-alert--${alert.variant}`}
+              onClick={() => navigate(alert.path)}
             >
-              <div>
-                <i className={`bi ${alert.icon}`} />
-              </div>
-
-              <span>
-                <strong>
-                  {alert.title}
-                </strong>
-
-                <small>
-                  {alert.message}
-                </small>
+              <span className="dashboard-alert__icon">
+                <i className={`bi ${alert.icon}`} aria-hidden="true" />
               </span>
-
-              <i className="bi bi-chevron-right" />
+              <span className="dashboard-alert__copy">
+                <strong>{alert.title}</strong>
+                <small>{alert.message}</small>
+              </span>
+              <i className="bi bi-chevron-right dashboard-alert__arrow" aria-hidden="true" />
             </button>
           ))
         )}

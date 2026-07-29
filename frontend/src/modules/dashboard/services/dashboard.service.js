@@ -5,31 +5,15 @@ function unwrap(response) {
 }
 
 export const obtenerResumenDashboard = async () => {
-  const response = await api.get(
-    '/dashboard/resumen',
-  );
+  const response = await api.get('/dashboard/resumen');
 
   return unwrap(response);
 };
 
-export const obtenerNotificacionesDashboard = async (
-  limit = 8,
-) => {
-  const response = await api.get(
-    '/dashboard/notificaciones',
-    {
-      params: {
-        limit,
-      },
-    },
-  );
+export const obtenerNotificacionesDashboard = async (limit = 8) => {
+  const response = await api.get('/dashboard/notificaciones', {
+    params: { limit },
+  });
 
   return unwrap(response);
 };
-
-const dashboardService = {
-  obtenerResumenDashboard,
-  obtenerNotificacionesDashboard,
-};
-
-export default dashboardService;

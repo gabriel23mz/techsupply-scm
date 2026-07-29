@@ -3,41 +3,29 @@ import {
 } from 'react-router-dom';
 
 function QuickAccessCard({
-  title,
   description,
   icon,
+  informational = false,
   path,
-  featured = false,
-  badge,
+  title,
 }) {
   const navigate = useNavigate();
 
   return (
     <button
       type="button"
-      className={`dashboard-quick-card ${
-        featured
-          ? 'featured'
-          : ''
-      }`}
-      onClick={() =>
-        navigate(path)
-      }
+      className={`dashboard-access-card${informational ? ' dashboard-access-card--informational' : ''}`}
+      onClick={() => navigate(path)}
     >
-      <div className="dashboard-quick-icon">
-        <i className={`bi ${icon}`} />
-      </div>
-
-      <div>
+      <span className="dashboard-access-card__icon">
+        <i className={`bi ${icon}`} aria-hidden="true" />
+      </span>
+      <span className="dashboard-access-card__copy">
         <strong>{title}</strong>
-        <span>{description}</span>
-      </div>
-
-      {badge !== undefined && (
-        <b>{badge}</b>
-      )}
-
-      <i className="bi bi-arrow-right dashboard-quick-arrow" />
+        <small>{description}</small>
+      </span>
+      {informational && <span className="dashboard-access-card__badge">Informativo</span>}
+      <i className="bi bi-arrow-right dashboard-access-card__arrow" aria-hidden="true" />
     </button>
   );
 }

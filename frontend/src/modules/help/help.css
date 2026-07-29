@@ -1,0 +1,372 @@
+.help-page {
+  display: grid;
+  gap: var(--spacing-lg);
+  min-width: 0;
+}
+
+.help-tabs {
+  margin-top: calc(var(--spacing-lg) * -1);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.help-panel,
+.help-intro,
+.help-role-card,
+.help-module-card,
+.help-practice-card,
+.help-scope-notice {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow-sm);
+}
+
+.help-intro,
+.help-role-card,
+.help-panel,
+.help-scope-notice {
+  border-radius: var(--radius-lg);
+}
+
+.help-intro,
+.help-role-card {
+  overflow: hidden;
+  position: relative;
+}
+
+.help-intro {
+  display: grid;
+  grid-template-columns: auto minmax(18rem, 0.9fr) minmax(22rem, 1.1fr);
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+}
+
+.help-intro::after,
+.help-role-card::after {
+  content: '';
+  width: 13rem;
+  height: 13rem;
+  position: absolute;
+  top: -7.5rem;
+  right: -3rem;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  opacity: 0.62;
+  pointer-events: none;
+}
+
+.help-intro__icon,
+.help-role-card__icon {
+  display: grid;
+  place-items: center;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.help-intro__icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: var(--radius-lg);
+  font-size: 1.55rem;
+}
+
+.help-eyebrow,
+.help-panel__heading span,
+.help-role-card__copy > span {
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.help-intro h2,
+.help-role-card h2,
+.help-panel__heading h3 {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.help-intro h2,
+.help-role-card h2 {
+  margin-top: 0.25rem;
+  font-size: var(--font-size-xl);
+  line-height: 1.25;
+}
+
+.help-intro p,
+.help-role-card p,
+.help-panel__heading p,
+.help-module-card p,
+.help-practice-card p,
+.help-scope-notice p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+.help-intro__heading,
+.help-intro__description,
+.help-role-card__copy,
+.help-role-card__description,
+.help-intro__icon,
+.help-role-card__icon {
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.help-intro__description,
+.help-role-card__description {
+  margin: 0;
+  padding-left: var(--spacing-lg);
+  border-left: 1px solid var(--color-border);
+}
+
+.help-system-grid,
+.help-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: var(--spacing-lg);
+}
+
+.help-panel {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.help-panel--wide {
+  grid-column: 1 / -1;
+}
+
+.help-panel__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+}
+
+.help-panel__heading h3 {
+  margin-top: 0.2rem;
+  font-size: var(--font-size-lg);
+}
+
+.help-panel__heading p {
+  margin-top: var(--spacing-xs);
+}
+
+.help-steps,
+.help-responsibilities {
+  display: grid;
+  gap: var(--spacing-sm);
+  margin: 0;
+  padding: var(--spacing-lg);
+  list-style: none;
+}
+
+.help-step,
+.help-responsibilities li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: var(--spacing-md);
+}
+
+.help-step__number,
+.help-responsibilities i {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 800;
+}
+
+.help-step strong,
+.help-responsibilities strong,
+.help-module-card strong,
+.help-practice-card strong {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.help-step p {
+  margin: 0.2rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
+.help-role-card {
+  display: grid;
+  grid-template-columns: auto minmax(18rem, 0.9fr) minmax(22rem, 1.1fr);
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+}
+
+.help-role-card__icon {
+  width: 4.2rem;
+  height: 4.2rem;
+  border-radius: var(--radius-lg);
+  font-size: 1.65rem;
+}
+
+.help-modules-grid,
+.help-practices-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+}
+
+.help-module-card,
+.help-practice-card {
+  min-width: 0;
+  display: grid;
+  gap: var(--spacing-sm);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+}
+
+.help-module-card {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.help-module-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--color-primary) 38%, var(--color-border));
+  box-shadow: var(--shadow-md);
+}
+
+.help-module-card > i:first-child,
+.help-practice-card > i {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+.help-module-card > i:last-child {
+  color: var(--color-icon-muted);
+}
+
+.help-practice-card {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+}
+
+.help-scope-notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--spacing-md);
+  border-color: color-mix(in srgb, var(--color-warning) 42%, var(--color-border));
+  background: var(--color-warning-soft);
+  padding: var(--spacing-lg);
+}
+
+.help-scope-notice > i {
+  color: var(--color-warning);
+  font-size: 1.4rem;
+}
+
+.help-scope-notice strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--color-text);
+}
+
+@media (max-width: 1024px) {
+  .help-intro,
+  .help-role-card {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .help-intro__description,
+  .help-role-card__description {
+    grid-column: 2;
+    padding: 0;
+    border-left: 0;
+  }
+
+  .help-modules-grid,
+  .help-practices-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .help-system-grid,
+  .help-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .help-panel--wide {
+    grid-column: auto;
+  }
+
+  .help-intro,
+  .help-role-card {
+    align-items: start;
+    padding: var(--spacing-lg);
+  }
+}
+
+@media (max-width: 576px) {
+  .help-tabs {
+    margin-top: calc(var(--spacing-md) * -1);
+  }
+
+  .help-intro,
+  .help-role-card {
+    grid-template-columns: 1fr;
+  }
+
+  .help-intro__description,
+  .help-role-card__description {
+    grid-column: auto;
+  }
+
+  .help-intro__icon,
+  .help-role-card__icon {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+
+  .help-modules-grid,
+  .help-practices-grid {
+    grid-template-columns: 1fr;
+    padding: var(--spacing-md);
+  }
+
+  .help-panel__heading,
+  .help-steps,
+  .help-responsibilities {
+    padding: var(--spacing-md);
+  }
+}
