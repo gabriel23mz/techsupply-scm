@@ -1,2654 +1,530 @@
 /* ==========================================================================
-   Página principal
+   Rutas — composición del catálogo vial
+   Los controles, estados, tablas, modales y paginación provienen de shared/ui.
    ========================================================================== */
 
 .routes-page {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* ==========================================================================
-   Banner superior
-   ========================================================================== */
-
-.routes-banner {
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  border: 1px solid rgba(30, 58, 138, 0.14);
-  border-radius: 13px;
-  background: linear-gradient(
-    90deg,
-    rgba(30, 58, 138, 0.07),
-    rgba(14, 165, 233, 0.035)
-  );
-  padding: 12px 15px;
-}
-
-.routes-banner__icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
   display: grid;
-  place-items: center;
-  border-radius: 11px;
-  background: rgba(30, 58, 138, 0.11);
-  color: var(--color-primary);
-  font-size: 18px;
+  gap: var(--spacing-lg);
 }
-
-.routes-banner__content {
-  min-width: 0;
-  flex: 1;
-}
-
-.routes-banner__content strong {
-  display: block;
-  color: var(--color-text);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.routes-banner__content span {
-  display: block;
-  margin-top: 2px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.routes-banner__actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.routes-banner__badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid rgba(30, 58, 138, 0.16);
-  border-radius: 999px;
-  background: var(--color-surface-glass);
-  padding: 6px 10px;
-  color: var(--color-primary);
-  font-size: 10px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.routes-banner__badge > span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-success);
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
-}
-
-/* ==========================================================================
-   Métricas
-   ========================================================================== */
 
 .routes-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: var(--spacing-md);
 }
 
-.routes-metric-card {
+.routes-catalog {
   min-width: 0;
-  min-height: 92px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 13px;
-  background: var(--color-surface);
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.035);
-  padding: 14px 16px;
-}
-
-.routes-metric-icon {
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  font-size: 19px;
-}
-
-.routes-metric-icon.primary {
-  background: rgba(30, 58, 138, 0.1);
-  color: var(--color-primary);
-}
-
-.routes-metric-icon.success {
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--color-success);
-}
-
-.routes-metric-icon.warning {
-  background: rgba(245, 158, 11, 0.13);
-  color: var(--color-warning);
-}
-
-.routes-metric-icon.info {
-  background: rgba(14, 165, 233, 0.12);
-  color: var(--color-info);
-}
-
-.routes-metric-content {
-  min-width: 0;
-}
-
-.routes-metric-content > span {
-  display: block;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.routes-metric-content > strong {
-  display: block;
-  margin-top: 3px;
-  color: var(--color-text);
-  font-size: 20px;
-  font-weight: 800;
-}
-
-.routes-metric-content > small {
-  display: block;
-  margin-top: 3px;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-/* ==========================================================================
-   Área de trabajo y pestañas
-   ========================================================================== */
-
-.routes-workspace {
   overflow: hidden;
   border: 1px solid var(--color-border);
-  border-radius: 14px;
-  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-elevated);
   box-shadow: var(--shadow-sm);
 }
 
-.routes-tabs {
-  display: flex;
-  align-items: stretch;
-  gap: 4px;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--color-border);
-  padding: 0 18px;
-}
-
-.routes-tabs button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  padding: 15px 14px;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.routes-tabs button:hover {
-  color: var(--color-primary);
-}
-
-.routes-tabs button.active {
-  border-bottom-color: var(--color-primary);
-  color: var(--color-primary);
-}
-
-.routes-tabs button b {
-  min-width: 23px;
-  height: 21px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 999px;
-  background: var(--color-background);
-  padding: 0 6px;
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.routes-tabs button.active b {
-  background: rgba(30, 58, 138, 0.09);
-}
-
-.routes-tab-content {
-  min-height: 420px;
-}
-
-/* ==========================================================================
-   Estados provisionales
-   ========================================================================== */
-
-.routes-module-placeholder {
-  min-height: 420px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 40px;
-  text-align: left;
-}
-
-.routes-placeholder-icon {
-  width: 58px;
-  height: 58px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 16px;
-  background: rgba(30, 58, 138, 0.1);
-  color: var(--color-primary);
-  font-size: 26px;
-}
-
-.routes-placeholder-icon.catalog {
-  background: rgba(14, 165, 233, 0.12);
-  color: var(--color-info);
-}
-
-.routes-placeholder-icon.trucks {
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--color-success);
-}
-
-.routes-module-placeholder span {
-  color: var(--color-primary);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.routes-module-placeholder h4 {
-  margin: 4px 0 0;
-  color: var(--color-text);
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.routes-module-placeholder p {
-  max-width: 480px;
-  margin: 5px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-
-.routes-empty-state {
-  min-height: 420px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  padding: 40px;
-  text-align: center;
-}
-
-.routes-empty-state h4 {
-  margin: 15px 0 0;
-  color: var(--color-text);
-  font-size: 17px;
-  font-weight: 800;
-}
-
-.routes-empty-state p {
-  margin: 5px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
-
-/* ==========================================================================
-   Error estructural
-   ========================================================================== */
-
-.routes-error-alert {
+.routes-catalog__toolbar-row {
+  min-height: 4.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  margin: 0;
-  border-color: rgba(239, 68, 68, 0.24);
-  border-radius: 12px;
-  background: rgba(239, 68, 68, 0.08);
+  gap: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  padding: var(--spacing-md) var(--spacing-lg);
 }
 
-.routes-error-alert > div {
+.routes-catalog-toolbar {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns:
+    minmax(16rem, 1fr)
+    minmax(12rem, 16rem)
+    minmax(12rem, 16rem)
+    auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.routes-catalog-search {
+  min-width: 0;
+}
+
+.routes-catalog__summary {
+  flex-shrink: 0;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+}
+
+.routes-catalog__summary strong {
+  color: var(--color-text);
+}
+
+.routes-catalog__content {
+  padding: var(--spacing-md);
+}
+
+.routes-catalog-table {
+  min-width: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+.routes-catalog-table .ui-data-table__scroll {
+  overflow: visible;
+}
+
+.routes-catalog-table table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.routes-catalog-table th,
+.routes-catalog-table td {
+  padding-inline: clamp(0.55rem, 0.8vw, 0.9rem);
+}
+
+.routes-catalog-table tbody td {
+  min-height: 4.6rem;
+}
+
+.routes-catalog-table .ui-data-table__actions-heading,
+.routes-catalog-table .ui-data-table__actions-cell {
+  width: 7.5rem;
+  padding-inline: 0.35rem;
+  text-align: center;
+}
+
+.routes-catalog-table .ui-table-actions {
+  width: 100%;
+  justify-content: center;
+}
+
+.routes-location-cell {
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: var(--spacing-xs);
 }
 
-.routes-error-alert i {
-  color: var(--color-error);
-  font-size: 20px;
+.routes-location-cell i {
+  flex: 0 0 auto;
+  color: var(--color-primary);
 }
 
-.routes-error-alert strong,
-.routes-error-alert span {
-  display: block;
-}
-
-.routes-error-alert strong {
+.routes-location-cell span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--color-text);
-  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.routes-error-alert span {
-  margin-top: 2px;
+.routes-catalog > .ui-pagination {
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  padding: var(--spacing-sm) var(--spacing-lg);
+}
+
+/* ==========================================================================
+   Formulario y cálculo vial
+   ========================================================================== */
+
+.routes-form {
+  display: grid;
+  gap: var(--spacing-lg);
+}
+
+.routes-form-location-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: var(--spacing-md);
+}
+
+.routes-calculation-mode {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-alt);
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.routes-calculation-mode:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.routes-calculation-mode:focus-visible {
+  outline: 0;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+.routes-calculation-mode__switch {
+  width: 2.5rem;
+  height: 1.4rem;
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  padding: 0.15rem;
+  transition:
+    border-color var(--transition-fast),
+    background-color var(--transition-fast);
+}
+
+.routes-calculation-mode__switch > span {
+  width: 0.95rem;
+  height: 0.95rem;
+  border-radius: 50%;
+  background: var(--color-text-muted);
+  box-shadow: var(--shadow-xs);
+  transition:
+    background-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.routes-calculation-mode__switch.is-active {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.routes-calculation-mode__switch.is-active > span {
+  background: var(--button-primary-text);
+  transform: translateX(1.05rem);
+}
+
+.routes-calculation-mode__content {
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.routes-calculation-mode__content strong {
+  font-size: var(--font-size-sm);
+}
+
+.routes-calculation-mode__content small {
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.routes-calculation-mode__state {
+  border-radius: var(--radius-pill);
+  background: var(--color-primary-soft);
+  padding: 0.3rem 0.6rem;
+  color: var(--color-primary);
+  font-size: var(--font-size-xs);
+  font-weight: 800;
+}
+
+.routes-distance-control {
+  min-height: var(--control-height-md);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-alt);
+  padding-inline: var(--spacing-md);
+  color: var(--color-text-secondary);
+}
+
+.routes-distance-control:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+}
+
+.routes-distance-control.is-invalid {
+  border-color: var(--color-danger);
+}
+
+.routes-distance-control.is-manual {
+  background: var(--color-surface);
+}
+
+.routes-distance-control > i {
+  color: var(--color-primary);
+  font-size: 1rem;
+}
+
+.routes-distance-control input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-weight: 750;
+}
+
+.routes-distance-control input::placeholder {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.routes-distance-unit {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 750;
+}
+
+.routes-distance-spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--color-border-strong);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: routes-distance-spin 0.75s linear infinite;
+}
+
+.routes-calculation-reference {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  margin: calc(var(--spacing-sm) * -1) 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.routes-calculation-reference i {
+  color: var(--color-info);
+}
+
+@keyframes routes-distance-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ==========================================================================
+   Detalle
+   ========================================================================== */
+
+.routes-detail-content {
+  display: grid;
+  gap: var(--spacing-lg);
+}
+
+.routes-detail-route {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.routes-detail-route article {
+  min-width: 0;
+  min-height: 8rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--spacing-xs);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-alt);
+  padding: var(--spacing-lg);
+  text-align: center;
+}
+
+.routes-detail-route article > i {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  font-size: 1.15rem;
+}
+
+.routes-detail-route article span,
+.routes-detail-grid span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 750;
+}
+
+.routes-detail-route article strong {
+  max-width: 100%;
+  color: var(--color-text);
+  font-size: var(--font-size-md);
+  overflow-wrap: anywhere;
+}
+
+.routes-detail-arrow {
+  color: var(--color-primary);
+  font-size: 1.2rem;
+}
+
+.routes-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-sm);
+}
+
+.routes-detail-grid > div {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: var(--spacing-xs);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  padding: var(--spacing-md);
+}
+
+.routes-detail-grid strong {
+  color: var(--color-text);
+  font-size: var(--font-size-md);
 }
 
 /* ==========================================================================
    Responsive
    ========================================================================== */
 
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .routes-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
 
-@media (max-width: 760px) {
-  .routes-banner {
-    align-items: flex-start;
-  }
-
-  .routes-banner__actions {
+  .routes-catalog__toolbar-row {
     align-items: flex-end;
+  }
+
+  .routes-catalog-toolbar {
+    grid-template-columns: minmax(14rem, 1fr) repeat(2, minmax(11rem, 15rem));
+  }
+
+  .routes-catalog-toolbar > .ui-button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
+@media (max-width: 900px) {
+  .routes-catalog__toolbar-row {
+    align-items: stretch;
     flex-direction: column;
   }
 
-  .routes-banner__badge {
-    display: none;
+  .routes-catalog-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .routes-module-placeholder {
-    align-items: center;
-    flex-direction: column;
-    text-align: center;
+  .routes-catalog-search {
+    grid-column: 1 / -1;
+  }
+
+  .routes-catalog__summary {
+    align-self: flex-end;
+  }
+
+  .routes-catalog-table .ui-data-table__scroll {
+    overflow-x: auto;
+  }
+
+  .routes-catalog-table table {
+    min-width: 50rem;
   }
 }
 
-/* ==========================================================================
-   Mapa general: estructura
-   ========================================================================== */
-
-.routes-map-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 16px;
-  background: var(--color-background);
-  padding: 16px;
-}
-
-.routes-general-map-card,
-.routes-map-panel {
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 13px;
-  background: var(--color-surface);
-  box-shadow:
-    0 4px 12px rgba(15, 23, 42, 0.04),
-    0 1px 2px rgba(15, 23, 42, 0.03);
-}
-
-/* ==========================================================================
-   Mapa general: encabezado y contenedor
-   ========================================================================== */
-
-.routes-general-map-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 13px 15px;
-}
-
-.routes-general-map-header span {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.routes-general-map-header h4 {
-  margin: 3px 0 0;
-  color: var(--color-text);
-  font-size: 17px;
-  font-weight: 800;
-}
-
-.routes-general-map-header__status {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 7px;
-  background: rgba(30, 58, 138, 0.08);
-  padding: 6px 9px;
-  color: var(--color-primary);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.routes-general-map-header__status > span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-success);
-  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.13);
-}
-
-.routes-general-map-container {
-  position: relative;
-  width: 100%;
-  height: 570px;
-}
-
-.routes-general-leaflet-map {
-  width: 100%;
-  height: 100%;
-  background: var(--color-background-muted);
-}
-
-.routes-map-div-icon {
-  border: 0 !important;
-  background: transparent !important;
-}
-
-/* ==========================================================================
-   Mapa general: marcadores
-   ========================================================================== */
-
-.routes-map-marker {
-  display: grid;
-  place-items: center;
-  border: 3px solid #fff;
-  border-radius: 50%;
-  box-shadow:
-    0 5px 14px rgba(15, 23, 42, 0.24),
-    0 1px 3px rgba(15, 23, 42, 0.18);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.routes-map-marker.warehouse {
-  width: 40px;
-  height: 40px;
-  border-radius: 11px;
-  background: #0f172a;
-  font-size: 17px;
-}
-
-.routes-map-marker.warehouse i {
-  display: block;
-  color: #fff;
-  font-size: 18px;
-  line-height: 1;
-}
-
-.routes-map-marker.delivery {
-  width: 31px;
-  height: 31px;
-  background: var(--color-icon-muted);
-}
-
-.routes-map-marker.delivery.current {
-  background: var(--color-info);
-  box-shadow:
-    0 0 0 7px rgba(14, 165, 233, 0.18),
-    0 5px 14px rgba(15, 23, 42, 0.24);
-}
-
-.routes-map-marker.delivery.delivered {
-  background: var(--color-success);
-}
-
-.routes-map-marker.delivery.not-delivered {
-  background: var(--color-error);
-}
-
-.routes-map-truck {
-  min-width: 82px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 2px solid var(--route-color);
-  border-radius: 999px;
-  background: var(--color-surface);
-  box-shadow:
-    0 5px 14px rgba(15, 23, 42, 0.22),
-    0 1px 3px rgba(15, 23, 42, 0.15);
-  padding: 0 9px;
-  color: var(--route-color);
-  font-size: 10px;
-  font-weight: 900;
-  white-space: nowrap;
-}
-
-.routes-map-truck i {
-  display: block;
-  color: inherit;
-  font-size: 16px;
-  line-height: 1;
-}
-
-.routes-map-truck.selected {
-  box-shadow:
-    0 0 0 7px color-mix(in srgb, var(--route-color) 18%, transparent),
-    0 6px 16px rgba(15, 23, 42, 0.24);
-  transform: scale(1.06);
-}
-
-/* ==========================================================================
-   Mapa general: leyenda y errores
-   ========================================================================== */
-
-.routes-general-map-legend {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 14px;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 11px 14px;
-}
-
-.routes-general-map-legend > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.routes-legend-line {
-  width: 24px;
-  height: 0;
-  display: inline-block;
-  border-top: 3px solid var(--color-primary);
-}
-
-.routes-legend-line.pending {
-  border-top-style: dashed;
-  opacity: 0.72;
-}
-
-.routes-legend-dot {
-  width: 10px;
-  height: 10px;
-  display: inline-block;
-  border-radius: 50%;
-}
-
-.routes-legend-dot.warehouse {
-  border-radius: 3px;
-  background: #0f172a;
-}
-
-.routes-legend-dot.truck {
-  border-radius: 3px;
-  background: var(--color-primary);
-}
-
-.routes-legend-dot.delivery {
-  background: var(--color-icon-muted);
-}
-
-.routes-map-tile-warning {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  z-index: var(--z-map);
-  max-width: 330px;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  border: 1px solid rgba(245, 158, 11, 0.28);
-  border-radius: 10px;
-  background: var(--color-surface-glass);
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.14);
-  padding: 10px 12px;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-.routes-map-tile-warning i {
-  color: var(--color-warning);
-  font-size: 17px;
-}
-
-.routes-map-empty {
-  min-height: 570px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  border: 1px dashed rgba(30, 58, 138, 0.25);
-  border-radius: 13px;
-  background: rgba(30, 58, 138, 0.035);
-  padding: 30px;
-  text-align: center;
-}
-
-.routes-map-empty i {
-  color: var(--color-primary);
-  font-size: 40px;
-}
-
-.routes-map-empty h4 {
-  margin: 12px 0 4px;
-  font-size: 17px;
-}
-
-.routes-map-empty p {
-  max-width: 380px;
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-/* ==========================================================================
-   Panel lateral de jornadas
-   ========================================================================== */
-
-.routes-map-panel {
-  height: 646px;
-  display: flex;
-  flex-direction: column;
-}
-
-.routes-map-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 13px 14px;
-}
-
-.routes-map-panel__header span {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.routes-map-panel__header h4 {
-  margin: 3px 0 0;
-  font-size: 16px;
-  font-weight: 800;
-}
-
-.routes-map-refresh {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 9px;
-  background: var(--color-surface);
-  color: var(--color-primary);
-}
-
-.routes-map-refresh:hover:not(:disabled) {
-  background: rgba(30, 58, 138, 0.07);
-}
-
-.routes-map-panel__filters {
-  display: grid;
-  gap: 9px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 12px;
-}
-
-.routes-map-search {
-  position: relative;
-}
-
-.routes-map-search > i {
-  position: absolute;
-  top: 50%;
-  left: 10px;
-  z-index: var(--z-base);
-  color: var(--color-text-secondary);
-  transform: translateY(-50%);
-}
-
-.routes-map-search input {
-  padding-right: 35px;
-  padding-left: 33px;
-}
-
-.routes-map-search > button {
-  position: absolute;
-  top: 50%;
-  right: 7px;
-  width: 25px;
-  height: 25px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  transform: translateY(-50%);
-}
-
-.routes-map-panel__list {
-  flex: 1;
-  overflow-y: auto;
-  background: var(--color-background);
-  padding: 11px;
-}
-
-.routes-map-panel__footer {
-  border-top: 1px solid var(--color-border);
-  padding: 10px 13px;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  text-align: center;
-}
-
-/* ==========================================================================
-   Tarjeta de jornada
-   ========================================================================== */
-
-.routes-journey-card {
-  overflow: hidden;
-  margin-bottom: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: 11px;
-  background: var(--color-surface);
-  box-shadow: 0 2px 7px rgba(15, 23, 42, 0.035);
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.routes-journey-card:hover {
-  border-color: rgba(30, 58, 138, 0.25);
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.07);
-  transform: translateY(-1px);
-}
-
-.routes-journey-card.selected {
-  border-color: rgba(30, 58, 138, 0.42);
-  box-shadow:
-    0 0 0 3px rgba(30, 58, 138, 0.07),
-    0 6px 14px rgba(15, 23, 42, 0.06);
-}
-
-.routes-journey-card__select {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  padding: 12px;
-  color: inherit;
-  text-align: left;
-}
-
-.routes-journey-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.routes-journey-card__header strong,
-.routes-journey-card__header span {
-  display: block;
-}
-
-.routes-journey-card__header strong {
-  color: var(--color-primary);
-  font-size: 15px;
-  font-weight: 900;
-}
-
-.routes-journey-card__header > div > span {
-  margin-top: 5px;
-  color: var(--color-text-secondary);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.routes-journey-card__progress {
-  margin-top: 11px;
-}
-
-.routes-journey-card__progress > div:first-child {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.routes-journey-card__progress span {
-  color: var(--color-text-secondary);
-  font-size: 14px;
-}
-
-.routes-journey-card__progress strong {
-  color: var(--color-primary);
-  font-size: 14px;
-}
-
-.routes-journey-progress-track {
-  height: 6px;
-  margin-top: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-border);
-}
-
-.routes-journey-progress-track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-success);
-  transition: width 0.3s ease;
-}
-
-.routes-journey-card__summary {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-top: 10px;
-}
-
-.routes-journey-card__summary > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.routes-journey-card__summary strong {
-  color: var(--color-text);
-}
-
-.routes-journey-card__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 7px;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 8px 10px;
-}
-
-.routes-map-panel__empty {
-  min-height: 280px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  padding: 25px;
-  text-align: center;
-}
-
-.routes-map-panel__empty i {
-  color: var(--color-primary);
-  font-size: 30px;
-}
-
-.routes-map-panel__empty strong {
-  margin-top: 10px;
-  font-size: 13px;
-}
-
-.routes-map-panel__empty span {
-  max-width: 240px;
-  margin-top: 4px;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-.routes-map-popup span {
-  display: block;
-  margin-top: 3px;
-}
-
-
-/* ==========================================================================
-   Botón centrar en mapa
-   ========================================================================== */
-
-.routes-general-map-container {
-  position: relative;
-}
-
-.routes-map-recenter-button {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: var(--z-map);
-
-  width: 40px;
-  height: 40px;
-
-  display: grid;
-  place-items: center;
-
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  border-radius: 9px;
-
-  background: var(--map-control-background);
-  box-shadow:
-    0 4px 12px rgba(15, 23, 42, 0.16),
-    0 1px 3px rgba(15, 23, 42, 0.08);
-
-  color: var(--color-primary);
-  font-size: 18px;
-
-  transition:
-    background 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.routes-map-recenter-button:hover {
-  background: var(--color-surface);
-  box-shadow:
-    0 7px 18px rgba(15, 23, 42, 0.2),
-    0 2px 5px rgba(15, 23, 42, 0.1);
-  transform: translateY(-1px);
-}
-
-.routes-map-recenter-button:active {
-  transform: translateY(0);
-}
-
-/* ==========================================================================
-   Catálogo de rutas
-   ========================================================================== */
-
-.routes-catalog {
-  background: var(--color-surface);
-}
-
-.routes-catalog-intro {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 18px 20px;
-}
-
-.routes-catalog-intro span {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.routes-catalog-intro h4 {
-  margin: 3px 0 0;
-  color: var(--color-text);
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.routes-catalog-intro p {
-  margin: 4px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.routes-catalog-intro > span {
-  flex-shrink: 0;
-  border-radius: 7px;
-  background: rgba(30, 58, 138, 0.08);
-  padding: 6px 9px;
-  color: var(--color-primary);
-}
-
-/* ==========================================================================
-   Toolbar del catálogo
-   ========================================================================== */
-
-.routes-catalog-toolbar {
-  display: grid;
-  grid-template-columns:
-    minmax(240px, 1fr)
-    minmax(170px, 220px)
-    minmax(170px, 220px)
-    auto;
-  gap: 10px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 15px 20px;
-}
-
-.routes-catalog-search {
-  position: relative;
-}
-
-.routes-catalog-search > i {
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  z-index: var(--z-base);
-  color: var(--color-text-secondary);
-  transform: translateY(-50%);
-}
-
-.routes-catalog-search input {
-  padding-right: 38px;
-  padding-left: 36px;
-}
-
-.routes-catalog-search > button {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  transform: translateY(-50%);
-}
-
-.routes-catalog-toolbar__actions {
-  display: flex;
-  gap: 8px;
-}
-
-/* ==========================================================================
-   Tabla del catálogo
-   ========================================================================== */
-
-.routes-catalog-table-wrapper {
-  overflow-x: auto;
-}
-
-.routes-catalog-table thead th {
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 13px 18px;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.routes-catalog-table tbody td {
-  border-bottom: 1px solid var(--color-border);
-  padding: 14px 18px;
-  color: var(--color-text);
-  font-size: 13px;
-  vertical-align: middle;
-}
-
-.routes-catalog-table tbody tr:hover td {
-  background: rgba(30, 58, 138, 0.025);
-}
-
-.routes-location-cell {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.routes-location-cell i {
-  color: var(--color-primary);
-}
-
-.routes-route-status {
-  display: inline-flex;
-  border-radius: 7px;
-  padding: 5px 9px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.routes-route-status.active {
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--color-success);
-}
-
-.routes-table-actions {
-  display: flex;
-  justify-content: center;
-  gap: 7px;
-}
-
-.routes-table-actions button {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-primary);
-}
-
-.routes-table-actions button:hover {
-  border-color: rgba(30, 58, 138, 0.3);
-  background: rgba(30, 58, 138, 0.07);
-}
-
-.routes-table-actions button.danger {
-  color: var(--color-error);
-}
-
-.routes-catalog-empty {
-  min-height: 380px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  padding: 40px;
-  text-align: center;
-}
-
-.routes-catalog-empty i {
-  color: var(--color-primary);
-  font-size: 40px;
-}
-
-.routes-catalog-empty h4 {
-  margin: 14px 0 0;
-  font-size: 17px;
-}
-
-.routes-catalog-empty p {
-  max-width: 420px;
-  margin: 5px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-/* ==========================================================================
-   Modales del catálogo
-   ========================================================================== */
-
-.routes-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay);
-  display: grid;
-  place-items: center;
-  background: rgba(15, 23, 42, 0.58);
-  padding: 20px;
-  backdrop-filter: blur(3px);
-}
-
-.routes-form-modal,
-.routes-detail-modal {
-  width: min(560px, 100%);
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  background: var(--color-surface);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
-}
-
-.routes-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 16px 18px;
-}
-
-.routes-modal-header span {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.routes-modal-header h4 {
-  margin: 3px 0 0;
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.routes-modal-header > button {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 8px;
-  background: var(--color-background);
-  color: var(--color-text-secondary);
-}
-
-.routes-modal-body {
-  padding: 20px;
-}
-
-.routes-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 9px;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 14px 18px;
-}
-
-.routes-form-preview {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 12px;
-  margin-top: 18px;
-  border: 1px solid rgba(30, 58, 138, 0.15);
-  border-radius: 12px;
-  background: rgba(30, 58, 138, 0.04);
-  padding: 14px;
-}
-
-.routes-form-preview > div {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--color-primary);
-}
-
-.routes-form-preview span {
-  overflow: hidden;
-  color: var(--color-text);
-  font-size: 12px;
-  font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.routes-detail-route {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 14px;
-}
-
-.routes-detail-route article {
-  min-height: 120px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  background: var(--color-background);
-  padding: 16px;
-  text-align: center;
-}
-
-.routes-detail-route article i {
-  color: var(--color-primary);
-  font-size: 24px;
-}
-
-.routes-detail-route article span {
-  margin-top: 8px;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.routes-detail-route article strong {
-  margin-top: 3px;
-  font-size: 13px;
-}
-
-.routes-detail-arrow {
-  color: var(--color-primary);
-  font-size: 22px;
-}
-
-.routes-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-top: 16px;
-}
-
-.routes-detail-grid > div {
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 12px;
-}
-
-.routes-detail-grid span,
-.routes-detail-grid strong {
-  display: block;
-}
-
-.routes-detail-grid span {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  text-transform: uppercase;
-}
-
-.routes-detail-grid strong {
-  margin-top: 4px;
-  font-size: 13px;
-}
-
-
-/* ==========================================================================
-   Pestaña de camiones
-   ========================================================================== */
-
-.routes-trucks-tab {
-  background: var(--color-surface);
-}
-
-.routes-trucks-intro {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 18px 20px;
-}
-
-.routes-trucks-intro span {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.routes-trucks-intro h4 {
-  margin: 3px 0 0;
-  color: var(--color-text);
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.routes-trucks-intro p {
-  margin: 4px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-.routes-trucks-intro > span {
-  flex-shrink: 0;
-  border-radius: 7px;
-  background: rgba(30, 58, 138, 0.08);
-  padding: 6px 9px;
-  color: var(--color-primary);
-}
-
-/* ==========================================================================
-   Métricas internas de camiones
-   ========================================================================== */
-
-.routes-trucks-metrics {
-  display: grid;
-  grid-template-columns: repeat(
-    4,
-    minmax(0, 1fr)
-  );
-  gap: 12px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 14px 20px;
-}
-
-.routes-trucks-metrics article {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  background: var(--color-surface);
-  padding: 13px 14px;
-}
-
-.routes-trucks-metric-icon {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  font-size: 17px;
-}
-
-.routes-trucks-metric-icon.primary {
-  background: rgba(30, 58, 138, 0.1);
-  color: var(--color-primary);
-}
-
-.routes-trucks-metric-icon.success {
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--color-success);
-}
-
-.routes-trucks-metric-icon.warning {
-  background: rgba(245, 158, 11, 0.13);
-  color: var(--color-warning);
-}
-
-.routes-trucks-metric-icon.info {
-  background: rgba(14, 165, 233, 0.12);
-  color: var(--color-info);
-}
-
-.routes-trucks-metrics span,
-.routes-trucks-metrics strong,
-.routes-trucks-metrics small {
-  display: block;
-}
-
-.routes-trucks-metrics span {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.routes-trucks-metrics strong {
-  margin-top: 2px;
-  color: var(--color-text);
-  font-size: 18px;
-}
-
-.routes-trucks-metrics small {
-  margin-top: 2px;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-}
-
-/* ==========================================================================
-   Toolbar de camiones
-   ========================================================================== */
-
-.routes-trucks-toolbar {
-  display: grid;
-  grid-template-columns:
-    minmax(240px, 1fr)
-    minmax(170px, 220px)
-    minmax(190px, 230px)
-    auto;
-  gap: 10px;
-  border-bottom: 1px solid var(--color-border);
-  padding: 15px 20px;
-}
-
-.routes-trucks-search {
-  position: relative;
-}
-
-.routes-trucks-search > i {
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  z-index: var(--z-base);
-  color: var(--color-text-secondary);
-  transform: translateY(-50%);
-}
-
-.routes-trucks-search input {
-  padding-right: 38px;
-  padding-left: 36px;
-}
-
-.routes-trucks-search > button {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  transform: translateY(-50%);
-}
-
-/* ==========================================================================
-   Tabla de camiones
-   ========================================================================== */
-
-.routes-trucks-table-wrapper {
-  overflow-x: auto;
-}
-
-.routes-trucks-table thead th {
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 13px 16px;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.routes-trucks-table tbody td {
-  border-bottom: 1px solid var(--color-border);
-  padding: 14px 16px;
-  color: var(--color-text);
-  font-size: 12px;
-  vertical-align: middle;
-}
-
-.routes-trucks-table tbody tr:hover td {
-  background: rgba(30, 58, 138, 0.025);
-}
-
-.routes-truck-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.routes-truck-cell__icon {
-  width: 37px;
-  height: 37px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  background: rgba(30, 58, 138, 0.1);
-  color: var(--color-primary);
-  font-size: 16px;
-}
-
-.routes-truck-cell strong,
-.routes-truck-cell small {
-  display: block;
-}
-
-.routes-truck-cell strong {
-  color: var(--color-primary);
-  font-size: 12px;
-}
-
-.routes-truck-cell small {
-  margin-top: 2px;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-}
-
-.routes-truck-capacity {
-  min-width: 125px;
-}
-
-.routes-truck-capacity__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.routes-truck-capacity__header span {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-}
-
-.routes-truck-capacity__header strong {
-  color: var(--color-primary);
-  font-size: 10px;
-}
-
-.routes-truck-capacity__track {
-  height: 6px;
-  margin-top: 6px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--color-border);
-}
-
-.routes-truck-capacity__track span {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--color-success);
-}
-
-.routes-truck-capacity__track span.full {
-  background: var(--color-warning);
-}
-
-.routes-truck-capacity small {
-  display: block;
-  margin-top: 5px;
-  color: var(--color-text-secondary);
-  font-size: 9px;
-}
-
-.routes-truck-status {
-  display: inline-flex;
-  border-radius: 7px;
-  padding: 5px 9px;
-  font-size: 9px;
-  font-weight: 800;
-  white-space: nowrap;
-  text-transform: uppercase;
-}
-
-.routes-truck-status.available {
-  background: rgba(34, 197, 94, 0.12);
-  color: var(--color-success);
-}
-
-.routes-truck-status.assigned {
-  background: rgba(30, 58, 138, 0.1);
-  color: var(--color-primary);
-}
-
-.routes-truck-status.in-route {
-  background: rgba(245, 158, 11, 0.13);
-  color: var(--color-warning);
-}
-
-.routes-truck-status.out-of-service {
-  background: rgba(239, 68, 68, 0.12);
-  color: var(--color-error);
-}
-
-.routes-truck-status.neutral {
-  background: rgba(107, 114, 128, 0.12);
-  color: var(--color-text-secondary);
-}
-
-.routes-truck-status.inactive {
-  background: rgba(107, 114, 128, 0.14);
-  color: var(--color-text-secondary);
-}
-
-.routes-truck-journey strong,
-.routes-truck-journey span {
-  display: block;
-}
-
-.routes-truck-journey strong {
-  color: var(--color-primary);
-  font-size: 11px;
-}
-
-.routes-truck-journey span {
-  margin-top: 2px;
-  color: var(--color-text-secondary);
-  font-size: 9px;
-}
-
-.routes-truck-no-journey {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-}
-
-/* ==========================================================================
-   Estado vacío de camiones
-   ========================================================================== */
-
-.routes-trucks-empty {
-  min-height: 380px;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  padding: 40px;
-  text-align: center;
-}
-
-.routes-trucks-empty i {
-  color: var(--color-primary);
-  font-size: 40px;
-}
-
-.routes-trucks-empty h4 {
-  margin: 14px 0 0;
-  font-size: 17px;
-}
-
-.routes-trucks-empty p {
-  max-width: 420px;
-  margin: 5px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-/* ==========================================================================
-   Modal de resumen de camión
-   ========================================================================== */
-
-.routes-truck-modal {
-  width: min(680px, 100%);
-  overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: 16px;
-  background: var(--color-surface);
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
-}
-
-.routes-truck-modal__hero {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  border: 1px solid rgba(30, 58, 138, 0.14);
-  border-radius: 12px;
-  background: rgba(30, 58, 138, 0.04);
-  padding: 14px;
-}
-
-.routes-truck-modal__icon {
-  width: 48px;
-  height: 48px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: 12px;
-  background: rgba(30, 58, 138, 0.11);
-  color: var(--color-primary);
-  font-size: 21px;
-}
-
-.routes-truck-modal__hero span,
-.routes-truck-modal__hero strong,
-.routes-truck-modal__hero small {
-  display: block;
-}
-
-.routes-truck-modal__hero span {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  text-transform: uppercase;
-}
-
-.routes-truck-modal__hero strong {
-  margin-top: 2px;
-  color: var(--color-text);
-  font-size: 16px;
-}
-
-.routes-truck-modal__hero small {
-  margin-top: 3px;
-  color: var(--color-text-secondary);
-}
-
-.routes-truck-modal__capacity {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px 14px;
-  margin-top: 14px;
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 14px;
-}
-
-.routes-truck-modal__capacity span,
-.routes-truck-modal__capacity strong {
-  display: block;
-}
-
-.routes-truck-modal__capacity span {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  text-transform: uppercase;
-}
-
-.routes-truck-modal__capacity strong {
-  margin-top: 3px;
-  font-size: 13px;
-}
-
-.routes-truck-modal__capacity b {
-  color: var(--color-primary);
-  font-size: 16px;
-}
-
-.routes-truck-modal__capacity
-.routes-truck-capacity__track {
-  grid-column: 1 / -1;
-}
-
-.routes-truck-modal__grid {
-  display: grid;
-  grid-template-columns: repeat(
-    4,
-    minmax(0, 1fr)
-  );
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.routes-truck-modal__grid article {
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  padding: 12px;
-}
-
-.routes-truck-modal__grid span,
-.routes-truck-modal__grid strong,
-.routes-truck-modal__grid small {
-  display: block;
-}
-
-.routes-truck-modal__grid span {
-  color: var(--color-text-secondary);
-  font-size: 9px;
-  text-transform: uppercase;
-}
-
-.routes-truck-modal__grid strong {
-  margin-top: 4px;
-  font-size: 14px;
-}
-
-.routes-truck-modal__grid small {
-  margin-top: 2px;
-  color: var(--color-text-secondary);
-  font-size: 9px;
-}
-
-.routes-truck-modal__journey {
-  margin-top: 14px;
-  border: 1px solid rgba(30, 58, 138, 0.14);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.routes-truck-modal__journey > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid var(--color-border);
-  background: rgba(30, 58, 138, 0.04);
-  padding: 12px 14px;
-}
-
-.routes-truck-modal__journey header span,
-.routes-truck-modal__journey header strong {
-  display: block;
-}
-
-.routes-truck-modal__journey header span {
-  color: var(--color-text-secondary);
-  font-size: 9px;
-  text-transform: uppercase;
-}
-
-.routes-truck-modal__journey header strong {
-  margin-top: 3px;
-  color: var(--color-primary);
-  font-size: 13px;
-}
-
-.routes-truck-journey-badge {
-  border-radius: 7px;
-  background: rgba(30, 58, 138, 0.1);
-  padding: 5px 8px;
-  color: var(--color-primary) !important;
-  font-weight: 800;
-}
-
-.routes-truck-modal__journey-grid {
-  display: grid;
-  grid-template-columns: repeat(
-    4,
-    minmax(0, 1fr)
-  );
-  gap: 10px;
-  padding: 14px;
-}
-
-.routes-truck-modal__journey-grid div {
-  border-right: 1px solid var(--color-border);
-}
-
-.routes-truck-modal__journey-grid div:last-child {
-  border-right: 0;
-}
-
-.routes-truck-modal__journey-grid span,
-.routes-truck-modal__journey-grid strong {
-  display: block;
-}
-
-.routes-truck-modal__journey-grid span {
-  color: var(--color-text-secondary);
-  font-size: 9px;
-  text-transform: uppercase;
-}
-
-.routes-truck-modal__journey-grid strong {
-  margin-top: 4px;
-  font-size: 12px;
-}
-
-.routes-truck-modal__no-journey {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 14px;
-  border: 1px dashed var(--color-border);
-  border-radius: 12px;
-  background: var(--color-background);
-  padding: 14px;
-}
-
-.routes-truck-modal__no-journey i {
-  color: var(--color-primary);
-  font-size: 23px;
-}
-
-.routes-truck-modal__no-journey strong,
-.routes-truck-modal__no-journey span {
-  display: block;
-}
-
-.routes-truck-modal__no-journey strong {
-  font-size: 12px;
-}
-
-.routes-truck-modal__no-journey span {
-  margin-top: 2px;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-}
-
-/* ==========================================================================
-   Paginación compartida
-   ========================================================================== */
-
-.routes-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 13px 18px;
-}
-
-.routes-pagination > span {
-  color: var(--color-text-secondary);
-  font-size: 11px;
-}
-
-.routes-pagination__controls {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.routes-pagination__item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.routes-pagination button {
-  min-width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  font-weight: 700;
-}
-
-.routes-pagination button:hover:not(:disabled) {
-  border-color: rgba(30, 58, 138, 0.3);
-  background: rgba(30, 58, 138, 0.07);
-  color: var(--color-primary);
-}
-
-.routes-pagination button.active {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-  color: #fff;
-}
-
-.routes-pagination button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.routes-pagination__ellipsis {
-  padding: 0 3px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-
-
-@media (max-width: 620px) {
+@media (max-width: 768px) {
+  .routes-page {
+    gap: var(--spacing-md);
+  }
+
+  .routes-catalog {
+    border-radius: var(--radius-lg);
+  }
+
+  .routes-catalog__toolbar-row,
+  .routes-catalog__content,
+  .routes-catalog > .ui-pagination {
+    padding-inline: var(--spacing-md);
+  }
+
+  .routes-catalog-table table {
+    min-width: 0;
+  }
+
+  .routes-catalog-table .ui-data-table__scroll {
+    overflow: visible;
+  }
+
+  .routes-form-location-grid,
+  .routes-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .routes-detail-route {
+    grid-template-columns: 1fr;
+  }
+
+  .routes-detail-arrow {
+    transform: rotate(90deg);
+    justify-self: center;
+  }
+}
+
+@media (max-width: 576px) {
   .routes-metrics {
     grid-template-columns: 1fr;
   }
 
-  .routes-banner__actions .btn {
-    font-size: 0;
-  }
-
-  .routes-banner__actions .btn i {
-    margin-right: 0 !important;
-    font-size: 15px;
-  }
-}
-
-/*
-Mapa
-*/
-@media (max-width: 1150px) {
-  .routes-map-workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .routes-map-panel {
-    height: auto;
-    max-height: 560px;
-  }
-
-  .routes-map-panel__list {
-    max-height: 430px;
-  }
-}
-
-@media (max-width: 700px) {
-  .routes-map-workspace {
-    padding: 10px;
-  }
-
-  .routes-general-map-container {
-    height: 430px;
-  }
-
-  .routes-general-map-header {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .routes-general-map-legend {
-    gap: 9px;
-  }
-}
-
-/*
-Camiones
-*/
-@media (max-width: 1100px) {
-  .routes-trucks-metrics {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
-  }
-
-  .routes-trucks-toolbar {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .routes-trucks-search {
-    grid-column: 1 / -1;
-  }
-
-  .routes-truck-modal__grid,
-  .routes-truck-modal__journey-grid {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
-  }
-
-  .routes-truck-modal__journey-grid div {
-    border-right: 0;
-  }
-}
-
-@media (max-width: 700px) {
-  .routes-trucks-intro {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .routes-trucks-metrics,
-  .routes-trucks-toolbar,
-  .routes-truck-modal__grid,
-  .routes-truck-modal__journey-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .routes-trucks-search {
-    grid-column: auto;
-  }
-
-  .routes-trucks-toolbar :is(.btn, .ui-button) {
-    width: 100%;
-  }
-
-  .routes-truck-modal
-  .routes-modal-footer {
-    flex-direction: column-reverse;
-  }
-
-  .routes-truck-modal
-  .routes-modal-footer .btn {
-    width: 100%;
-  }
-}
-
-/*
-Paginación
-*/
-@media (max-width: 700px) {
-  .routes-pagination {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .routes-pagination__controls {
-    justify-content: center;
-    overflow-x: auto;
-  }
-
-  .routes-pagination > span {
-    text-align: center;
-  }
-}
-
-
-/* ==========================================================================
-   Refactorización final: coherencia visual entre pestañas
-   ========================================================================== */
-
-.routes-tab-summary {
-  min-height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 9px 18px;
-}
-
-.routes-tab-summary > span {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 8px;
-  background: rgba(30, 58, 138, 0.07);
-  padding: 6px 9px;
-  color: var(--color-primary);
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
-.routes-catalog-intro,
-.routes-trucks-intro {
-  display: none;
-}
-
-.routes-catalog-toolbar,
-.routes-trucks-toolbar {
-  display: grid;
-  grid-template-columns:
-    minmax(280px, 1fr)
-    minmax(185px, 220px)
-    minmax(185px, 220px)
-    auto
-    auto;
-  gap: 10px;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-background);
-  padding: 14px 18px;
-}
-
-.routes-trucks-toolbar {
-  grid-template-columns:
-    minmax(280px, 1fr)
-    minmax(180px, 215px)
-    minmax(210px, 245px)
-    auto;
-}
-
-.routes-catalog-search,
-.routes-trucks-search {
-  position: relative;
-}
-
-.routes-catalog-search > i,
-.routes-trucks-search > i {
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  z-index: var(--z-base);
-  color: var(--color-text-secondary);
-  transform: translateY(-50%);
-}
-
-.routes-catalog-search input,
-.routes-trucks-search input {
-  min-height: 39px;
-  padding-right: 38px;
-  padding-left: 36px;
-}
-
-.routes-catalog-search > button,
-.routes-trucks-search > button {
-  width: 27px;
-  height: 27px;
-  display: grid;
-  place-items: center;
-  position: absolute;
-  top: 50%;
-  right: 7px;
-  border: 0;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  transform: translateY(-50%);
-}
-
-.routes-clear-button {
-  min-width: 100px;
-}
-
-.routes-clear-button:disabled {
-  opacity: 0.48;
-}
-
-.routes-map-panel__header {
-  min-height: 66px;
-  align-items: center;
-}
-
-.routes-map-panel__header h4 {
-  font-size: 15px;
-}
-
-.routes-journey-card {
-  overflow: hidden;
-  border-radius: 11px;
-  transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.2s ease;
-}
-
-.routes-journey-card:hover {
-  border-color: rgba(30, 58, 138, 0.26);
-  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.07);
-  transform: translateY(-1px);
-}
-
-.routes-journey-card__select {
-  cursor: pointer;
-}
-
-.routes-journey-card__actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 9px;
-}
-
-.routes-journey-card__hint {
-  color: var(--color-text-secondary);
-  font-size: 8px;
-  font-weight: 700;
-}
-
-.routes-journey-card__actions .btn {
-  margin-left: auto;
-}
-
-.routes-map-refresh {
-  display: none;
-}
-
-/* Camiones: jerarquía más compacta */
-
-.routes-trucks-metrics {
-  gap: 10px;
-  padding: 14px 18px;
-}
-
-.routes-trucks-metrics article {
-  min-height: 82px;
-}
-
-.routes-trucks-metric-icon {
-  width: 40px;
-  height: 40px;
-}
-
-/* Modales del catálogo y camiones */
-
-.routes-modal-overlay {
-  backdrop-filter: blur(3px);
-}
-
-.routes-form-modal,
-.routes-detail-modal,
-.routes-truck-modal {
-  border-radius: 16px;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
-}
-
-/* Responsive */
-
-@media (max-width: 1180px) {
-  .routes-catalog-toolbar,
-  .routes-trucks-toolbar {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .routes-catalog-search,
-  .routes-trucks-search {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 700px) {
-  .routes-tab-summary {
-    justify-content: flex-start;
-  }
-
-  .routes-catalog-toolbar,
-  .routes-trucks-toolbar {
+  .routes-catalog-toolbar {
     grid-template-columns: 1fr;
   }
 
   .routes-catalog-search,
-  .routes-trucks-search {
+  .routes-catalog-toolbar > .ui-button {
     grid-column: auto;
   }
 
-  .routes-catalog-toolbar :is(.btn, .ui-button),
-  .routes-trucks-toolbar :is(.btn, .ui-button) {
+  .routes-catalog-toolbar > .ui-button {
     width: 100%;
   }
 
-  .routes-journey-card__actions {
-    align-items: stretch;
-    flex-direction: column;
+  .routes-catalog__summary {
+    align-self: flex-start;
   }
 
-  .routes-journey-card__hint {
-    text-align: center;
+  .routes-calculation-mode {
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .routes-journey-card__actions .btn {
-    width: 100%;
-    margin-left: 0;
-  }
-}
-
-
-/* ==========================================================================
-   Formulario de rutas: distancia automática y validación en tiempo real
-   ========================================================================== */
-
-.routes-form-modal {
-  width: min(680px, 100%);
-}
-
-.routes-modal-header p {
-  margin: 4px 0 0;
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  line-height: 1.45;
-}
-
-.routes-form-location-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.routes-form-location-grid .form-select {
-  background-color: var(--color-surface);
-}
-
-.routes-form-location-grid .routes-field-valid {
-  border-color: rgba(34, 197, 94, 0.55);
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.08);
-}
-
-.routes-auto-distance {
-  margin-top: 19px;
-  border: 1px solid var(--color-border);
-  border-radius: 13px;
-  background: var(--color-background);
-  padding: 14px;
-}
-
-.routes-auto-distance__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.routes-auto-distance__heading > div span,
-.routes-auto-distance__heading > div strong {
-  display: block;
-}
-
-.routes-auto-distance__heading > div span {
-  color: var(--color-text-secondary);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.routes-auto-distance__heading > div strong {
-  margin-top: 2px;
-  color: var(--color-text);
-  font-size: 12px;
-}
-
-.routes-calculation-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 8px;
-  padding: 5px 8px;
-  font-size: 8px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
-.routes-calculation-status.idle {
-  background: rgba(107, 114, 128, 0.1);
-  color: var(--color-text-secondary);
-}
-
-.routes-calculation-status.calculating {
-  background: rgba(14, 165, 233, 0.1);
-  color: var(--color-info);
-}
-
-.routes-calculation-status.success {
-  background: rgba(34, 197, 94, 0.11);
-  color: var(--color-success);
-}
-
-.routes-calculation-status.error {
-  background: rgba(239, 68, 68, 0.1);
-  color: var(--color-error);
-}
-
-.routes-calculation-status .spinner-border {
-  width: 11px;
-  height: 11px;
-  border-width: 2px;
-}
-
-.routes-distance-readonly {
-  position: relative;
-}
-
-.routes-distance-readonly > i:first-child {
-  position: absolute;
-  top: 50%;
-  left: 12px;
-  z-index: var(--z-base);
-  color: var(--color-primary);
-  transform: translateY(-50%);
-}
-
-.routes-distance-readonly input {
-  width: 100%;
-  min-height: 43px;
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-  background: var(--color-surface);
-  padding: 9px 42px 9px 39px;
-  color: var(--color-primary);
-  font-size: 13px;
-  font-weight: 800;
-  cursor: default;
-}
-
-.routes-distance-readonly input:focus {
-  border-color: var(--color-border);
-  box-shadow: none;
-}
-
-.routes-distance-readonly input::placeholder {
-  color: var(--color-text-secondary);
-  font-size: 10px;
-  font-weight: 500;
-}
-
-.routes-distance-check {
-  position: absolute;
-  top: 50%;
-  right: 13px;
-  color: var(--color-success);
-  transform: translateY(-50%);
-}
-
-.routes-calculation-message {
-  display: flex;
-  align-items: flex-start;
-  gap: 7px;
-  margin-top: 8px;
-  color: var(--color-text-secondary);
-  font-size: 9px;
-  line-height: 1.45;
-}
-
-.routes-calculation-message i {
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.routes-calculation-message.success {
-  color: var(--color-success);
-}
-
-.routes-calculation-message.error {
-  color: var(--color-error);
-}
-
-.routes-retry-calculation {
-  margin-top: 5px;
-  padding: 0;
-  font-size: 9px;
-  text-decoration: none;
-}
-
-.routes-distance-error {
-  margin-top: 7px;
-  color: var(--color-error);
-  font-size: 9px;
-}
-
-.routes-form-preview {
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-}
-
-.routes-preview-connector {
-  display: grid !important;
-  place-items: center;
-  gap: 1px !important;
-  color: var(--color-primary);
-}
-
-.routes-preview-connector small {
-  color: var(--color-text-secondary);
-  font-size: 8px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.routes-modal-footer {
-  align-items: center;
-  justify-content: space-between;
-}
-
-.routes-modal-footer > div {
-  display: flex;
-  gap: 9px;
-}
-
-.routes-modal-security-note {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-text-secondary);
-  font-size: 8px;
-}
-
-.routes-modal-security-note i {
-  color: var(--color-success);
-}
-
-@media (max-width: 650px) {
-  .routes-form-location-grid {
-    grid-template-columns: 1fr;
+  .routes-calculation-mode__state {
+    grid-column: 2;
+    justify-self: start;
   }
 
-  .routes-modal-footer {
-    align-items: stretch;
-    flex-direction: column;
+  .routes-distance-control {
+    padding-inline: var(--spacing-sm);
   }
 
-  .routes-modal-security-note {
-    justify-content: center;
-  }
-
-  .routes-modal-footer > div {
-    flex-direction: column-reverse;
-  }
-
-  .routes-modal-footer .btn {
-    width: 100%;
+  .routes-detail-route article {
+    min-height: 6.5rem;
+    padding: var(--spacing-md);
   }
 }

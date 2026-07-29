@@ -20,11 +20,13 @@ test('frontend conserva la navegación principal mediante secciones y registro d
     'dashboard',
     'clientes',
     'pedidos',
-    'centro-logistico',
+    'jornadas',
     'despachos',
+    'camiones',
+    'choferes',
     'rutas',
     'ubicaciones',
-    'mis-entregas',
+    'mi-jornada',
   ]) {
     assert.match(
       navigation,
@@ -39,8 +41,11 @@ test('frontend conserva la navegación principal mediante secciones y registro d
     '/pedidos',
     '/ubicaciones',
     '/rutas',
-    '/centro-logistico',
+    '/jornadas',
+    '/camiones',
+    '/choferes',
     '/despachos',
+    '/mi-jornada',
     '/mis-entregas',
   ]) {
     const escapedPath = path.replaceAll('/', '\\/');

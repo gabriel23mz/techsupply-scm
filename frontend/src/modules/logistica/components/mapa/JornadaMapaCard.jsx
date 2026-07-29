@@ -1,3 +1,8 @@
+import {
+  Button,
+  StatusBadge,
+} from '../../../../shared/ui';
+
 function formatJourneyCode(jornada) {
   if (jornada?.codigo) {
     return jornada.codigo;
@@ -13,15 +18,15 @@ function formatStatus(status) {
     .replace(/^\w/, (character) => character.toUpperCase());
 }
 
-function getStatusClass(status) {
-  const classes = {
-    PLANIFICADA: 'planned',
-    EN_RUTA: 'in-route',
-    FINALIZADA: 'finished',
-    CANCELADA: 'cancelled',
+function getStatusTone(status) {
+  const tones = {
+    PLANIFICADA: 'warning',
+    EN_RUTA: 'info',
+    FINALIZADA: 'success',
+    CANCELADA: 'danger',
   };
 
-  return classes[status] ?? 'neutral';
+  return tones[status] ?? 'neutral';
 }
 
 function getJourneyMap(jornada) {
@@ -111,13 +116,9 @@ function JornadaMapaCard({
             </span>
           </div>
 
-          <span
-            className={`logistics-status ${getStatusClass(
-              jornada?.estado,
-            )}`}
-          >
+          <StatusBadge tone={getStatusTone(jornada?.estado)}>
             {formatStatus(jornada?.estado)}
-          </span>
+          </StatusBadge>
         </div>
 
         <div className="routes-journey-card__progress">
@@ -165,18 +166,18 @@ function JornadaMapaCard({
           Selecciona la tarjeta para centrar
         </span>
 
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
+        <Button
+          className="routes-journey-card__view"
+          size="sm"
+          icon="bi bi-arrow-right"
+          iconPosition="end"
           onClick={() => onView(jornada)}
         >
           Ver jornada
-          <i className="bi bi-arrow-right ms-1" />
-        </button>
+        </Button>
       </div>
     </article>
   );
 }
 
 export default JornadaMapaCard;
-

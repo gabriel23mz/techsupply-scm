@@ -88,14 +88,17 @@ test('F2 centraliza overlays y controles de mapa en tokens de capa', async () =>
   const confirm = await readSource(
     'frontend/src/shared/ui/Modal/Modal.css',
   );
-  const routes = await readSource(
-    'frontend/src/modules/rutas/rutas.css',
+  const mapShell = await readSource(
+    'frontend/src/shared/maps/MapShell/MapShell.css',
+  );
+  const mapControls = await readSource(
+    'frontend/src/shared/maps/MapControls/MapControls.css',
   );
 
   assert.match(shell, /z-index: var\(--z-modal\)/);
   assert.match(confirm, /z-index: var\(--z-modal\)/);
-  assert.match(routes, /z-index: var\(--z-map\)/);
-  assert.match(routes, /var\(--map-control-background\)/);
+  assert.match(mapShell, /z-index: var\(--z-base\)/);
+  assert.match(mapControls, /var\(--map-control-background\)/);
 });
 
 test('F2.3 integra un colapso compacto y profesional en la marca del sidebar', async () => {

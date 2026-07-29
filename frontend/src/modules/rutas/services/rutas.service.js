@@ -10,18 +10,6 @@ const routingApi = axios.create({
 });
 
 /* ==========================================================================
-   Mapa general
-   ========================================================================== */
-
-export const obtenerMapaGeneral = async () => {
-  const { data } = await api.get(
-    '/jornadas-reparto/mapa-general',
-  );
-
-  return data.data;
-};
-
-/* ==========================================================================
    Catálogo de rutas
    ========================================================================== */
 
@@ -73,7 +61,17 @@ export const desactivarRuta = async (id) => {
    Cálculo vial automático
    ========================================================================== */
 
-function normalizeCoordinate(value, label) {
+export function normalizeRouteCoordinate(value, label) {
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === 'string' && !value.trim())
+  ) {
+    throw new Error(
+      `La ubicación seleccionada no tiene una ${label} válida.`,
+    );
+  }
+
   const coordinate = Number(value);
 
   if (!Number.isFinite(coordinate)) {
@@ -96,22 +94,22 @@ export const calcularDistanciaVial = async ({
     );
   }
 
-  const origenLatitud = normalizeCoordinate(
+  const origenLatitud = normalizeRouteCoordinate(
     origen.latitud,
     'latitud',
   );
 
-  const origenLongitud = normalizeCoordinate(
+  const origenLongitud = normalizeRouteCoordinate(
     origen.longitud,
     'longitud',
   );
 
-  const destinoLatitud = normalizeCoordinate(
+  const destinoLatitud = normalizeRouteCoordinate(
     destino.latitud,
     'latitud',
   );
 
-  const destinoLongitud = normalizeCoordinate(
+  const destinoLongitud = normalizeRouteCoordinate(
     destino.longitud,
     'longitud',
   );
@@ -120,17 +118,41 @@ export const calcularDistanciaVial = async ({
     `${origenLongitud},${origenLatitud};` +
     `${destinoLongitud},${destinoLatitud}`;
 
-  const { data } = await routingApi.get(
-    `/route/v1/driving/${coordinates}`,
-    {
-      params: {
-        alternatives: false,
-        overview: false,
-        steps: false,
+  let data;
+
+  try {
+    const response = await routingApi.get(
+      `/route/v1/driving/${coordinates}`,
+      {
+        params: {
+          alternatives: false,
+          overview: false,
+          steps: false,
+        },
+        signal,
       },
-      signal,
-    },
-  );
+    );
+
+    data = response.data;
+  } catch (error) {
+    if (error?.code === 'ERR_CANCELED' || signal?.aborted) {
+      throw error;
+    }
+
+    const networkMessage = !error?.response && error?.request
+      ? 'No fue posible conectar con el servicio vial. Reintenta o usa el ingreso manual.'
+      : '';
+
+    const normalizedError = new Error(
+      error?.response?.data?.message ||
+      networkMessage ||
+      error?.message ||
+      'No fue posible consultar el servicio de rutas.',
+    );
+
+    normalizedError.cause = error;
+    throw normalizedError;
+  }
 
   const route = data?.routes?.[0];
 
@@ -166,30 +188,10 @@ export const obtenerUbicaciones = async () => {
 };
 
 /* ==========================================================================
-   Camiones
-   ========================================================================== */
-
-export const obtenerCamiones = async () => {
-  const { data } = await api.get('/camiones');
-
-  return data.data;
-};
-
-export const obtenerCamion = async (id) => {
-  const { data } = await api.get(
-    `/camiones/${id}`,
-  );
-
-  return data.data;
-};
-
-/* ==========================================================================
    Exportación agrupada
    ========================================================================== */
 
 const rutasService = {
-  obtenerMapaGeneral,
-
   obtenerRutas,
   obtenerRuta,
   crearRuta,
@@ -199,8 +201,6 @@ const rutasService = {
 
   obtenerUbicaciones,
 
-  obtenerCamiones,
-  obtenerCamion,
 };
 
 export default rutasService;

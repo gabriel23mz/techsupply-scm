@@ -1,9 +1,3 @@
-import Can from '../../../../shared/components/Can';
-
-import {
-  PERMISSIONS,
-} from '../../../../shared/constants/permissions';
-
 import {
   Button,
   Combobox,
@@ -11,20 +5,16 @@ import {
 } from '../../../../shared/ui';
 
 function RutasCatalogoToolbar({
-  searchTerm,
-  originFilter,
   destinationFilter,
-  ubicaciones,
-  onSearchChange,
-  onOriginChange,
-  onDestinationChange,
+  hasFilters,
   onClear,
-  onCreate,
+  onDestinationChange,
+  onOriginChange,
+  onSearchChange,
+  originFilter,
+  searchTerm,
+  ubicaciones,
 }) {
-  const hasFilters =
-    Boolean(searchTerm.trim()) ||
-    originFilter !== 'todos' ||
-    destinationFilter !== 'todos';
   const locationOptions = ubicaciones.map((ubicacion) => ({
     value: ubicacion.id,
     label: ubicacion.nombre,
@@ -36,55 +26,43 @@ function RutasCatalogoToolbar({
       <SearchField
         className="routes-catalog-search"
         value={searchTerm}
-        placeholder="Buscar origen, destino o distancia..."
+        placeholder="Buscar ruta, origen o destino"
         aria-label="Buscar rutas"
-        onChange={(event) =>
-          onSearchChange(event.target.value)
-        }
+        onChange={(event) => onSearchChange(event.target.value)}
         onClear={() => onSearchChange('')}
       />
-
       <Combobox
         value={originFilter}
         options={[
-          { value: 'todos', label: 'Todos los orígenes' },
+          { value: 'TODOS', label: 'Todos los orígenes' },
           ...locationOptions,
         ]}
         placeholder="Todos los orígenes"
-        searchPlaceholder="Buscar origen..."
+        searchPlaceholder="Buscar origen"
         ariaLabel="Filtrar por origen"
         onChange={onOriginChange}
       />
-
       <Combobox
         value={destinationFilter}
         options={[
-          { value: 'todos', label: 'Todos los destinos' },
+          { value: 'TODOS', label: 'Todos los destinos' },
           ...locationOptions,
         ]}
         placeholder="Todos los destinos"
-        searchPlaceholder="Buscar destino..."
+        searchPlaceholder="Buscar destino"
         ariaLabel="Filtrar por destino"
         onChange={onDestinationChange}
       />
-
-      <Button
-        tone="secondary"
-        icon="bi bi-eraser"
-        disabled={!hasFilters}
-        onClick={onClear}
-      >
-        Limpiar
-      </Button>
-
-      <Can permission={PERMISSIONS.RUTAS_GESTIONAR}>
+      {hasFilters && (
         <Button
-          icon="bi bi-plus-lg"
-          onClick={onCreate}
+          size="sm"
+          tone="secondary"
+          icon="bi bi-eraser"
+          onClick={onClear}
         >
-          Nueva ruta
+          Limpiar
         </Button>
-      </Can>
+      )}
     </div>
   );
 }

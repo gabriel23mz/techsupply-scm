@@ -5,9 +5,21 @@ import {
 } from 'react';
 
 import {
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from 'react-router-dom';
+
+import {
   useInitialLoad,
 } from '../../../shared/hooks/useInitialLoad';
-
+import {
+  usePageHeader,
+} from '../../../shared/hooks/usePageHeader';
+import {
+  Button,
+  Pagination,
+} from '../../../shared/ui';
 import {
   showError,
   showSuccess,
@@ -15,10 +27,8 @@ import {
 
 import DespachoDetailDrawer from '../components/DespachoDetailDrawer';
 import DespachoMetrics from '../components/DespachoMetrics';
-import DespachosPagination from '../components/DespachosPagination';
 import DespachosTable from '../components/DespachosTable';
 import DespachoToolbar from '../components/DespachoToolbar';
-
 import {
   obtenerDespachoPorId,
   obtenerDespachos,
@@ -28,24 +38,14 @@ import '../despachos.css';
 
 const PAGE_SIZE = 10;
 
-function getPedido(despacho) {
-  return despacho?.pedido ?? null;
-}
-
-function getCliente(despacho) {
-  const pedido = getPedido(despacho);
-
-  return pedido?.cliente ?? null;
-}
-
-function getJornada(despacho) {
-  return despacho?.jornada ?? null;
-}
-
 function normalizeText(value) {
-  return String(value ?? '')
-    .trim()
-    .toLowerCase();
+  return String(value ?? '').trim().toLowerCase();
+}
+
+function normalizePage(value) {
+  const page = Number.parseInt(value, 10);
+
+  return Number.isFinite(page) && page > 0 ? page : 1;
 }
 
 function matchesDate(value, filter) {
@@ -53,9 +53,7 @@ function matchesDate(value, filter) {
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
-    return false;
-  }
+  if (Number.isNaN(date.getTime())) return false;
 
   const today = new Date();
   const startToday = new Date(
@@ -65,186 +63,142 @@ function matchesDate(value, filter) {
   );
 
   if (filter === 'HOY') {
-    return (
-      date >= startToday &&
-      date <
-        new Date(startToday.getTime() + 86400000)
-    );
+    return date >= startToday &&
+      date < new Date(startToday.getTime() + 86400000);
   }
 
   if (filter === 'SEMANA') {
     const startWeek = new Date(startToday);
-
-    startWeek.setDate(
-      startToday.getDate() - startToday.getDay(),
-    );
+    startWeek.setDate(startToday.getDate() - startToday.getDay());
 
     return date >= startWeek;
   }
 
   if (filter === 'MES') {
-    return (
-      date.getFullYear() === today.getFullYear() &&
-      date.getMonth() === today.getMonth()
-    );
+    return date.getFullYear() === today.getFullYear() &&
+      date.getMonth() === today.getMonth();
   }
 
   return true;
 }
 
 function DespachosPage() {
-  const [despachos, setDespachos] =
-    useState([]);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchTerm = searchParams.get('q') ?? '';
+  const statusFilter = searchParams.get('estado') ?? 'TODOS';
+  const dateFilter = searchParams.get('fecha') ?? 'TODAS';
+  const currentPage = normalizePage(searchParams.get('page'));
 
-  const [isLoading, setIsLoading] =
-    useState(true);
+  const [despachos, setDespachos] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [selectedDespacho, setSelectedDespacho] = useState(null);
+  const [drawerType, setDrawerType] = useState('summary');
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
 
-  const [searchTerm, setSearchTerm] =
-    useState('');
+  const updateQuery = useCallback((updates) => {
+    const next = new URLSearchParams(searchParams);
 
-  const [statusFilter, setStatusFilter] =
-    useState('TODOS');
+    Object.entries(updates).forEach(([key, value]) => {
+      const normalized = String(value ?? '').trim();
+      const shouldDelete = !normalized ||
+        (key === 'page' && normalized === '1') ||
+        (key === 'estado' && normalized === 'TODOS') ||
+        (key === 'fecha' && normalized === 'TODAS');
 
-  const [dateFilter, setDateFilter] =
-    useState('TODAS');
+      if (shouldDelete) next.delete(key);
+      else next.set(key, normalized);
+    });
 
-  const [currentPage, setCurrentPage] =
-    useState(1);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
-  const [selectedDespacho, setSelectedDespacho] =
-    useState(null);
+  const loadDispatches = useCallback(async ({ notify = false } = {}) => {
+    try {
+      setIsLoading(true);
+      setLoadError(null);
+      setDespachos(await obtenerDespachos());
 
-  const [drawerType, setDrawerType] =
-    useState('summary');
+      if (notify) showSuccess('Despachos actualizados correctamente.');
+    } catch (error) {
+      console.error('Error al cargar despachos:', error);
+      setLoadError(error);
 
-  const [isDetailLoading, setIsDetailLoading] =
-    useState(false);
-
-  const cargarDespachos = useCallback(
-    async ({ notify = false } = {}) => {
-      try {
-        setIsLoading(true);
-
-        const data = await obtenerDespachos();
-
-        setDespachos(data);
-
-        if (notify) {
-          showSuccess(
-            'Despachos actualizados correctamente.',
-          );
-        }
-      } catch (error) {
-        console.error(
-          'Error al cargar despachos:',
-          error,
-        );
-
-        showError(
-          error.message ||
-            'No fue posible cargar los despachos.',
-        );
-      } finally {
-        setIsLoading(false);
+      if (notify) {
+        showError(error.message || 'No fue posible actualizar los despachos.');
       }
-    },
-    [],
-  );
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-  useInitialLoad(cargarDespachos);
+  useInitialLoad(loadDispatches);
 
-  const filteredDespachos = useMemo(() => {
+  const pageActions = useMemo(() => (
+    <Button
+      className="topbar-page-action topbar-page-action--refresh"
+      size="sm"
+      tone="secondary"
+      icon="bi bi-arrow-clockwise"
+      loading={isLoading}
+      loadingLabel="Actualizando"
+      onClick={() => loadDispatches({ notify: true })}
+    >
+      Actualizar
+    </Button>
+  ), [isLoading, loadDispatches]);
+
+  usePageHeader(useMemo(() => ({
+    title: 'Despachos',
+    description: 'Seguimiento administrativo de entregas, recorridos y novedades.',
+    actions: pageActions,
+  }), [pageActions]));
+
+  const filteredDispatches = useMemo(() => {
     const search = normalizeText(searchTerm);
 
     return despachos.filter((despacho) => {
-      const pedido = getPedido(despacho);
-      const cliente = getCliente(despacho);
-      const jornada = getJornada(despacho);
-
-      const matchesSearch =
-        !search ||
-        [
-          despacho.id,
-          despacho.pedido_id,
-          `DSP-${String(despacho.id).padStart(5, '0')}`,
-          `PED-${String(despacho.pedido_id).padStart(5, '0')}`,
-          cliente?.nombre,
-          pedido?.usuario?.nombre,
-          pedido?.usuario?.apellido,
-          jornada?.id,
-          jornada?.id
-            ? `JR-${String(jornada.id).padStart(5, '0')}`
-            : null,
-          despacho?.ruta_resumen?.destino,
-        ].some((value) =>
-          normalizeText(value).includes(search),
-        );
-
+      const pedido = despacho?.pedido ?? null;
+      const cliente = pedido?.cliente ?? null;
+      const jornada = despacho?.jornada ?? null;
+      const matchesSearch = !search || [
+        despacho.id,
+        despacho.pedido_id,
+        `DSP-${String(despacho.id).padStart(5, '0')}`,
+        `PED-${String(despacho.pedido_id).padStart(5, '0')}`,
+        cliente?.nombre,
+        cliente?.identificacion,
+        jornada?.id,
+        jornada?.codigo,
+        despacho?.ruta_resumen?.destino,
+      ].some((value) => normalizeText(value).includes(search));
       const matchesStatus =
-        statusFilter === 'TODOS' ||
-        despacho.estado === statusFilter;
-
+        statusFilter === 'TODOS' || despacho.estado === statusFilter;
       const matchesDateFilter = matchesDate(
         despacho.created_at ?? despacho.createdAt,
         dateFilter,
       );
 
-      return (
-        matchesSearch &&
-        matchesStatus &&
-        matchesDateFilter
-      );
+      return matchesSearch && matchesStatus && matchesDateFilter;
     });
-  }, [
-    dateFilter,
-    despachos,
-    searchTerm,
-    statusFilter,
-  ]);
+  }, [dateFilter, despachos, searchTerm, statusFilter]);
 
   const totalPages = Math.max(
-    Math.ceil(
-      filteredDespachos.length / PAGE_SIZE,
-    ),
+    Math.ceil(filteredDispatches.length / PAGE_SIZE),
     1,
   );
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedDispatches = useMemo(() => {
+    const start = (safeCurrentPage - 1) * PAGE_SIZE;
 
-  const safeCurrentPage = Math.min(
-    currentPage,
-    totalPages,
-  );
+    return filteredDispatches.slice(start, start + PAGE_SIZE);
+  }, [filteredDispatches, safeCurrentPage]);
 
-  const paginatedDespachos = useMemo(() => {
-    const start =
-      (safeCurrentPage - 1) * PAGE_SIZE;
-
-    return filteredDespachos.slice(
-      start,
-      start + PAGE_SIZE,
-    );
-  }, [safeCurrentPage, filteredDespachos]);
-
-  const handleSearchChange = (value) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  };
-
-  const handleStatusChange = (value) => {
-    setStatusFilter(value);
-    setCurrentPage(1);
-  };
-
-  const handleDateChange = (value) => {
-    setDateFilter(value);
-    setCurrentPage(1);
-  };
-
-  const clearFilters = () => {
-    setSearchTerm('');
-    setStatusFilter('TODOS');
-    setDateFilter('TODAS');
-    setCurrentPage(1);
-  };
+  const hasFilters = Boolean(searchTerm.trim()) ||
+    statusFilter !== 'TODOS' ||
+    dateFilter !== 'TODAS';
 
   const openDrawer = async (despacho, type) => {
     setDrawerType(type);
@@ -252,127 +206,71 @@ function DespachosPage() {
     setIsDetailLoading(true);
 
     try {
-      const detail = await obtenerDespachoPorId(
-        despacho.id,
-      );
-
-      setSelectedDespacho(
-        detail ?? despacho,
-      );
+      setSelectedDespacho(await obtenerDespachoPorId(despacho.id) ?? despacho);
     } catch (error) {
-      console.error(
-        'Error al cargar detalle de despacho:',
-        error,
-      );
-
-      showError(
-        error.message ||
-          'No fue posible cargar el detalle completo.',
-      );
+      showError(error.message || 'No fue posible cargar el detalle completo.');
     } finally {
       setIsDetailLoading(false);
     }
   };
 
-  const closeDrawer = () => {
-    setSelectedDespacho(null);
-    setIsDetailLoading(false);
-  };
+  const openJourney = (jornada) => {
+    if (!jornada?.id) return;
 
-  const hasFilters =
-    Boolean(searchTerm.trim()) ||
-    statusFilter !== 'TODOS' ||
-    dateFilter !== 'TODAS';
+    navigate(`/jornadas/${jornada.id}`, {
+      state: {
+        from: `${location.pathname}${location.search}`,
+      },
+    });
+  };
 
   return (
     <div className="dispatch-page">
-      <section className="dispatch-banner">
-        <div className="dispatch-banner-icon">
-          <i className="bi bi-truck" />
+      <DespachoMetrics
+        despachos={despachos}
+        loading={isLoading && despachos.length === 0}
+      />
+
+      <section className="dispatch-directory" aria-label="Directorio de despachos">
+        <div className="dispatch-directory__toolbar">
+          <DespachoToolbar
+            searchTerm={searchTerm}
+            statusFilter={statusFilter}
+            dateFilter={dateFilter}
+            hasFilters={hasFilters}
+            onSearchChange={(value) => updateQuery({ q: value, page: 1 })}
+            onStatusChange={(value) => updateQuery({ estado: value, page: 1 })}
+            onDateChange={(value) => updateQuery({ fecha: value, page: 1 })}
+            onClear={() => updateQuery({
+              q: '',
+              estado: 'TODOS',
+              fecha: 'TODAS',
+              page: 1,
+            })}
+            resultCount={filteredDispatches.length}
+          />
         </div>
 
-        <div>
-          <strong>
-            Historial y seguimiento de despachos
-          </strong>
-
-          <span>
-            Consulta los tramos individuales generados por
-            las jornadas del Centro Logístico.
-          </span>
+        <div className="dispatch-directory__content">
+          <DespachosTable
+            despachos={paginatedDispatches}
+            error={loadError}
+            hasFilters={hasFilters}
+            loading={isLoading && despachos.length === 0}
+            onRetry={loadDispatches}
+            onOpenSummary={(despacho) => openDrawer(despacho, 'summary')}
+            onOpenRoute={(despacho) => openDrawer(despacho, 'route')}
+            onOpenJourney={openJourney}
+          />
         </div>
 
-        <button
-          type="button"
-          className="btn btn-outline-primary btn-sm"
-          disabled={isLoading}
-          onClick={() =>
-            cargarDespachos({
-              notify: true,
-            })
-          }
-        >
-          {isLoading ? (
-            <span className="spinner-border spinner-border-sm me-2" />
-          ) : (
-            <i className="bi bi-arrow-clockwise me-2" />
-          )}
-
-          Actualizar
-        </button>
-      </section>
-
-      <DespachoMetrics despachos={despachos} />
-
-      <section className="dispatch-workspace">
-        <DespachoToolbar
-          searchTerm={searchTerm}
-          statusFilter={statusFilter}
-          dateFilter={dateFilter}
-          isLoading={isLoading}
-          onSearchChange={handleSearchChange}
-          onStatusChange={handleStatusChange}
-          onDateChange={handleDateChange}
-          onClear={clearFilters}
-          onRefresh={() =>
-            cargarDespachos({
-              notify: true,
-            })
-          }
-        />
-
-        {isLoading ? (
-          <div className="dispatch-loading">
-            <span className="spinner-border text-primary" />
-
-            <h4>Cargando despachos...</h4>
-
-            <p>
-              Consultando el historial logístico.
-            </p>
-          </div>
-        ) : (
-          <>
-            <DespachosTable
-              despachos={paginatedDespachos}
-              hasFilters={hasFilters}
-              onOpenSummary={(despacho) =>
-                openDrawer(despacho, 'summary')
-              }
-              onOpenRoute={(despacho) =>
-                openDrawer(despacho, 'route')
-              }
-              onClearFilters={clearFilters}
-            />
-
-            <DespachosPagination
-              currentPage={safeCurrentPage}
-              totalPages={totalPages}
-              totalItems={filteredDespachos.length}
-              pageSize={PAGE_SIZE}
-              onPageChange={setCurrentPage}
-            />
-          </>
+        {!isLoading && filteredDispatches.length > 0 && (
+          <Pagination
+            page={safeCurrentPage}
+            pageSize={PAGE_SIZE}
+            total={filteredDispatches.length}
+            onPageChange={(page) => updateQuery({ page })}
+          />
         )}
       </section>
 
@@ -381,7 +279,8 @@ function DespachosPage() {
         despacho={selectedDespacho}
         type={drawerType}
         isLoading={isDetailLoading}
-        onClose={closeDrawer}
+        onClose={() => setSelectedDespacho(null)}
+        onOpenJourney={openJourney}
       />
     </div>
   );

@@ -37,7 +37,7 @@ test('F1.1 elimina efectos usados únicamente para reiniciar paginación', async
     'frontend/src/modules/despachos/pages/DespachosPage.jsx',
     'frontend/src/modules/pedidos/pages/PedidosPage.jsx',
     'frontend/src/modules/ubicaciones/pages/UbicacionesPage.jsx',
-    'frontend/src/modules/rutas/components/camiones/CamionesTab.jsx',
+    'frontend/src/modules/camiones/pages/CamionesPage.jsx',
     'frontend/src/modules/rutas/components/catalogo/RutasCatalogo.jsx',
   ];
 

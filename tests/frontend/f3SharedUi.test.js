@@ -159,11 +159,11 @@ test('F3 centraliza métricas, estados y paginación mediante adaptadores compar
       /Pagination/,
     ],
     [
-      'frontend/src/modules/despachos/components/DespachosPagination.jsx',
+      'frontend/src/modules/despachos/pages/DespachosPage.jsx',
       /Pagination/,
     ],
     [
-      'frontend/src/modules/rutas/components/RoutesPagination.jsx',
+      'frontend/src/modules/rutas/components/catalogo/RutasCatalogo.jsx',
       /Pagination/,
     ],
   ];

@@ -93,7 +93,7 @@ test('F3.2 comparte shell, estados, leyenda y marcadores compatibles con temas',
 test('F3.2 migra todos los MapContainer actuales a controles compartidos', async () => {
   const files = [
     'frontend/src/modules/logistica/components/JornadaMap.jsx',
-    'frontend/src/modules/rutas/components/mapa/MapaGeneralJornadas.jsx',
+    'frontend/src/modules/logistica/components/mapa/MapaGeneralJornadas.jsx',
     'frontend/src/modules/ubicaciones/components/UbicacionDetailModal.jsx',
     'frontend/src/modules/ubicaciones/components/UbicacionFormModal.jsx',
     'frontend/src/modules/ubicaciones/components/UbicacionesMapaGeneral.jsx',
@@ -113,7 +113,7 @@ test('F3.2 elimina controladores y botones de mapa duplicados de los módulos mi
     'frontend/src/modules/logistica/components/JornadaMap.jsx',
   );
   const routes = await readSource(
-    'frontend/src/modules/rutas/components/mapa/MapaGeneralJornadas.jsx',
+    'frontend/src/modules/logistica/components/mapa/MapaGeneralJornadas.jsx',
   );
   const locations = await readSource(
     'frontend/src/modules/ubicaciones/components/UbicacionesMapaGeneral.jsx',

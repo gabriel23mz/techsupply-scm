@@ -1,4 +1,5 @@
 import {
+  Navigate,
   matchPath,
 } from 'react-router-dom';
 
@@ -8,11 +9,14 @@ import {
   BodegaCargaWorkspacePage,
   BodegaPreparacionPage,
   BodegaPreparacionWorkspacePage,
-  CentroLogisticoPage,
+  CamionesPage,
+  ChoferesPage,
   ClientesPage,
   DashboardPage,
   DespachosPage,
   JornadaDetallePage,
+  JornadasPage,
+  MiJornadaPage,
   NotFoundPage,
   NuevoPedidoPage,
   PedidoWorkspacePage,
@@ -21,10 +25,13 @@ import {
   UbicacionesPage,
 } from './routeComponents';
 
+import LegacyJornadaRedirect from './LegacyJornadaRedirect';
+
 import {
   PERMISSIONS,
   ROLES,
 } from '../constants/permissions';
+
 
 export const routeRegistry = [
   {
@@ -146,10 +153,55 @@ export const routeRegistry = [
     element: <UbicacionesPage />,
   },
   {
+    id: 'jornadas',
+    path: '/jornadas',
+    label: 'Jornadas',
+    description: 'Planificación, seguimiento y mapa operativo de reparto.',
+    icon: 'bi-calendar2-week',
+    access: {
+      permission: PERMISSIONS.JORNADAS_LEER,
+      roles: [
+        ROLES.ADMIN,
+        ROLES.LOGISTICA,
+      ],
+    },
+    element: <JornadasPage />,
+  },
+  {
+    id: 'camiones',
+    path: '/camiones',
+    label: 'Camiones',
+    description: 'Gestión de la flota disponible para las jornadas.',
+    icon: 'bi-truck-front',
+    access: {
+      permission: PERMISSIONS.CAMIONES_LEER,
+      roles: [
+        ROLES.ADMIN,
+        ROLES.LOGISTICA,
+      ],
+    },
+    element: <CamionesPage />,
+  },
+  {
+    id: 'choferes',
+    path: '/choferes',
+    label: 'Choferes',
+    description: 'Gestión de perfiles, licencias y disponibilidad operativa.',
+    icon: 'bi-person-vcard',
+    access: {
+      permission: PERMISSIONS.CHOFERES_LEER,
+      roles: [
+        ROLES.ADMIN,
+        ROLES.LOGISTICA,
+      ],
+    },
+    element: <ChoferesPage />,
+  },
+  {
     id: 'rutas',
     path: '/rutas',
     label: 'Rutas',
-    description: 'Configuración y supervisión de la red logística.',
+    description: 'Configuración de conexiones viales entre ubicaciones logísticas.',
     icon: 'bi-signpost-split',
     access: {
       permission: PERMISSIONS.RUTAS_LEER,
@@ -159,24 +211,6 @@ export const routeRegistry = [
       ],
     },
     element: <RutasPage />,
-  },
-  {
-    id: 'centro-logistico',
-    path: '/centro-logistico',
-    label: 'Centro Logístico',
-    description: 'Planificación de jornadas y asignación logística.',
-    icon: 'bi-box-seam',
-    access: {
-      anyPermissions: [
-        PERMISSIONS.JORNADAS_MAPA_GENERAL,
-        PERMISSIONS.JORNADAS_GENERAR,
-      ],
-      roles: [
-        ROLES.ADMIN,
-        ROLES.LOGISTICA,
-      ],
-    },
-    element: <CentroLogisticoPage />,
   },
   {
     id: 'despachos',
@@ -194,16 +228,29 @@ export const routeRegistry = [
     element: <DespachosPage />,
   },
   {
-    id: 'mis-entregas',
-    path: '/mis-entregas',
-    label: 'Mis entregas',
-    description: 'Despachos y entregas asignados al chofer autenticado.',
+    id: 'mi-jornada',
+    path: '/mi-jornada',
+    label: 'Mi jornada',
+    description: 'Recorrido, entregas y progreso de la jornada asignada.',
     icon: 'bi-geo-alt-fill',
     access: {
-      permission: PERMISSIONS.DESPACHOS_LEER,
+      permission: PERMISSIONS.JORNADAS_LEER,
       roles: [ROLES.CHOFER],
     },
-    element: <DespachosPage />,
+    element: <MiJornadaPage />,
+  },
+  {
+    id: 'legacy-mis-entregas',
+    path: '/mis-entregas',
+    label: 'Mi jornada',
+    description: 'Redirección de compatibilidad para choferes.',
+    icon: 'bi-geo-alt-fill',
+    access: {
+      permission: PERMISSIONS.JORNADAS_LEER,
+      roles: [ROLES.CHOFER],
+    },
+    element: <Navigate replace to="/mi-jornada" />,
+    hidden: true,
   },
   {
     id: 'pedido-nuevo',
@@ -238,7 +285,7 @@ export const routeRegistry = [
   },
   {
     id: 'jornada-detalle',
-    path: '/centro-logistico/jornadas/:id',
+    path: '/jornadas/:id',
     label: 'Detalle de jornada',
     description: 'Seguimiento de ruta, entregas y estado de la jornada.',
     icon: 'bi-calendar2-event-fill',
@@ -246,6 +293,31 @@ export const routeRegistry = [
       permission: PERMISSIONS.JORNADAS_LEER,
     },
     element: <JornadaDetallePage />,
+    hidden: true,
+  },
+  {
+    id: 'legacy-centro-logistico',
+    path: '/centro-logistico',
+    label: 'Jornadas',
+    description: 'Redirección de compatibilidad.',
+    icon: 'bi-calendar2-week',
+    access: {
+      permission: PERMISSIONS.JORNADAS_LEER,
+      roles: [ROLES.ADMIN, ROLES.LOGISTICA],
+    },
+    element: <Navigate replace to="/jornadas" />,
+    hidden: true,
+  },
+  {
+    id: 'legacy-jornada-detalle',
+    path: '/centro-logistico/jornadas/:id',
+    label: 'Detalle de jornada',
+    description: 'Redirección de compatibilidad.',
+    icon: 'bi-calendar2-event-fill',
+    access: {
+      permission: PERMISSIONS.JORNADAS_LEER,
+    },
+    element: <LegacyJornadaRedirect />,
     hidden: true,
   },
   {

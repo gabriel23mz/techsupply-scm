@@ -1,78 +1,51 @@
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useState,
+} from 'react';
 
-const MENSAJES_PLANIFICACION = [
-  'Consultando pedidos listos para despacho...',
-  'Verificando camiones disponibles y capacidades...',
-  'Agrupando entregas por ubicación...',
-  'Evaluando combinaciones de rutas...',
-  'Optimizando la distribución entre camiones...',
-  'Calculando recorridos por carretera...',
-  'Preparando geometrías para el mapa...',
-  'Guardando jornadas y despachos...',
-  'Finalizando la planificación logística...',
+import {
+  Modal,
+} from '../../../shared/ui';
+
+const MESSAGES = [
+  'Consultando pedidos y capacidad disponible...',
+  'Evaluando la distribución y el orden de entrega...',
+  'Calculando recorridos para las jornadas...',
+  'Persistiendo la planificación generada...',
 ];
 
-function GeneracionLoadingContent() {
+function GeneracionLoadingModal() {
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      setMessageIndex((currentIndex) =>
-        Math.min(
-          currentIndex + 1,
-          MENSAJES_PLANIFICACION.length - 1,
-        ),
-      );
+      setMessageIndex((current) => Math.min(current + 1, MESSAGES.length - 1));
     }, 4000);
 
-    return () => {
-      window.clearInterval(intervalId);
-    };
+    return () => window.clearInterval(intervalId);
   }, []);
 
   return (
-    <div
-      className="logistics-modal-overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="generation-loading-title"
+    <Modal
+      open
+      title="Generando jornadas"
+      description="La ventana se cerrará cuando el backend responda."
+      size="sm"
+      closeOnBackdrop={false}
+      closeOnEscape={false}
+      onClose={undefined}
+      className="journeys-generation-modal"
     >
-      <section className="logistics-modal logistics-generation-loading">
-        <div className="logistics-loading-spinner">
-          <span
-            className="spinner-border"
-            role="status"
-            aria-hidden="true"
-          />
-        </div>
-
-        <span className="logistics-loading-label">
-          Asistente logístico
-        </span>
-
-        <h4 id="generation-loading-title">
-          Generando planificación logística
-        </h4>
-
-        <p className="logistics-loading-message">
-          {MENSAJES_PLANIFICACION[messageIndex]}
-        </p>
-
-        <div className="logistics-loading-progress">
-          <span />
-        </div>
-
+      <div className="journeys-generation-state" aria-live="polite">
+        <span className="journeys-generation-spinner" aria-hidden="true" />
+        <strong>Planificación logística en proceso</strong>
+        <p>{MESSAGES[messageIndex]}</p>
         <small>
-          Este proceso puede tardar algunos segundos. No cierres esta
-          ventana.
+          Los mensajes son orientativos; no representan un porcentaje ni un tiempo restante.
         </small>
-      </section>
-    </div>
+      </div>
+    </Modal>
   );
-}
-
-function GeneracionLoadingModal({ open }) {
-  return open ? <GeneracionLoadingContent /> : null;
 }
 
 export default GeneracionLoadingModal;

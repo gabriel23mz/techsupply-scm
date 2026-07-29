@@ -56,6 +56,28 @@ export const obtenerJornada = async (id) => {
   return data.data;
 };
 
+export const obtenerChoferesDisponibles = async (fecha) => {
+  const { data } = await api.get(
+    '/choferes/disponibles',
+    {
+      params: fecha ? { fecha } : undefined,
+    },
+  );
+
+  return Array.isArray(data.data) ? data.data : [];
+};
+
+export const asignarChoferJornada = async (id, choferId) => {
+  const { data } = await api.patch(
+    `/jornadas-reparto/${id}/asignar-chofer`,
+    {
+      chofer_id: choferId,
+    },
+  );
+
+  return data.data;
+};
+
 /*
 |--------------------------------------------------------------------------
 | Operación de jornada
@@ -131,6 +153,8 @@ const logisticaService = {
   obtenerJornadas,
   obtenerMapaGeneral,
   obtenerJornada,
+  obtenerChoferesDisponibles,
+  asignarChoferJornada,
 
   iniciarJornada,
   avanzarJornada,

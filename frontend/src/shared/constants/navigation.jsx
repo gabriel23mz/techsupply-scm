@@ -24,8 +24,10 @@ export const navigationSections = [
     id: 'logistica',
     label: 'Logística',
     items: [
-      'centro-logistico',
+      'jornadas',
       'despachos',
+      'camiones',
+      'choferes',
       'rutas',
       'ubicaciones',
     ],
@@ -34,7 +36,7 @@ export const navigationSections = [
     id: 'chofer',
     label: 'Operación',
     items: [
-      'mis-entregas',
+      'mi-jornada',
     ],
   },
 ];

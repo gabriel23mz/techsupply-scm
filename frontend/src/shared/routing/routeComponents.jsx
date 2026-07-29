@@ -26,16 +26,28 @@ export const DespachosPage = lazy(() =>
   import('../../modules/despachos/pages/DespachosPage'),
 );
 
+export const ChoferesPage = lazy(() =>
+  import('../../modules/choferes/pages/ChoferesPage'),
+);
+
 export const DashboardPage = lazy(() =>
   import('../../modules/dashboard/pages/DashboardPage'),
 );
 
-export const CentroLogisticoPage = lazy(() =>
-  import('../../modules/logistica/pages/CentroLogisticoPage'),
+export const JornadasPage = lazy(() =>
+  import('../../modules/logistica/pages/JornadasPage'),
+);
+
+export const CamionesPage = lazy(() =>
+  import('../../modules/camiones/pages/CamionesPage'),
 );
 
 export const JornadaDetallePage = lazy(() =>
   import('../../modules/logistica/pages/JornadaDetallePage'),
+);
+
+export const MiJornadaPage = lazy(() =>
+  import('../../modules/chofer/pages/MiJornadaPage'),
 );
 
 export const NuevoPedidoPage = lazy(() =>

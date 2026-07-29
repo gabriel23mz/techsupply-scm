@@ -1,3 +1,8 @@
+import {
+  DataTable,
+  StatusBadge,
+} from '../../../shared/ui';
+
 function formatPedidoId(id) {
   return `PED-${String(id).padStart(4, '0')}`;
 }
@@ -5,208 +10,103 @@ function formatPedidoId(id) {
 function formatCurrency(value) {
   const amount = Number(value);
 
-  if (!Number.isFinite(amount)) {
-    return '$0,00';
-  }
-
-  return new Intl.NumberFormat('es-EC', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
+  return Number.isFinite(amount)
+    ? new Intl.NumberFormat('es-EC', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount)
+    : '$0,00';
 }
 
 function formatDate(value) {
-  if (!value) {
-    return 'Sin fecha';
-  }
+  if (!value) return 'Sin fecha';
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
-    return 'Fecha inválida';
-  }
-
-  return new Intl.DateTimeFormat('es-EC', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(date);
+  return Number.isNaN(date.getTime())
+    ? 'Fecha inválida'
+    : new Intl.DateTimeFormat('es-EC').format(date);
 }
 
-function getCliente(pedido) {
-  return pedido.cliente ?? null;
-}
-
-function getUsuario(pedido) {
-  return pedido.usuario ?? null;
-}
-
-function getUbicacion(cliente) {
-  return cliente?.ubicacion ?? null;
-}
-
-function PedidosDisponiblesTable({ pedidos }) {
-  if (!pedidos.length) {
-    return (
-      <div className="logistics-empty-state">
-        <i className="bi bi-box-seam" />
-
-        <h4>No existen pedidos disponibles</h4>
-
-        <p>
-          Los pedidos con estado LISTO PARA DESPACHO aparecerán aquí
-          para ser incluidos en la siguiente planificación logística.
-        </p>
-      </div>
-    );
-  }
+function PedidosDisponiblesTable({
+  error,
+  loading,
+  onRetry,
+  pedidos,
+}) {
+  const columns = [
+    {
+      id: 'pedido',
+      header: 'Pedido',
+      width: '13%',
+      cell: (pedido) => (
+        <div className="journeys-primary-cell">
+          <strong>{formatPedidoId(pedido.id)}</strong>
+          <span>ID interno: {pedido.id}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'cliente',
+      header: 'Cliente',
+      width: '19%',
+      cell: (pedido) => (
+        <div className="journeys-primary-cell">
+          <strong>{pedido.cliente?.nombre ?? 'Cliente no disponible'}</strong>
+          <span>{pedido.cliente?.identificacion ?? 'Sin identificación'}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'destino',
+      header: 'Destino',
+      width: '23%',
+      cell: (pedido) => (
+        <div className="journeys-primary-cell">
+          <strong>
+            {pedido.cliente?.ubicacion?.nombre ?? 'Ubicación no disponible'}
+          </strong>
+          <span>{pedido.cliente?.direccion ?? 'Sin dirección registrada'}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'fecha',
+      header: 'Entrega',
+      width: '13%',
+      cell: (pedido) => formatDate(pedido.fecha_entrega),
+    },
+    {
+      id: 'total',
+      header: 'Total',
+      width: '13%',
+      cell: (pedido) => <strong>{formatCurrency(pedido.total)}</strong>,
+    },
+    {
+      id: 'estado',
+      header: 'Estado',
+      width: '19%',
+      cell: () => (
+        <StatusBadge tone="success" icon="bi bi-box-seam" dot={false}>
+          Listo para despacho
+        </StatusBadge>
+      ),
+    },
+  ];
 
   return (
-    <section className="logistics-table-card">
-      <div className="logistics-table-intro">
-        <div>
-          <i className="bi bi-info-circle" />
-
-          <span>
-            Estos pedidos serán distribuidos automáticamente entre
-            los camiones disponibles según capacidad y ruta óptima.
-          </span>
-        </div>
-
-        <strong>
-          {pedidos.length} pedido
-          {pedidos.length === 1 ? '' : 's'} listo
-          {pedidos.length === 1 ? '' : 's'}
-        </strong>
-      </div>
-
-      <div className="table-responsive">
-        <table className="table logistics-table align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Pedido</th>
-              <th>Cliente</th>
-              <th>Destino</th>
-              <th>Responsable</th>
-              <th>Fecha</th>
-              <th>Fecha de entrega</th>
-              <th>Total</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {pedidos.map((pedido) => {
-              const cliente = getCliente(pedido);
-              const usuario = getUsuario(pedido);
-              const ubicacion = getUbicacion(cliente);
-
-              return (
-                <tr key={pedido.id}>
-                  <td>
-                    <strong className="text-primary">
-                      {formatPedidoId(pedido.id)}
-                    </strong>
-
-                    <span>
-                      ID interno: {pedido.id}
-                    </span>
-                  </td>
-
-                  <td>
-                    <strong>
-                      {cliente?.nombre ||
-                        'Cliente no disponible'}
-                    </strong>
-
-                    <span>
-                      {cliente?.identificacion ||
-                        `ID cliente: ${pedido.cliente_id}`}
-                    </span>
-                  </td>
-
-                  <td>
-                    <strong>
-                      {ubicacion?.nombre ||
-                        cliente?.ubicacion_nombre ||
-                        'Ubicación no disponible'}
-                    </strong>
-
-                    <span>
-                      {cliente?.direccion ||
-                        'Sin dirección registrada'}
-                    </span>
-                  </td>
-
-                  <td>
-                    <strong>
-                      {usuario
-                        ? `${usuario.nombre ?? ''} ${
-                          usuario.apellido ?? ''
-                        }`.trim()
-                        : 'No disponible'}
-                    </strong>
-
-                    <span>
-                      {usuario?.rol || 'Sin rol'}
-                    </span>
-                  </td>
-
-                  <td>
-                    {formatDate(
-                      pedido.fecha ??
-                        pedido.created_at,
-                    )}
-                  </td>
-
-                  <td>
-                    {formatDate(pedido.fecha_entrega)}
-                  </td>
-
-                  <td>
-                    <strong>
-                      {formatCurrency(pedido.total)}
-                    </strong>
-                  </td>
-
-                  <td>
-                    <span className="logistics-status ready">
-                      Listo para despacho
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="logistics-pagination">
-        <span>
-          Mostrando {pedidos.length} pedido
-          {pedidos.length === 1 ? '' : 's'}
-        </span>
-
-        <div>
-          <button type="button" disabled>
-            <i className="bi bi-chevron-left" />
-          </button>
-
-          <button
-            type="button"
-            className="active"
-          >
-            1
-          </button>
-
-          <button type="button" disabled>
-            <i className="bi bi-chevron-right" />
-          </button>
-        </div>
-      </div>
-    </section>
+    <DataTable
+      className="journeys-orders-table"
+      caption="Pedidos disponibles para generar jornadas"
+      columns={columns}
+      rows={pedidos}
+      loading={loading}
+      error={error}
+      onRetry={onRetry}
+      emptyTitle="No existen pedidos disponibles"
+      emptyMessage="Los pedidos listos para despacho aparecerán aquí para la siguiente planificación."
+    />
   );
 }
 
 export default PedidosDisponiblesTable;
-

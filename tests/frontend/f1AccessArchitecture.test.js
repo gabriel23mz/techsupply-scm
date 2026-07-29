@@ -108,7 +108,8 @@ test('F1 permite un inicio autenticado para todos los roles y separa rutas de na
   assert.match(routes, /id: 'dashboard'[\s\S]*?path: '\/'/);
   assert.match(routes, /id: 'access-denied'[\s\S]*?path: '\/acceso-denegado'/);
   assert.match(routes, /id: 'not-found'[\s\S]*?path: '\*'/);
-  assert.match(routes, /id: 'mis-entregas'[\s\S]*?ROLES\.CHOFER/);
+  assert.match(routes, /id: 'mi-jornada'[\s\S]*?ROLES\.CHOFER/);
+  assert.match(routes, /id: 'legacy-mis-entregas'[\s\S]*?to="\/mi-jornada"/);
   assert.match(routes, /id: 'despachos'[\s\S]*?ROLES\.ADMIN,[\s\S]*?ROLES\.LOGISTICA/);
 
   assert.match(navigation, /navigationSections/);
@@ -178,10 +179,10 @@ test('F1 oculta y protege acciones sensibles en los módulos actuales', async ()
     'frontend/src/modules/ubicaciones/components/UbicacionesTable.jsx',
   );
   const routes = await readSource(
-    'frontend/src/modules/rutas/components/catalogo/RutasTable.jsx',
+    'frontend/src/modules/rutas/pages/RutasPage.jsx',
   );
   const logistics = await readSource(
-    'frontend/src/modules/logistica/components/LogisticsToolbar.jsx',
+    'frontend/src/modules/logistica/pages/JornadasPage.jsx',
   );
   const journey = await readSource(
     'frontend/src/modules/logistica/pages/JornadaDetallePage.jsx',

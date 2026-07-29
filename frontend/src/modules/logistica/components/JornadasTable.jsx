@@ -1,283 +1,161 @@
-import Can from '../../../shared/components/Can';
-
 import {
-  PERMISSIONS,
-} from '../../../shared/constants/permissions';
+  DataTable,
+  StatusBadge,
+} from '../../../shared/ui';
 
-function formatJourneyCode(id) {
-  return `JR-${String(id).padStart(5, '0')}`;
+function formatJourneyCode(jornada) {
+  return jornada.codigo ?? `JR-${String(jornada.id).padStart(5, '0')}`;
 }
 
 function formatDistance(value) {
   const distance = Number(value);
 
-  if (!Number.isFinite(distance)) {
-    return '0,00 km';
-  }
-
-  return `${new Intl.NumberFormat('es-EC', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(distance)} km`;
+  return Number.isFinite(distance)
+    ? `${new Intl.NumberFormat('es-EC', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(distance)} km`
+    : '0,00 km';
 }
 
-function formatDuration(minutes) {
-  const totalMinutes = Number(minutes);
+function formatDuration(value) {
+  const minutes = Number(value);
 
-  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) {
-    return '0 min';
-  }
+  if (!Number.isFinite(minutes) || minutes <= 0) return '0 min';
 
-  const hours = Math.floor(totalMinutes / 60);
-  const remainingMinutes = totalMinutes % 60;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
 
-  if (hours === 0) {
-    return `${remainingMinutes} min`;
-  }
-
-  if (remainingMinutes === 0) {
-    return `${hours} h`;
-  }
-
-  return `${hours} h ${remainingMinutes} min`;
+  return hours
+    ? `${hours} h${remainder ? ` ${remainder} min` : ''}`
+    : `${remainder} min`;
 }
 
 function formatDate(value) {
-  if (!value) {
-    return 'Sin fecha';
-  }
+  if (!value) return 'Sin fecha';
 
-  return new Intl.DateTimeFormat('es-EC', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(`${value}T00:00:00`));
+  const date = new Date(`${value}T00:00:00`);
+
+  return Number.isNaN(date.getTime())
+    ? 'Sin fecha'
+    : new Intl.DateTimeFormat('es-EC').format(date);
 }
 
-function formatStatus(status) {
-  return String(status || '')
-    .replaceAll('_', ' ')
-    .toLowerCase()
-    .replace(/^\w/, (character) =>
-      character.toUpperCase(),
-    );
-}
+function JourneyStatus({ status }) {
+  const config = {
+    PLANIFICADA: ['Planificada', 'info', 'bi bi-calendar2-check'],
+    EN_RUTA: ['En ruta', 'warning', 'bi bi-truck'],
+    FINALIZADA: ['Finalizada', 'success', 'bi bi-check2-circle'],
+    CANCELADA: ['Cancelada', 'danger', 'bi bi-x-circle'],
+  }[status] ?? [String(status ?? 'Sin estado').replaceAll('_', ' '), 'neutral', 'bi bi-circle'];
 
-function getStatusClass(status) {
-  const statusClasses = {
-    PLANIFICADA: 'planned',
-    EN_RUTA: 'in-route',
-    FINALIZADA: 'finished',
-    CANCELADA: 'cancelled',
-  };
-
-  return statusClasses[status] || 'neutral';
-}
-
-function getTruckLabel(camion) {
-  if (!camion) {
-    return 'Camión no disponible';
-  }
-
-  return camion.codigo || `CAM-${camion.id}`;
+  return (
+    <StatusBadge tone={config[1]} icon={config[2]} dot={false}>
+      {config[0]}
+    </StatusBadge>
+  );
 }
 
 function JornadasTable({
+  canRecalculate,
+  error,
   jornadas,
-  onView,
+  loading,
   onRecalculate,
+  onRetry,
+  onView,
   recalculatingId,
 }) {
-  if (!jornadas.length) {
-    return (
-      <div className="logistics-empty-state">
-        <i className="bi bi-signpost-split" />
-        <h4>No existen jornadas de reparto</h4>
-        <p>
-          Genera una planificación para asignar pedidos y rutas a los
-          camiones disponibles.
-        </p>
-      </div>
-    );
-  }
+  const columns = [
+    {
+      id: 'jornada',
+      header: 'Jornada',
+      width: '15%',
+      cell: (jornada) => (
+        <div className="journeys-primary-cell">
+          <strong>{formatJourneyCode(jornada)}</strong>
+          <span>Punto actual: {jornada.posicion_actual_orden ?? 0}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'camion',
+      header: 'Camión',
+      width: '17%',
+      cell: (jornada) => (
+        <div className="journeys-primary-cell">
+          <strong>{jornada.camion?.codigo ?? 'No disponible'}</strong>
+          <span>{jornada.camion?.placa ?? 'Sin placa'}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'fecha',
+      header: 'Fecha',
+      width: '12%',
+      cell: (jornada) => formatDate(jornada.fecha),
+    },
+    {
+      id: 'pedidos',
+      header: 'Pedidos',
+      width: '12%',
+      cell: (jornada) => (
+        <div className="journeys-primary-cell">
+          <strong>{jornada.resumen?.total_despachos ?? 0}</strong>
+          <span>{jornada.resumen?.total_puntos ?? 0} puntos</span>
+        </div>
+      ),
+    },
+    {
+      id: 'recorrido',
+      header: 'Recorrido',
+      width: '19%',
+      cell: (jornada) => (
+        <div className="journeys-primary-cell">
+          <strong>{formatDistance(jornada.distancia_total)}</strong>
+          <span>{formatDuration(jornada.tiempo_estimado)}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'estado',
+      header: 'Estado',
+      width: '15%',
+      cell: (jornada) => <JourneyStatus status={jornada.estado} />,
+    },
+  ];
 
   return (
-    <section className="logistics-table-card">
-      <div className="table-responsive">
-        <table className="table logistics-table align-middle mb-0">
-          <thead>
-            <tr>
-              <th>Jornada</th>
-              <th>Camión</th>
-              <th>Fecha</th>
-              <th>Pedidos</th>
-              <th>Progreso</th>
-              <th>Distancia</th>
-              <th>Tiempo</th>
-              <th>Estado</th>
-              <th className="text-center">Acciones</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {jornadas.map((jornada) => {
-              const summary = jornada.resumen || {};
-              const totalDispatches =
-                Number(summary.total_despachos) || 0;
-
-              const delivered =
-                Number(summary.entregados) || 0;
-
-              const notDelivered =
-                Number(summary.no_entregados) || 0;
-
-              const closedDispatches =
-                delivered + notDelivered;
-
-              const progress =
-                totalDispatches > 0
-                  ? Math.round(
-                    (closedDispatches /
-                        totalDispatches) *
-                        100,
-                  )
-                  : 0;
-
-              const isRecalculating =
-                recalculatingId === jornada.id;
-
-              return (
-                <tr key={jornada.id}>
-                  <td>
-                    <strong className="text-primary">
-                      {jornada.codigo ||
-                        formatJourneyCode(jornada.id)}
-                    </strong>
-
-                    <span>
-                      Punto actual:{' '}
-                      {jornada.posicion_actual_orden ?? 0}
-                    </span>
-                  </td>
-
-                  <td>
-                    <strong>
-                      {getTruckLabel(jornada.camion)}
-                    </strong>
-
-                    <span>
-                      {jornada.camion?.placa ||
-                        'Sin placa'}
-                    </span>
-                  </td>
-
-                  <td>{formatDate(jornada.fecha)}</td>
-
-                  <td>
-                    <strong>{totalDispatches}</strong>
-
-                    <span>
-                      {summary.total_puntos ?? 0} puntos
-                    </span>
-                  </td>
-
-                  <td>
-                    <div className="logistics-progress-summary">
-                      <div className="logistics-progress-track">
-                        <span
-                          style={{
-                            width: `${progress}%`,
-                          }}
-                        />
-                      </div>
-
-                      <small>
-                        {closedDispatches}/{totalDispatches}
-                      </small>
-                    </div>
-                  </td>
-
-                  <td>
-                    {formatDistance(
-                      jornada.distancia_total,
-                    )}
-                  </td>
-
-                  <td>
-                    {formatDuration(
-                      jornada.tiempo_estimado,
-                    )}
-                  </td>
-
-                  <td>
-                    <span
-                      className={`logistics-status ${getStatusClass(
-                        jornada.estado,
-                      )}`}
-                    >
-                      {formatStatus(jornada.estado)}
-                    </span>
-                  </td>
-
-                  <td>
-                    <div className="logistics-row-actions justify-content-center">
-                      <button
-                        type="button"
-                        title="Ver jornada"
-                        onClick={() => onView(jornada)}
-                      >
-                        <i className="bi bi-eye" />
-                      </button>
-
-                      {jornada.estado ===
-                        'PLANIFICADA' && (
-                        <Can permission={PERMISSIONS.JORNADAS_RECALCULAR}>
-                          <button
-                            type="button"
-                            title="Recalcular jornada"
-                            disabled={isRecalculating}
-                            onClick={() =>
-                              onRecalculate(jornada)
-                            }
-                          >
-                            {isRecalculating ? (
-                              <span className="spinner-border spinner-border-sm" />
-                            ) : (
-                              <i className="bi bi-arrow-repeat" />
-                            )}
-                          </button>
-                        </Can>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="logistics-pagination">
-        <span>
-          Mostrando {jornadas.length} jornada
-          {jornadas.length === 1 ? '' : 's'}
-        </span>
-
-        <div>
-          <button type="button" disabled>
-            <i className="bi bi-chevron-left" />
-          </button>
-
-          <button type="button" className="active">
-            1
-          </button>
-
-          <button type="button" disabled>
-            <i className="bi bi-chevron-right" />
-          </button>
-        </div>
-      </div>
-    </section>
+    <DataTable
+      className="journeys-table"
+      caption="Jornadas de reparto registradas"
+      columns={columns}
+      rows={jornadas}
+      loading={loading}
+      error={error}
+      onRetry={onRetry}
+      emptyTitle="No existen jornadas de reparto"
+      emptyMessage="Genera una planificación para asignar pedidos a los camiones disponibles."
+      actions={(jornada) => [
+        {
+          id: 'view',
+          icon: 'bi bi-eye',
+          label: 'Ver jornada',
+          onClick: () => onView(jornada),
+        },
+        {
+          id: 'edit',
+          icon: recalculatingId === jornada.id
+            ? 'bi bi-hourglass-split'
+            : 'bi bi-arrow-repeat',
+          label: 'Recalcular jornada',
+          visible: canRecalculate && jornada.estado === 'PLANIFICADA',
+          disabled: Boolean(recalculatingId),
+          tone: 'primary',
+          onClick: () => onRecalculate(jornada),
+        },
+      ]}
+    />
   );
 }
 
