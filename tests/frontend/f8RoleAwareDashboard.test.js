@@ -112,7 +112,7 @@ test('F8 presenta Compras como alcance informativo y evita enlaces vacíos', asy
   assert.match(roles, /dominio Inbound/);
   assert.match(accessConfig, /PRODUCTOS:[\s\S]*?routeId: 'help'[\s\S]*?informational: true/);
   assert.match(accessConfig, /CATEGORIAS:[\s\S]*?routeId: 'help'[\s\S]*?informational: true/);
-  assert.match(accessConfig, /USUARIOS:[\s\S]*?routeId: 'help'[\s\S]*?informational: true/);
+  assert.match(accessConfig, /USUARIOS:[\s\S]*?routeId: 'usuarios'/);
   assert.match(scope, /\/ayuda\?tab=rol/);
 });
 

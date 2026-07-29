@@ -58,9 +58,8 @@ const ACCESS_CONFIG = Object.freeze({
     informational: true,
   },
   USUARIOS: {
-    routeId: 'help',
+    routeId: 'usuarios',
     icon: 'bi-person-gear',
-    informational: true,
   },
 });
 
@@ -176,6 +175,7 @@ export function getDashboardNotificationPath(notification, role) {
     camiones: '/camiones',
     choferes: '/choferes',
     rutas: '/rutas',
+    usuarios: '/usuarios',
     'mi-jornada': '/mi-jornada',
   };
 

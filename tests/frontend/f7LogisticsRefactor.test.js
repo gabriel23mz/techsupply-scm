@@ -77,10 +77,13 @@ test('F7A liga la carga de generación a la respuesta real y refresca sin bloque
   assert.match(page, /isGenerating/);
   assert.match(page, /isRefreshingAfterGeneration/);
   assert.match(page, /setIsGenerating\(false\);[\s\S]*?setGenerationResult\(result\);[\s\S]*?refreshAfterGeneration/);
-  assert.match(loading, /La ventana se cerrará cuando el backend responda/);
+  assert.match(loading, /Esta ventana se cerrará al finalizar el proceso de planificación/);
   assert.doesNotMatch(loading, /\d+%|restante:\s*\d+/i);
   assert.match(service, /\/jornadas-reparto\/generar/);
   assert.match(service, /timeout: 90000/);
+  assert.match(page, /function getGenerationErrorMessage/);
+  assert.match(page, /status >= 500/);
+  assert.match(page, /showError\(getGenerationErrorMessage\(error\)\)/);
 });
 
 test('F7A corrige la distancia vial con cancelación, validación y reintento', async () => {

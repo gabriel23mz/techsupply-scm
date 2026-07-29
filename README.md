@@ -92,7 +92,7 @@ Reglas relevantes:
 
 | Rol | Responsabilidad principal |
 |---|---|
-| `ADMIN` | Acceso completo al sistema |
+| `ADMIN` | Acceso completo al sistema y administración de usuarios |
 | `VENTAS` | Clientes, pedidos propios y envío a preparación |
 | `BODEGA` | Preparación de pedidos y carga de camiones |
 | `LOGISTICA` | Jornadas, rutas, camiones, choferes y supervisión |
@@ -481,11 +481,12 @@ Las pruebas backend usan dobles y mocks para evitar conexiones accidentales a Su
 
 ### Frontend
 
-- Autenticación, permisos por ruta y cliente Axios.
-- Módulos existentes de clientes, pedidos, ubicaciones, rutas, logística y despachos.
-- Workspace comercial de pedidos.
-- Mapas con Leaflet.
-- Requiere reestructuración para dashboards, navegación, acciones y módulos específicos por rol.
+- Autenticación, sesión validada y permisos por ruta y acción.
+- Dashboards responsive adaptados a ADMIN, VENTAS, BODEGA, LOGISTICA, CHOFER y COMPRAS.
+- Módulos cerrados de Clientes, Pedidos, Ubicaciones, Bodega, Jornadas, Despachos, Camiones, Choferes, Rutas y Mi Jornada.
+- Centro de ayuda con orientación general y operativa por rol.
+- Administración de usuarios exclusiva de ADMIN, con gestión de roles, restablecimiento administrativo de contraseña y desactivación lógica.
+- Biblioteca visual, navegación responsive y mapas compartidos con Leaflet.
 
 ### n8n
 
@@ -496,12 +497,11 @@ Las pruebas backend usan dobles y mocks para evitar conexiones accidentales a Su
 
 ## Trabajo pendiente priorizado
 
-1. Reestructurar el frontend según permisos y responsabilidades por rol.
-2. Crear módulos dedicados de Bodega, Camiones, Choferes y operación del Chofer.
-3. Unificar diseño visual, layout, componentes y estilos.
-4. Ampliar pruebas de renderizado y flujos frontend.
-5. Aplicar una estrategia controlada para Supabase cuando corresponda.
-6. Implementar n8n real después de estabilizar el frontend.
+1. Mantener la validación visual y funcional de la capa frontend cerrada.
+2. Implementar Productos, Categorías y los flujos Inbound cuando se amplíe formalmente el alcance.
+3. Ampliar pruebas de renderizado y flujos end-to-end.
+4. Aplicar una estrategia controlada para Supabase cuando corresponda.
+5. Implementar n8n real después de estabilizar el despliegue integral.
 
 Fuera del alcance actual del MVP:
 

@@ -61,6 +61,17 @@ function normalizePosition(position) {
   return [latitude, longitude];
 }
 
+function areSamePositions(first, second) {
+  if (!first || !second) return false;
+
+  const tolerance = 0.000001;
+
+  return (
+    Math.abs(Number(first[0]) - Number(second[0])) < tolerance &&
+    Math.abs(Number(first[1]) - Number(second[1])) < tolerance
+  );
+}
+
 /*
 |--------------------------------------------------------------------------
 | Iconos HTML
@@ -175,14 +186,6 @@ function JornadaMap({
     [mapa],
   );
 
-  const truckPosition = useMemo(
-    () =>
-      normalizePosition(
-        mapa?.camion?.posicion_actual,
-      ),
-    [mapa],
-  );
-
   const deliveryPoints = useMemo(() => {
     const points = Array.isArray(
       mapa?.puntos_entrega,
@@ -261,6 +264,47 @@ function JornadaMap({
         };
       });
   }, [mapa]);
+
+  const currentDeliveryPosition = useMemo(() => {
+    const currentOrder = Number(posicionActualOrden);
+
+    if (!Number.isFinite(currentOrder) || currentOrder <= 0) {
+      return null;
+    }
+
+    const currentPoint = deliveryPoints.find(
+      (point) => Number(point.orden) === currentOrder,
+    );
+
+    return currentPoint
+      ? [currentPoint.latitud, currentPoint.longitud]
+      : null;
+  }, [deliveryPoints, posicionActualOrden]);
+
+  const truckPosition = useMemo(() => {
+    const explicitPosition = normalizePosition(
+      mapa?.camion?.posicion_actual ?? mapa?.posicion_actual,
+    );
+
+    if (estadoJornada === 'PLANIFICADA') {
+      return warehousePosition ?? explicitPosition;
+    }
+
+    if (estadoJornada === 'EN_RUTA' && currentDeliveryPosition) {
+      return currentDeliveryPosition;
+    }
+
+    return (
+      explicitPosition ??
+      currentDeliveryPosition ??
+      warehousePosition
+    );
+  }, [
+    currentDeliveryPosition,
+    estadoJornada,
+    mapa,
+    warehousePosition,
+  ]);
 
   const allPositions = useMemo(() => {
     const positions = [
@@ -416,14 +460,22 @@ function JornadaMap({
               estadoJornada === 'EN_RUTA' &&
               Number(posicionActualOrden) ===
                 Number(point.orden);
+            const pointPosition = [
+              point.latitud,
+              point.longitud,
+            ];
+
+            if (
+              isCurrent &&
+              areSamePositions(pointPosition, truckPosition)
+            ) {
+              return null;
+            }
 
             return (
               <Marker
                 key={point.orden}
-                position={[
-                  point.latitud,
-                  point.longitud,
-                ]}
+                position={pointPosition}
                 icon={createDeliveryIcon({
                   order: point.orden,
                   status: point.estado,

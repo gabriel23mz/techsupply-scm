@@ -36,6 +36,13 @@ export const navigationSections = [
     ],
   },
   {
+    id: 'administracion',
+    label: 'Administración',
+    items: [
+      'usuarios',
+    ],
+  },
+  {
     id: 'chofer',
     label: 'Operación',
     items: [

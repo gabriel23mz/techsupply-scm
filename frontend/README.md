@@ -4,7 +4,7 @@ Interfaz web de **TechSupply SCM — Módulo Outbound**, desarrollada con React 
 
 Esta capa presenta una experiencia única y responsive para los roles de Administración, Ventas, Bodega, Logística, Chofer y Compras. El frontend consume exclusivamente los contratos vigentes del backend, aplica navegación y acciones por permisos y mantiene al servidor como autoridad final para autenticación, autorización y reglas de negocio.
 
-> **Estado:** capa frontend Outbound cerrada para el alcance actual. Los módulos comerciales, de bodega, logística, operación del chofer, dashboards por rol y Centro de ayuda se consideran implementados. Productos, Categorías, Usuarios y los flujos Inbound de Compras quedan fuera de este cierre.
+> **Estado:** capa frontend Outbound cerrada para el alcance actual. Los módulos comerciales, de bodega, logística, operación del chofer, dashboards por rol, Centro de ayuda y Administración de usuarios se consideran implementados. Productos, Categorías y los flujos Inbound de Compras quedan fuera de este cierre.
 
 ---
 
@@ -97,6 +97,7 @@ Camiones
 Choferes
 Rutas
 Mi Jornada
+Usuarios
 ```
 
 ---
@@ -105,7 +106,7 @@ Mi Jornada
 
 | Rol | Dashboard y acceso principal |
 |---|---|
-| `ADMIN` | Visión transversal de Ventas, Bodega y Logística; acceso a todos los módulos Outbound implementados. |
+| `ADMIN` | Visión transversal de Ventas, Bodega y Logística; acceso a todos los módulos Outbound implementados y a la administración de usuarios. |
 | `VENTAS` | Clientes, pedidos propios, nuevo pedido, workspace comercial y consulta de ubicaciones. |
 | `BODEGA` | Preparación física de pedidos y carga de jornadas planificadas. |
 | `LOGISTICA` | Jornadas, despachos, camiones, choferes, rutas, ubicaciones y consulta de clientes. |
@@ -138,6 +139,7 @@ El frontend oculta rutas y acciones no autorizadas para evitar flujos inválidos
 | `/choferes` | Gestión de perfiles y licencias. |
 | `/rutas` | Catálogo de conexiones viales. |
 | `/mi-jornada` | Operación mobile-first del chofer. |
+| `/usuarios` | Administración de cuentas, roles, contraseñas y desactivación lógica; acceso exclusivo de ADMIN. |
 
 También se conservan redirecciones ocultas para URLs antiguas de Centro Logístico y Mis entregas.
 
@@ -167,7 +169,8 @@ frontend/
 │   │   ├── logistica/
 │   │   ├── pedidos/
 │   │   ├── rutas/
-│   │   └── ubicaciones/
+│   │   ├── ubicaciones/
+│   │   └── usuarios/
 │   ├── shared/
 │   │   ├── components/
 │   │   ├── constants/
@@ -344,6 +347,16 @@ Las rutas se registran una sola vez y se cargan de forma diferida. El Sidebar de
 - Gestión de camiones y choferes.
 - Consulta de despachos.
 - Catálogo de rutas.
+
+### Administración de usuarios
+
+- Acceso exclusivo para `ADMIN` mediante `USUARIOS_GESTIONAR`.
+- Listado de cuentas activas con búsqueda, filtro por rol y paginación en URL.
+- Creación y edición de nombre, apellido, correo y rol.
+- Contraseña obligatoria al crear y restablecimiento opcional al editar.
+- Drawer de detalle y desactivación lógica con confirmación.
+- Los usuarios normales no disponen de una acción para cambiar su propia contraseña en este alcance.
+- Crear una cuenta con rol `CHOFER` no crea automáticamente su perfil operativo; la licencia y disponibilidad se completan desde Choferes.
 
 ### Rutas y distancia
 

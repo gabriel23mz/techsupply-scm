@@ -22,6 +22,10 @@ import {
   MapViewportController,
 } from '../../../../shared/maps';
 
+import {
+  Button,
+} from '../../../../shared/ui';
+
 const ROUTE_COLORS = [
   '#2563eb',
   '#0ea5e9',
@@ -29,6 +33,10 @@ const ROUTE_COLORS = [
   '#0891b2',
   '#4f46e5',
   '#0284c7',
+  '#db2777',
+  '#ea580c',
+  '#16a34a',
+  '#ca8a04',
 ];
 
 function normalizeGeometry(geometry) {
@@ -146,11 +154,33 @@ function getTruckPosition(jornada) {
 
   return normalizePosition(
     mapa?.camion?.posicion_actual ??
+      mapa?.posicion_actual ??
       camion?.posicion_actual ??
       mapa?.posicion_camion ??
       jornada?.posicion_camion ??
       null,
   );
+}
+
+function getCurrentDeliveryPosition(jornada, deliveryPoints) {
+  const mapa = getJourneyMap(jornada);
+  const currentOrder = Number(
+    jornada?.posicion_actual_orden ??
+      mapa?.posicion_actual_orden ??
+      0,
+  );
+
+  if (!Number.isFinite(currentOrder) || currentOrder <= 0) {
+    return null;
+  }
+
+  const currentPoint = deliveryPoints.find(
+    (point) => Number(point.orden) === currentOrder,
+  );
+
+  return currentPoint
+    ? [currentPoint.latitud, currentPoint.longitud]
+    : null;
 }
 
 function getJourneyCode(jornada) {
@@ -321,6 +351,7 @@ function MapaGeneralJornadas({
   selectedJourneyId,
   focusRequest,
   onSelectJourney,
+  onShowAll,
 }) {
   const [tileError, setTileError] = useState(false);
 
@@ -342,63 +373,58 @@ function MapaGeneralJornadas({
           mapa?.geometria,
       );
 
-     const warehouseData =
-      getWarehouseData(jornada);
+      const warehouseData = getWarehouseData(jornada);
 
-    /*
-    * Primera opción: información explícita del backend.
-    *
-    * Segunda opción: primer punto de la geometría,
-    * porque todas las rutas comienzan en la bodega.
-    */
-    const warehousePosition =
-      normalizePosition(warehouseData) ??
-      fullGeometry[0] ??
-      pendingRoute[0] ??
-      completedRoute[0] ??
-      null;
-
-    /*
-    * Primera opción: posición explícita del camión.
-    *
-    * Segunda opción: último punto del recorrido
-    * completado.
-    *
-    * Tercera opción: bodega para jornadas todavía
-    * planificadas.
-    */
-    let truckPosition =
-      getTruckPosition(jornada) ??
-      completedRoute[
-        completedRoute.length - 1
-      ] ??
-      null;
-
-    if (
-      !truckPosition &&
-      jornada?.estado === 'PLANIFICADA'
-    ) {
-      truckPosition = warehousePosition;
-    }
-
-    /*
-    * Cuando el camión todavía está en la bodega,
-    * ambos marcadores tienen exactamente la misma
-    * coordenada. Lo desplazamos ligeramente solo
-    * para su representación visual.
-    */
-    const displayedTruckPosition =
-      areSamePositions(
-        truckPosition,
-        warehousePosition,
-      )
-        ? offsetOverlappingPosition(
-            truckPosition,
-            index,
-          )
-        : truckPosition;
+      /*
+       * Primera opción: información explícita del backend.
+       *
+       * Segunda opción: primer punto de la geometría,
+       * porque todas las rutas comienzan en la bodega.
+       */
+      const warehousePosition =
+        normalizePosition(warehouseData) ??
+        fullGeometry[0] ??
+        pendingRoute[0] ??
+        completedRoute[0] ??
+        null;
 
       const deliveryPoints = buildDeliveryPoints(jornada);
+      const currentDeliveryPosition = getCurrentDeliveryPosition(
+        jornada,
+        deliveryPoints,
+      );
+      const explicitTruckPosition = getTruckPosition(jornada);
+
+      /*
+       * Una jornada en ruta debe representar el camión sobre el
+       * punto operativo actual. La posición explícita del backend
+       * queda como respaldo para recorridos sin punto identificable.
+       */
+      let truckPosition = explicitTruckPosition;
+
+      if (jornada?.estado === 'PLANIFICADA') {
+        truckPosition = warehousePosition ?? explicitTruckPosition;
+      } else if (
+        jornada?.estado === 'EN_RUTA' &&
+        currentDeliveryPosition
+      ) {
+        truckPosition = currentDeliveryPosition;
+      } else if (!truckPosition) {
+        truckPosition =
+          currentDeliveryPosition ??
+          completedRoute[completedRoute.length - 1] ??
+          warehousePosition;
+      }
+
+      /*
+       * En jornadas planificadas el camión comparte la bodega.
+       * El desplazamiento es únicamente visual para mantener ambos
+       * marcadores identificables.
+       */
+      const displayedTruckPosition =
+        areSamePositions(truckPosition, warehousePosition)
+          ? offsetOverlappingPosition(truckPosition, index)
+          : truckPosition;
 
       const positions = [
         ...fullGeometry,
@@ -407,9 +433,7 @@ function MapaGeneralJornadas({
       ];
 
       if (displayedTruckPosition) {
-        positions.push(
-          displayedTruckPosition,
-        );
+        positions.push(displayedTruckPosition);
       }
 
       if (warehousePosition) {
@@ -465,6 +489,14 @@ function MapaGeneralJornadas({
   const selectedPositions =
     selectedJourney?.positions ?? [];
 
+  const visibleJourneys = selectedJourney
+    ? [selectedJourney]
+    : normalizedJourneys;
+
+  const visiblePositions = selectedJourney
+    ? selectedPositions
+    : allPositions;
+
   const warehouseItem =
     normalizedJourneys.find(
       (item) => item.warehousePosition,
@@ -509,10 +541,23 @@ function MapaGeneralJornadas({
           <h4>Mapa general de jornadas</h4>
         </div>
 
-        <div className="routes-general-map-header__status">
-          <span />
-          {normalizedJourneys.length} jornada
-          {normalizedJourneys.length === 1 ? '' : 's'}
+        <div className="routes-general-map-header__actions">
+          <Button
+            size="sm"
+            tone="secondary"
+            icon="bi bi-truck-front"
+            disabled={!selectedJourney}
+            onClick={onShowAll}
+          >
+            Mostrar posicionamiento de camiones
+          </Button>
+
+          <div className="routes-general-map-header__status">
+            <span />
+            {selectedJourney ? '1 de ' : ''}
+            {normalizedJourneys.length} jornada
+            {normalizedJourneys.length === 1 ? '' : 's'}
+          </div>
         </div>
       </header>
 
@@ -537,8 +582,8 @@ function MapaGeneralJornadas({
           />
 
           <MapViewportController
-            focusPositions={selectedPositions}
-            positions={allPositions}
+            focusPositions={selectedJourney ? selectedPositions : []}
+            positions={visiblePositions}
             requestKey={focusRequest}
             maxZoom={14}
             padding={42}
@@ -547,35 +592,28 @@ function MapaGeneralJornadas({
 
           <MapControls
             fitLabel={
-              selectedPositions.length
+              selectedJourney
                 ? 'Centrar jornada seleccionada'
-                : 'Ajustar todas las jornadas'
+                : 'Ajustar todos los camiones'
             }
-            fitPositions={
-              selectedPositions.length
-                ? selectedPositions
-                : allPositions
-            }
+            fitPositions={visiblePositions}
           />
 
-          {normalizedJourneys.map((item) => {
-            const isSelected =
+          {visibleJourneys.map((item) => {
+            const isSelected = Boolean(selectedJourney) &&
               Number(item.jornada.id) ===
               Number(selectedJourneyId);
 
-            const routeOpacity =
-              selectedJourneyId && !isSelected
-                ? 0.18
-                : 0.9;
+            const routeOpacity = 0.9;
 
             return (
               <div key={item.jornada.id}>
-                {item.completedRoute.length > 1 && (
+                {selectedJourney && item.completedRoute.length > 1 && (
                   <Polyline
                     positions={item.completedRoute}
                     pathOptions={{
                       color: item.color,
-                      weight: isSelected ? 6 : 4,
+                      weight: 6,
                       opacity: routeOpacity,
                     }}
                     eventHandlers={{
@@ -584,12 +622,12 @@ function MapaGeneralJornadas({
                   />
                 )}
 
-                {item.pendingRoute.length > 1 && (
+                {selectedJourney && item.pendingRoute.length > 1 && (
                   <Polyline
                     positions={item.pendingRoute}
                     pathOptions={{
                       color: item.color,
-                      weight: isSelected ? 5 : 3,
+                      weight: 5,
                       opacity: routeOpacity,
                       dashArray: '10 10',
                     }}
@@ -649,36 +687,49 @@ function MapaGeneralJornadas({
                 )}
 
                 {isSelected &&
-                  item.deliveryPoints.map((point) => (
-                    <Marker
-                      key={`${item.jornada.id}-${point.orden}`}
-                      position={[
-                        point.latitud,
-                        point.longitud,
-                      ]}
-                      icon={createDeliveryIcon({
-                        order: point.orden,
-                        state: point.estado,
-                        selected: true,
-                      })}
-                      zIndexOffset={800}
-                    >
-                      <Popup>
-                        <strong>
-                          Punto {point.orden}: {point.ubicacion}
-                        </strong>
+                  item.deliveryPoints.map((point) => {
+                    const pointPosition = [
+                      point.latitud,
+                      point.longitud,
+                    ];
+                    const truckReplacesCurrentPoint =
+                      item.jornada?.estado === 'EN_RUTA' &&
+                      point.estado === 'CURRENT' &&
+                      areSamePositions(
+                        pointPosition,
+                        item.truckPosition,
+                      );
 
-                        <br />
+                    if (truckReplacesCurrentPoint) return null;
 
-                        {point.totalDespachos} despacho
-                        {point.totalDespachos === 1 ? '' : 's'}
-                      </Popup>
+                    return (
+                      <Marker
+                        key={`${item.jornada.id}-${point.orden}`}
+                        position={pointPosition}
+                        icon={createDeliveryIcon({
+                          order: point.orden,
+                          state: point.estado,
+                          selected: true,
+                        })}
+                        zIndexOffset={800}
+                      >
+                        <Popup>
+                          <strong>
+                            Punto {point.orden}: {point.ubicacion}
+                          </strong>
 
-                      <Tooltip direction="top">
-                        {point.orden}. {point.ubicacion}
-                      </Tooltip>
-                    </Marker>
-                  ))}
+                          <br />
+
+                          {point.totalDespachos} despacho
+                          {point.totalDespachos === 1 ? '' : 's'}
+                        </Popup>
+
+                        <Tooltip direction="top">
+                          {point.orden}. {point.ubicacion}
+                        </Tooltip>
+                      </Marker>
+                    );
+                  })}
               </div>
             );
           })}
@@ -721,38 +772,53 @@ function MapaGeneralJornadas({
 
       <MapLegend
         className="routes-general-map-legend"
-        items={[
-          {
-            id: 'completed',
-            label: 'Recorrido completado',
-            type: 'line',
-            tone: 'primary',
-          },
-          {
-            id: 'pending',
-            label: 'Recorrido pendiente',
-            type: 'dashed',
-            tone: 'primary',
-          },
-          {
-            id: 'warehouse',
-            label: 'Bodega',
-            type: 'dot',
-            tone: 'neutral',
-          },
-          {
-            id: 'truck',
-            label: 'Camión',
-            type: 'dot',
-            tone: 'info',
-          },
-          {
-            id: 'delivery',
-            label: 'Punto de entrega',
-            type: 'dot',
-            tone: 'success',
-          },
-        ]}
+        items={selectedJourney
+          ? [
+            {
+              id: 'completed',
+              label: 'Recorrido completado',
+              type: 'line',
+              tone: 'primary',
+            },
+            {
+              id: 'pending',
+              label: 'Recorrido pendiente',
+              type: 'dashed',
+              tone: 'primary',
+            },
+            {
+              id: 'warehouse',
+              label: 'Bodega',
+              type: 'dot',
+              tone: 'neutral',
+            },
+            {
+              id: 'truck',
+              label: 'Camión',
+              type: 'dot',
+              tone: 'info',
+            },
+            {
+              id: 'delivery',
+              label: 'Punto de entrega',
+              type: 'dot',
+              tone: 'success',
+            },
+          ]
+          : [
+            {
+              id: 'warehouse',
+              label: 'Bodega',
+              type: 'dot',
+              tone: 'neutral',
+            },
+            {
+              id: 'truck',
+              label: 'Camiones posicionados',
+              type: 'dot',
+              tone: 'info',
+            },
+          ]}
       />
 
     </section>

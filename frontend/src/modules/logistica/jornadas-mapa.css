@@ -113,7 +113,7 @@
 }
 
 .routes-journey-card {
-  min-height: 12rem;
+  min-height: 14rem;
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
@@ -224,30 +224,44 @@
 }
 
 .routes-journey-card__summary {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--spacing-xs);
 }
 
 .routes-journey-card__summary > span {
   min-width: 0;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-}
-
-.routes-journey-card__summary > span:last-child {
-  grid-column: 1 / -1;
+  gap: 0.3rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt);
+  padding: 0.42rem 0.5rem;
+  white-space: nowrap;
 }
 
 .routes-journey-card__summary i {
+  flex: 0 0 auto;
   color: var(--color-primary);
+  font-size: var(--font-size-sm);
 }
 
 .routes-journey-card__summary strong {
+  flex: 0 0 auto;
   color: var(--color-text);
+  font-size: var(--font-size-sm);
+  line-height: 1.1;
+}
+
+.routes-journey-card__summary small {
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.2;
+  text-overflow: ellipsis;
 }
 
 .routes-journey-card__actions {
@@ -275,6 +289,18 @@
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.routes-general-map-header__actions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+}
+
+.routes-general-map-header__actions .ui-button {
+  white-space: nowrap;
 }
 
 .routes-general-map-header__status {
@@ -481,6 +507,27 @@
   .routes-journey-card__view {
     width: 100%;
     margin-left: 0;
+  }
+
+  .routes-journey-card__summary {
+    flex-wrap: wrap;
+  }
+
+  .routes-journey-card__summary > span {
+    flex: 1 1 calc(50% - var(--spacing-xs));
+    justify-content: center;
+  }
+
+  .routes-general-map-header__actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .routes-general-map-header__actions .ui-button,
+  .routes-general-map-header__status {
+    width: 100%;
+    justify-content: center;
   }
 
   .routes-general-map-container,

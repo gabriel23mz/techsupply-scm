@@ -18,7 +18,7 @@ test('F7A.2 reserva altura completa para acciones de las tarjetas del mapa', asy
   );
 
   assert.match(layoutCss, /--journeys-map-workspace-height:\s*54rem/);
-  assert.match(mapCss, /routes-journey-card[\s\S]*?min-height:\s*12rem/);
+  assert.match(mapCss, /routes-journey-card[\s\S]*?min-height:\s*14rem/);
   assert.match(
     mapCss,
     /routes-journey-card[\s\S]*?grid-template-rows:\s*minmax\(0, 1fr\) auto/,

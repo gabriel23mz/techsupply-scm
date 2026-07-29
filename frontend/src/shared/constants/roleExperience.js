@@ -36,6 +36,7 @@ export const ROLE_EXPERIENCE = Object.freeze({
       'choferes',
       'rutas',
       'ubicaciones',
+      'usuarios',
     ],
     objective: 'Supervisar el funcionamiento global del módulo Outbound y resolver excepciones entre áreas.',
     responsibilities: [

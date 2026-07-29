@@ -162,7 +162,18 @@ test('F7B alinea el seguimiento administrativo y limita Finalizar al último pun
     page,
     /journey-progress-card[\s\S]*?\{operationalActions\}/,
   );
-  assert.match(css, /\.journey-workspace\s*\{[\s\S]*?grid-template-areas: 'content sidebar'/);
+  assert.match(
+    css,
+    /\.journey-workspace\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) clamp\(18rem, 24vw, 22rem\)/,
+  );
+  assert.match(
+    css,
+    /\.journey-workspace > \.workspace-shell__content\s*\{[\s\S]*?grid-column:\s*1;[\s\S]*?grid-row:\s*1/,
+  );
+  assert.match(
+    css,
+    /\.journey-workspace > \.workspace-shell__sidebar\s*\{[\s\S]*?grid-column:\s*2;[\s\S]*?grid-row:\s*1/,
+  );
   assert.match(css, /\.journey-sidebar-actions\s*\{[\s\S]*?grid-template-columns: 1fr/);
   assert.doesNotMatch(page, /const inlineActions/);
   assert.doesNotMatch(css, /\.journey-workspace > \.workspace-shell__footer/);
@@ -184,5 +195,5 @@ test('F7B cierre evita el desplegable vacío y amplía el seguimiento operativo'
   assert.match(form, /\{noAvailableUsers \? \([\s\S]*?drivers-user-empty[\s\S]*?: \([\s\S]*?<Combobox/);
   assert.match(driverCss, /drivers-form-grid--profile[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(driverCss, /drivers-active-card[\s\S]*?width:\s*100%/);
-  assert.match(logisticsCss, /journeys-map-workspace[\s\S]*?minmax\(24rem, 29rem\)/);
+  assert.match(logisticsCss, /journeys-map-workspace[\s\S]*?minmax\(26rem, 31\.5rem\)/);
 });

@@ -70,7 +70,7 @@ test('F7A.1 fija el mapa a tres tarjetas visibles y deja scroll interno', async 
   assert.match(layoutCss, /--journeys-map-workspace-height:\s*54rem/);
   assert.match(mapCss, /routes-map-panel[\s\S]*?height:\s*var\(--journeys-map-workspace-height, 54rem\)/);
   assert.match(mapCss, /routes-general-map-card[\s\S]*?height:\s*var\(--journeys-map-workspace-height, 54rem\)/);
-  assert.match(mapCss, /routes-journey-card[\s\S]*?min-height:\s*12rem/);
+  assert.match(mapCss, /routes-journey-card[\s\S]*?min-height:\s*14rem/);
   assert.match(mapCss, /routes-map-panel__list[\s\S]*?overflow-y:\s*auto/);
 });
 

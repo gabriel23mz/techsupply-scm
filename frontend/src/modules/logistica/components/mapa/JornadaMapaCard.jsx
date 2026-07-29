@@ -139,23 +139,24 @@ function JornadaMapaCard({
         <div className="routes-journey-card__summary">
           <span>
             <i className="bi bi-box-seam" />
-            {totalDespachos} despacho
-            {totalDespachos === 1 ? '' : 's'}
+            <strong>{totalDespachos}</strong>
+            <small>despachos</small>
           </span>
 
           <span>
             <i className="bi bi-geo-alt" />
-            {totalPuntos} punto
-            {totalPuntos === 1 ? '' : 's'}
+            <strong>{totalPuntos}</strong>
+            <small>puntos</small>
           </span>
 
           <span>
-            Punto actual:{' '}
+            <i className="bi bi-cursor" />
             <strong>
               {jornada?.posicion_actual_orden ??
                 mapa?.posicion_actual_orden ??
                 0}
             </strong>
+            <small>punto actual</small>
           </span>
         </div>
       </button>
@@ -163,7 +164,7 @@ function JornadaMapaCard({
       <div className="routes-journey-card__actions">
         <span className="routes-journey-card__hint">
           <i className="bi bi-cursor me-1" />
-          Selecciona la tarjeta para centrar
+          Selecciona para centrar
         </span>
 
         <Button

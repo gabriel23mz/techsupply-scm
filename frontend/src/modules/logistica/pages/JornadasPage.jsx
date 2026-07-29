@@ -66,12 +66,36 @@ function normalizePage(value) {
   return Number.isFinite(page) && page > 0 ? page : 1;
 }
 
-function normalizeMapJourneys(value) {
-  if (Array.isArray(value)) return value;
-  if (Array.isArray(value?.jornadas)) return value.jornadas;
-  if (Array.isArray(value?.data)) return value.data;
+function getGenerationErrorMessage(error) {
+  const status = Number(error?.status);
 
-  return [];
+  if (Number.isFinite(status) && status >= 500) {
+    return 'No fue posible completar la planificación logística. Revisa el servicio de generación e inténtalo nuevamente.';
+  }
+
+  return error?.message || 'No fue posible generar las jornadas.';
+}
+function normalizeMapJourneys(value) {
+  const jornadas = Array.isArray(value)
+    ? value
+    : Array.isArray(value?.jornadas)
+      ? value.jornadas
+      : Array.isArray(value?.data)
+        ? value.data
+        : [];
+
+  const bodega = value?.bodega ?? value?.centro ?? null;
+
+  if (!bodega) return jornadas;
+
+  return jornadas.map((jornada) => ({
+    ...jornada,
+    bodega: jornada?.bodega ?? bodega,
+    mapa: {
+      ...(jornada?.mapa ?? {}),
+      bodega: jornada?.mapa?.bodega ?? bodega,
+    },
+  }));
 }
 
 function JornadasPage() {
@@ -213,7 +237,7 @@ function JornadasPage() {
     } catch (error) {
       console.error('Error al generar jornadas:', error);
       setIsGenerating(false);
-      showError(error.message || 'No fue posible generar las jornadas.');
+      showError(getGenerationErrorMessage(error));
     }
   };
 
@@ -323,11 +347,11 @@ function JornadasPage() {
   }, [safeCurrentPage, visibleRows]);
 
   const mapSelection = useMemo(() => {
-    if (!mapJourneys.length) return null;
+    if (!selectedJourneyId || !mapJourneys.length) return null;
 
     return mapJourneys.find(
       (jornada) => Number(jornada.id) === Number(selectedJourneyId),
-    )?.id ?? mapJourneys[0].id;
+    )?.id ?? null;
   }, [mapJourneys, selectedJourneyId]);
 
   const changeTab = (tab) => {
@@ -486,6 +510,10 @@ function JornadasPage() {
               jornadas={mapJourneys}
               selectedJourneyId={mapSelection}
               focusRequest={mapFocusRequest}
+              onShowAll={() => {
+                setSelectedJourneyId(null);
+                setMapFocusRequest((current) => current + 1);
+              }}
               onSelectJourney={(jornada) => {
                 setSelectedJourneyId(jornada.id);
                 setMapFocusRequest((current) => current + 1);

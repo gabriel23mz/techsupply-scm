@@ -24,6 +24,7 @@ import {
   PedidosPage,
   RutasPage,
   UbicacionesPage,
+  UsuariosPage,
 } from './routeComponents';
 
 import LegacyJornadaRedirect from './LegacyJornadaRedirect';
@@ -235,6 +236,18 @@ export const routeRegistry = [
       ],
     },
     element: <DespachosPage />,
+  },
+  {
+    id: 'usuarios',
+    path: '/usuarios',
+    label: 'Usuarios',
+    description: 'Administración de cuentas, roles y acceso al sistema.',
+    icon: 'bi-person-gear',
+    access: {
+      permission: PERMISSIONS.USUARIOS_GESTIONAR,
+      roles: [ROLES.ADMIN],
+    },
+    element: <UsuariosPage />,
   },
   {
     id: 'mi-jornada',

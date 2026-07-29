@@ -40,6 +40,7 @@ test('F8.3 documenta el cierre real de la capa frontend', async () => {
 
   assert.match(readme, /capa frontend Outbound cerrada para el alcance actual/i);
   assert.match(readme, /Dashboard por rol[\s\S]*Centro de ayuda[\s\S]*Mi Jornada/);
-  assert.match(readme, /Productos[\s\S]*Categorías[\s\S]*Usuarios[\s\S]*fuera de este cierre/i);
+  assert.match(readme, /Productos[\s\S]*Categorías[\s\S]*fuera de este cierre/i);
+  assert.match(readme, /Administración de usuarios/);
   assert.doesNotMatch(readme, /la siguiente fase del proyecto será alinear completamente/i);
 });

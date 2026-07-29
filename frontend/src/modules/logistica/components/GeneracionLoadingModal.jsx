@@ -29,8 +29,8 @@ function GeneracionLoadingModal() {
     <Modal
       open
       title="Generando jornadas"
-      description="La ventana se cerrará cuando el backend responda."
-      size="sm"
+      description="Esta ventana se cerrará al finalizar el proceso de planificación."
+      size="md"
       closeOnBackdrop={false}
       closeOnEscape={false}
       onClose={undefined}

@@ -74,6 +74,10 @@ export const UbicacionesPage = lazy(() =>
   import('../../modules/ubicaciones/pages/UbicacionesPage'),
 );
 
+export const UsuariosPage = lazy(() =>
+  import('../../modules/usuarios/pages/UsuariosPage'),
+);
+
 export const AccessDeniedPage = lazy(() =>
   import('../pages/AccessDeniedPage'),
 );
