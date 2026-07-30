@@ -42,8 +42,8 @@ const EXPECTED_MINIMUMS = {
   rutas: 100,
   pedidos: 72,
   detalle_pedido: 190,
-  jornadas_reparto: 7,
-  despachos: 30,
+  jornadas_reparto: 3,
+  despachos: 13,
   ordenes_compra: 10,
   detalle_orden_compra: 28,
   ingresos_inventario: 4,
@@ -87,10 +87,34 @@ async function run() {
       SELECT COUNT(*)
       FROM "ubicaciones"
       WHERE "id" = 1
-        AND "nombre" = 'Bodega Central ESPAM MFL';
+        AND "nombre" = 'Bodega Central ESPAM MFL'
+        AND ABS("latitud" - (-0.826658)) < 0.000001
+        AND ABS("longitud" - (-80.182109)) < 0.000001;
     `);
     if (warehouse !== 1) {
-      throw new Error('La ubicación 1 no es la Bodega Central ESPAM MFL.');
+      throw new Error('La ubicación 1 no coincide con la Bodega Central ESPAM MFL y sus coordenadas demo.');
+    }
+
+    const readyOrders = await scalar(`
+      SELECT COUNT(*)
+      FROM "pedidos"
+      WHERE "estado" = 'LISTO_PARA_DESPACHO';
+    `);
+    if (readyOrders < 30) {
+      throw new Error(
+        `La base demo necesita al menos 30 pedidos listos para probar la planificación. Encontrados: ${readyOrders}.`,
+      );
+    }
+
+    const activeJourneys = await scalar(`
+      SELECT COUNT(*)
+      FROM "jornadas_reparto"
+      WHERE "estado" IN ('PLANIFICADA', 'EN_RUTA');
+    `);
+    if (activeJourneys !== 0) {
+      throw new Error(
+        `La base demo debe iniciar sin jornadas activas para probar el algoritmo. Encontradas: ${activeJourneys}.`,
+      );
     }
 
     await assertZero(`

@@ -185,19 +185,31 @@ El algoritmo:
 - Ordena los destinos de cada camión.
 - Penaliza pedidos no asignados.
 - Penaliza destinos divididos y aristas repetidas.
+- Estima cuántos camiones conviene utilizar según capacidad y duración operativa.
+- Siembra rutas en zonas geográficamente separadas para evitar concentrar toda la demanda en un solo vehículo.
+- Penaliza jornadas mayores al máximo operativo, el makespan y el desbalance entre camiones.
 - Regresa obligatoriamente a la bodega.
 
 Parámetros predeterminados:
 
 - Hormigas adaptativas entre 8 y 25.
-- Iteraciones adaptativas entre 18 y 70.
+- Iteraciones adaptativas entre 18 y 70, limitadas a un máximo de 500 soluciones evaluadas.
 - Parada temprana por falta de mejora.
+- Presupuesto predeterminado de 0,25 s para el ciclo ACO.
 - `alfa = 1.0`.
 - `beta = 3.0`.
 - Evaporación `0.35`.
 - Semilla opcional.
 
 La implementación usa `random.Random` local. Con la misma entrada, configuración y semilla se obtiene un resultado reproducible.
+
+La selección de vehículos utiliza tres parámetros operativos enviados por Node:
+
+- `max_jornada_min`.
+- `tiempo_servicio_por_entrega_min`.
+- `margen_operativo_porcentaje`.
+
+Estos valores no cambian el contrato público del frontend. Se usan únicamente para evitar jornadas excesivas y distribuir el trabajo entre los camiones realmente respaldados por choferes disponibles.
 
 ---
 
@@ -426,9 +438,9 @@ Desde `python/`:
 
 Línea base validada:
 
-- 24 pruebas Python aprobadas.
+- 25 pruebas Python aprobadas.
 
-Las pruebas cubren contratos, validaciones, A*, metaheurística, agrupación, geometría y fallos de OSRM mediante mocks.
+Las pruebas cubren contratos, validaciones, A*, metaheurística, agrupación, geometría, fallos de OSRM y un escenario de regresión con 16 pedidos y dos camiones que verifica balance y tiempo de ejecución.
 
 ---
 
@@ -447,11 +459,11 @@ Resultados de referencia:
 | Escenario | Antes | Después |
 |---|---:|---:|
 | 5 pedidos / 1 camión | 2,0253 s | 0,0183 s |
-| 14 pedidos / 3 camiones | 21,7033 s | 0,2184 s |
-| 30 pedidos / 5 camiones | más de 180 s | 1,0879 s |
-| Destinos repetidos | 1,3917 s | 0,0113 s |
+| 14 pedidos / 3 camiones | 21,7033 s | alrededor de 0,14 s |
+| 30 pedidos / 5 camiones | más de 180 s | alrededor de 0,31 s |
+| Destinos repetidos | 1,3917 s | alrededor de 0,004 s |
 
-El cuello de botella corregido era la ejecución repetida de A* dentro del ciclo de ACO.
+El cuello de botella corregido era la ejecución repetida de A* dentro del ciclo de ACO. La mejora de balance conserva la matriz precalculada, limita el total de soluciones a 500 y mantiene el escenario medio muy por debajo de un segundo.
 
 ---
 
@@ -464,3 +476,13 @@ El cuello de botella corregido era la ejecución repetida de A* dentro del ciclo
 - El retorno a bodega forma parte de cada jornada.
 - Node valida el contrato recibido antes de persistir.
 - Python no recibe ni asigna choferes.
+
+## Paradas compartidas y rendimiento OSRM
+
+Varios pedidos con el mismo `destino_id` comparten `orden_entrega`. El orden
+representa una parada, no un despacho individual. El avance de la jornada solo
+se habilita cuando todos los despachos de la parada actual están cerrados.
+
+La geometría vial se solicita una sola vez por jornada final, incluyendo bodega,
+paradas ordenadas y retorno. Esto evita una llamada OSRM por tramo y mantiene el
+ACO completamente libre de operaciones de red.

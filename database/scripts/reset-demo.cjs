@@ -19,7 +19,7 @@ if (!databaseUrl) {
 
 if (!allowReset) {
   throw new Error(
-    'Reset bloqueado. Define ALLOW_DEMO_RESET=true únicamente para una base demo local.',
+    'Reset bloqueado. Define ALLOW_DEMO_RESET=true y usa una base PostgreSQL local cuyo nombre termine en _demo o _test.',
   );
 }
 

@@ -44,6 +44,12 @@ export const solicitudJornadaValida = {
     { origen: 1, destino: 3, distancia: 6 },
   ],
   velocidad_kmh: 40,
+  max_jornada_min: 600,
+  tiempo_servicio_por_entrega_min: 10,
+  margen_operativo_porcentaje: 15,
+  aco: {
+    max_segundos: 0.25,
+  },
 };
 
 export const respuestaJornadaValida = {

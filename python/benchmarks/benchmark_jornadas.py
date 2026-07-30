@@ -126,6 +126,13 @@ def medir(
         jornada["distancia_total_km"]
         for jornada in resultado["jornadas"]
     )
+    duracion_maxima = max(
+        (
+            jornada["tiempo_estimado_min"]
+            + jornada["capacidad_utilizada"] * 10
+        ) * 1.15
+        for jornada in resultado["jornadas"]
+    ) if resultado["jornadas"] else 0
 
     perfil = resultado.get("perfil", {})
 
@@ -138,9 +145,12 @@ def medir(
             f"astar={perfil.get('astar_ejecuciones', 0)}",
             f"osrm={perfil.get('osrm_llamadas', 0)}",
             f"iteraciones={perfil.get('aco_iteraciones', 0)}",
+            f"soluciones={perfil.get('aco_soluciones_evaluadas', 0)}",
+            f"objetivo={perfil.get('camiones_objetivo', 0)}",
             f"jornadas={len(resultado['jornadas'])}",
             f"no_asignados={len(resultado['pedidos_no_asignados'])}",
             f"distancia={distancia:.2f}",
+            f"duracion_max={duracion_maxima:.2f}",
         ]),
     )
 

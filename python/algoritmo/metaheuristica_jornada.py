@@ -19,6 +19,9 @@ def crear_perfil():
         "matriz_pares": 0,
         "destinos_unicos": 0,
         "pedidos_total": 0,
+        "aco_soluciones_evaluadas": 0,
+        "camiones_objetivo": 0,
+        "duracion_base_estimada_min": 0,
     }
 
 
@@ -172,6 +175,40 @@ def filtrar_pedidos_alcanzables(
     return alcanzables, no_asignados
 
 
+def _distancia_coordenadas_cuadrada(coordenada, punto):
+    return (
+        float(coordenada[0]) - float(punto["latitud"])
+    ) ** 2 + (
+        float(coordenada[1]) - float(punto["longitud"])
+    ) ** 2
+
+
+def _indice_waypoint_mas_cercano(
+    geometria,
+    punto,
+    indice_desde,
+):
+    """Busca el waypoint respetando el avance de la geometría."""
+
+    mejor_indice = indice_desde
+    mejor_distancia = float("inf")
+
+    for indice in range(indice_desde, len(geometria)):
+        distancia = _distancia_coordenadas_cuadrada(
+            geometria[indice],
+            punto,
+        )
+
+        if distancia < mejor_distancia:
+            mejor_distancia = distancia
+            mejor_indice = indice
+
+            if distancia <= 1e-14:
+                break
+
+    return mejor_indice
+
+
 def construir_geometria_y_tramos(
     bodega,
     destinos_ordenados,
@@ -179,11 +216,12 @@ def construir_geometria_y_tramos(
     perfil=None,
 ):
     """
-    Construye la geometría real tramo por tramo mediante OSRM.
+    Construye toda la geometría de una jornada con una sola llamada OSRM.
 
-    Retorna:
-    - geometria: secuencia completa [latitud, longitud]
-    - tramos: índices exactos donde inicia y termina cada tramo
+    Esto evita una petición de red por tramo. Los límites de cada tramo se
+    recuperan buscando de forma monotónica cada waypoint dentro de la
+    geometría devuelta. Si OSRM falla, se usa la polilínea directa de los
+    waypoints, preservando el contrato y evitando bloquear la planificación.
     """
 
     bodega_normalizada = {
@@ -203,68 +241,61 @@ def construir_geometria_y_tramos(
             "longitud": float(destino["longitud"]),
         })
 
-    # La jornada siempre termina regresando a bodega.
     puntos_ruta.append(bodega_normalizada)
-
-    geometria_completa = []
-    tramos = []
     cache_osrm = cache_osrm if cache_osrm is not None else {}
+    cache_key = tuple(
+        (
+            round(float(punto["latitud"]), 7),
+            round(float(punto["longitud"]), 7),
+        )
+        for punto in puntos_ruta
+    )
+
+    try:
+        if cache_key in cache_osrm:
+            geometria_completa = cache_osrm[cache_key]
+        else:
+            geometria_completa = obtener_geometria_osrm(
+                puntos_ruta,
+            )
+            cache_osrm[cache_key] = geometria_completa
+
+            if perfil is not None:
+                perfil["osrm_llamadas"] += 1
+    except Exception:
+        geometria_completa = [
+            [
+                float(punto["latitud"]),
+                float(punto["longitud"]),
+            ]
+            for punto in puntos_ruta
+        ]
+
+    if not geometria_completa:
+        raise Exception(
+            "No se obtuvo geometría para la jornada planificada"
+        )
+
+    indices_waypoints = [0]
+    indice_busqueda = 0
+
+    for punto in puntos_ruta[1:]:
+        indice_busqueda = _indice_waypoint_mas_cercano(
+            geometria_completa,
+            punto,
+            indice_busqueda,
+        )
+        indices_waypoints.append(indice_busqueda)
+
+    # OSRM debe terminar en el último waypoint. Se fuerza el último índice
+    # para evitar que la bodega inicial sea elegida al buscar el retorno.
+    indices_waypoints[-1] = len(geometria_completa) - 1
+
+    tramos = []
 
     for indice in range(len(puntos_ruta) - 1):
         origen = puntos_ruta[indice]
         destino = puntos_ruta[indice + 1]
-        cache_key = (
-            round(float(origen["latitud"]), 7),
-            round(float(origen["longitud"]), 7),
-            round(float(destino["latitud"]), 7),
-            round(float(destino["longitud"]), 7),
-        )
-
-        try:
-            if cache_key in cache_osrm:
-                geometria_tramo = cache_osrm[cache_key]
-            else:
-                geometria_tramo = obtener_geometria_osrm([
-                    origen,
-                    destino,
-                ])
-                cache_osrm[cache_key] = geometria_tramo
-
-                if perfil is not None:
-                    perfil["osrm_llamadas"] += 1
-        except Exception:
-            geometria_tramo = [
-                [
-                    float(origen["latitud"]),
-                    float(origen["longitud"]),
-                ],
-                [
-                    float(destino["latitud"]),
-                    float(destino["longitud"]),
-                ],
-            ]
-
-        if not geometria_tramo:
-            raise Exception(
-                f'No se obtuvo geometría entre '
-                f'{origen["nombre"]} y {destino["nombre"]}'
-            )
-
-        if not geometria_completa:
-            desde_indice = 0
-            geometria_completa.extend(geometria_tramo)
-        else:
-            # El último punto acumulado ya es el origen
-            # del siguiente tramo.
-            desde_indice = len(geometria_completa) - 1
-
-            # Evita duplicar el punto de conexión.
-            geometria_completa.extend(
-                geometria_tramo[1:]
-            )
-
-        hasta_indice = len(geometria_completa) - 1
-
         es_retorno = indice == len(puntos_ruta) - 2
 
         tramos.append({
@@ -282,8 +313,8 @@ def construir_geometria_y_tramos(
                 "id": destino["id"],
                 "nombre": destino["nombre"],
             },
-            "desde_indice": desde_indice,
-            "hasta_indice": hasta_indice,
+            "desde_indice": indices_waypoints[indice],
+            "hasta_indice": indices_waypoints[indice + 1],
         })
 
     return {
@@ -686,6 +717,21 @@ def generar_jornada(datos, grafo):
     )
 
     aco_config = datos.get("aco") or {}
+    max_jornada_min = int(
+        datos.get("max_jornada_min", 600)
+    )
+    tiempo_servicio_por_entrega_min = float(
+        datos.get(
+            "tiempo_servicio_por_entrega_min",
+            10,
+        )
+    )
+    margen_operativo_porcentaje = float(
+        datos.get(
+            "margen_operativo_porcentaje",
+            15,
+        )
+    )
 
     solucion = ant_colony_cvrp(
         grafo=grafo,
@@ -698,13 +744,26 @@ def generar_jornada(datos, grafo):
         iteraciones_sin_mejora=aco_config.get(
             "iteraciones_sin_mejora",
         ),
-        alfa=aco_config.get("alfa", 1.0),
-        beta=aco_config.get("beta", 3.0),
-        evaporacion=aco_config.get("evaporacion", 0.35),
-        q=aco_config.get("q", 100.0),
+        alfa=aco_config.get("alfa") or 1.0,
+        beta=aco_config.get("beta") or 3.0,
+        evaporacion=(
+            aco_config.get("evaporacion") or 0.35
+        ),
+        q=aco_config.get("q") or 100.0,
         semilla=(
             aco_config.get("semilla") or
             datos.get("semilla")
+        ),
+        max_segundos=(
+            aco_config.get("max_segundos") or 0.25
+        ),
+        velocidad_kmh=velocidad_kmh,
+        max_jornada_min=max_jornada_min,
+        tiempo_servicio_por_entrega_min=(
+            tiempo_servicio_por_entrega_min
+        ),
+        margen_operativo_porcentaje=(
+            margen_operativo_porcentaje
         ),
         perfil=perfil,
     )
@@ -760,5 +819,3 @@ def generar_jornada(datos, grafo):
         resultado["perfil"] = perfil
 
     return resultado
-
-    

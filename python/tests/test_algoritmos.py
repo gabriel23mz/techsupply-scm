@@ -1,5 +1,6 @@
 import math
 import random
+import time
 import unittest
 from unittest.mock import patch
 
@@ -310,6 +311,91 @@ class MetaheuristicaTests(unittest.TestCase):
         self.assertEqual(matriz[1][3], 8.0)
         self.assertEqual(caminos[(3, 1)], [3, 1])
 
+
+    def test_planificacion_balancea_16_pedidos_sin_degradar_rendimiento(self):
+        total_pedidos = 16
+        pedidos = [
+            {
+                **pedido(
+                    100 + indice,
+                    2 + indice,
+                    f"Destino {indice + 1}",
+                ),
+                "latitud": -1.0 + indice * 0.01,
+                "longitud": -80.0 + indice * 0.01,
+            }
+            for indice in range(total_pedidos)
+        ]
+        nodos = [1, *range(2, total_pedidos + 2)]
+        grafo = construir_grafo([
+            {
+                "origen": origen,
+                "destino": destino,
+                "distancia": float(
+                    abs(destino - origen) * 30 + 10
+                ),
+            }
+            for posicion, origen in enumerate(nodos)
+            for destino in nodos[posicion + 1:]
+        ])
+        camiones = [
+            {
+                "id": 10,
+                "codigo": "CAM-010",
+                "placa": "AAA-010",
+                "capacidad": 16,
+            },
+            {
+                "id": 11,
+                "codigo": "CAM-011",
+                "placa": "AAA-011",
+                "capacidad": 14,
+            },
+        ]
+
+        with patch(
+            "algoritmo.metaheuristica_jornada.obtener_geometria_osrm",
+            side_effect=lambda puntos: [
+                [punto["latitud"], punto["longitud"]]
+                for punto in puntos
+            ],
+        ):
+            inicio = time.perf_counter()
+            resultado = generar_jornada(
+                {
+                    "bodega": self.bodega,
+                    "pedidos": pedidos,
+                    "camiones": camiones,
+                    "velocidad_kmh": 40,
+                    "max_jornada_min": 600,
+                    "tiempo_servicio_por_entrega_min": 10,
+                    "margen_operativo_porcentaje": 15,
+                    "semilla": 42,
+                    "benchmark": True,
+                },
+                grafo,
+            )
+            duracion = time.perf_counter() - inicio
+
+        cargas = sorted(
+            jornada["capacidad_utilizada"]
+            for jornada in resultado["jornadas"]
+        )
+
+        self.assertEqual(len(resultado["jornadas"]), 2)
+        self.assertEqual(sum(cargas), total_pedidos)
+        self.assertGreater(cargas[0], 0)
+        self.assertLess(cargas[-1], total_pedidos)
+        self.assertLessEqual(
+            resultado["perfil"]["aco_soluciones_evaluadas"],
+            500,
+        )
+        self.assertEqual(
+            resultado["perfil"]["camiones_objetivo"],
+            2,
+        )
+        self.assertLess(duracion, 0.75)
+
     def test_osrm_no_se_llama_dentro_de_aco_y_solo_para_jornada_final(self):
         llamadas_osrm = 0
 
@@ -343,6 +429,89 @@ class MetaheuristicaTests(unittest.TestCase):
         )
 
         self.assertLessEqual(llamadas_osrm, tramos_finales)
+
+
+    def test_despachos_del_mismo_destino_comparten_orden(self):
+        pedidos = [
+            pedido(1, 2),
+            pedido(2, 2),
+            pedido(3, 3),
+        ]
+
+        with patch(
+            "algoritmo.metaheuristica_jornada.obtener_geometria_osrm",
+            side_effect=lambda puntos: [
+                [punto["latitud"], punto["longitud"]]
+                for punto in puntos
+            ],
+        ):
+            resultado = generar_jornada(
+                {
+                    "bodega": self.bodega,
+                    "pedidos": pedidos,
+                    "camiones": self.camiones,
+                    "velocidad_kmh": 40,
+                    "semilla": 11,
+                },
+                self.grafo,
+            )
+
+        entregas = [
+            entrega
+            for jornada in resultado["jornadas"]
+            for entrega in jornada["entregas"]
+        ]
+        ordenes_destino_dos = {
+            entrega["orden_entrega"]
+            for entrega in entregas
+            if entrega["ruta_parcial"]["hasta"]["id"] == 2
+        }
+
+        self.assertEqual(len(ordenes_destino_dos), 1)
+        self.assertEqual(
+            sum(
+                1
+                for entrega in entregas
+                if entrega["ruta_parcial"]["hasta"]["id"] == 2
+            ),
+            2,
+        )
+
+    def test_osrm_se_consulta_una_vez_por_jornada_final(self):
+        llamadas_osrm = 0
+
+        def fake_osrm(puntos):
+            nonlocal llamadas_osrm
+            llamadas_osrm += 1
+            return [
+                [punto["latitud"], punto["longitud"]]
+                for punto in puntos
+            ]
+
+        with patch(
+            "algoritmo.metaheuristica_jornada.obtener_geometria_osrm",
+            side_effect=fake_osrm,
+        ):
+            resultado = generar_jornada(
+                {
+                    "bodega": self.bodega,
+                    "pedidos": [
+                        pedido(1, 2),
+                        pedido(2, 2),
+                        pedido(3, 3),
+                        pedido(4, 4),
+                    ],
+                    "camiones": self.camiones,
+                    "velocidad_kmh": 40,
+                    "semilla": 17,
+                },
+                self.grafo,
+            )
+
+        self.assertEqual(
+            llamadas_osrm,
+            len(resultado["jornadas"]),
+        )
 
 
 if __name__ == "__main__":

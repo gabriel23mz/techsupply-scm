@@ -355,6 +355,46 @@
   justify-content: center;
 }
 
+
+.journey-load-pending {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--spacing-sm);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 42%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: var(--color-warning-soft);
+  padding: var(--spacing-md);
+}
+
+.journey-load-pending > i {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  color: var(--color-warning-strong, var(--color-warning));
+  font-size: 1rem;
+}
+
+.journey-load-pending > div {
+  min-width: 0;
+  display: grid;
+  gap: var(--spacing-2xs);
+}
+
+.journey-load-pending strong {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.journey-load-pending span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
 .journey-workspace-panel__header,
 .journey-map-header {
   display: flex;

@@ -25,7 +25,6 @@ import {
 
 import JornadaMap from '../../logistica/components/JornadaMap';
 import {
-  avanzarMiJornada,
   entregarMiDespacho,
   finalizarMiJornada,
   iniciarMiJornada,
@@ -456,72 +455,65 @@ function MiJornadaPage() {
             </ol>
           </section>
 
-          {['PLANIFICADA', 'EN_RUTA'].includes(jornada.estado) && (
+          {(
+            jornada.estado === 'PLANIFICADA' ||
+            (jornada.estado === 'EN_RUTA' && !hasNextPoint)
+          ) && (
             <div className="my-journey-actions">
               {jornada.estado === 'PLANIFICADA' ? (
+                (jornada.carga_confirmada_en ?? jornada.carga_confirmada) ? (
+                  <Button
+                    icon="bi bi-play-fill"
+                    loading={actionLoading === 'start'}
+                    loadingLabel="Iniciando"
+                    disabled={Boolean(actionLoading)}
+                    onClick={() => requestAction({
+                      key: 'start',
+                      action: () => iniciarMiJornada(jornada.id),
+                      message: 'Jornada iniciada correctamente.',
+                      title: 'Iniciar jornada',
+                      dialogMessage: 'Confirma que el camión y la carga están listos para comenzar el recorrido.',
+                      confirmText: 'Iniciar jornada',
+                      variant: 'info',
+                    })}
+                  >
+                    Iniciar jornada
+                  </Button>
+                ) : (
+                  <div className="my-journey-load-pending" role="status">
+                    <i className="bi bi-box-seam" aria-hidden="true" />
+                    <div>
+                      <strong>Esperando confirmación de Bodega</strong>
+                      <span>
+                        Podrás iniciar el recorrido cuando la carga completa del camión
+                        haya sido confirmada.
+                      </span>
+                    </div>
+                  </div>
+                )
+              ) : !hasNextPoint ? (
                 <Button
-                  icon="bi bi-play-fill"
-                  loading={actionLoading === 'start'}
-                  loadingLabel="Iniciando"
-                  disabled={Boolean(actionLoading)}
+                  tone="success"
+                  icon="bi bi-flag-fill"
+                  loading={actionLoading === 'finish'}
+                  loadingLabel="Finalizando"
+                  disabled={Boolean(actionLoading) || !allClosed}
+                  title={!allClosed
+                    ? 'Cierra todos los despachos antes de finalizar.'
+                    : undefined}
                   onClick={() => requestAction({
-                    key: 'start',
-                    action: () => iniciarMiJornada(jornada.id),
-                    message: 'Jornada iniciada correctamente.',
-                    title: 'Iniciar jornada',
-                    dialogMessage: 'Confirma que el camión y la carga están listos para comenzar el recorrido.',
-                    confirmText: 'Iniciar jornada',
-                    variant: 'info',
+                    key: 'finish',
+                    action: () => finalizarMiJornada(jornada.id),
+                    message: 'Jornada finalizada correctamente.',
+                    title: 'Finalizar jornada',
+                    dialogMessage: 'La operación se cerrará y el camión volverá a quedar disponible.',
+                    confirmText: 'Finalizar jornada',
+                    variant: 'warning',
                   })}
                 >
-                  Iniciar jornada
+                  Finalizar jornada
                 </Button>
-              ) : (
-                <>
-                  {hasNextPoint && (
-                    <Button
-                      tone="secondary"
-                      icon="bi bi-arrow-right"
-                      loading={actionLoading === 'advance'}
-                      loadingLabel="Avanzando"
-                      disabled={Boolean(actionLoading) || !currentPointClosed}
-                      title={!currentPointClosed
-                        ? 'Cierra todos los despachos del punto actual para avanzar.'
-                        : undefined}
-                      onClick={() => executeAction({
-                        key: 'advance',
-                        action: () => avanzarMiJornada(jornada.id),
-                        message: 'Avanzaste al siguiente punto de entrega.',
-                      })}
-                    >
-                      Siguiente punto
-                    </Button>
-                  )}
-                  {!hasNextPoint && (
-                    <Button
-                      tone="success"
-                      icon="bi bi-flag-fill"
-                      loading={actionLoading === 'finish'}
-                      loadingLabel="Finalizando"
-                      disabled={Boolean(actionLoading) || !allClosed}
-                      title={!allClosed
-                        ? 'Cierra todos los despachos antes de finalizar.'
-                        : undefined}
-                      onClick={() => requestAction({
-                        key: 'finish',
-                        action: () => finalizarMiJornada(jornada.id),
-                        message: 'Jornada finalizada correctamente.',
-                        title: 'Finalizar jornada',
-                        dialogMessage: 'La operación se cerrará y el camión volverá a quedar disponible.',
-                        confirmText: 'Finalizar jornada',
-                        variant: 'warning',
-                      })}
-                    >
-                      Finalizar jornada
-                    </Button>
-                  )}
-                </>
-              )}
+              ) : null}
             </div>
           )}
         </div>

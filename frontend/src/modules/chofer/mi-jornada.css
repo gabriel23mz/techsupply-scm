@@ -399,6 +399,47 @@
   justify-content: center;
 }
 
+
+.my-journey-load-pending {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--spacing-sm);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 42%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: var(--color-warning-soft);
+  padding: var(--spacing-md);
+  text-align: left;
+}
+
+.my-journey-load-pending > i {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-warning) 18%, transparent);
+  color: var(--color-warning-strong, var(--color-warning));
+}
+
+.my-journey-load-pending > div {
+  min-width: 0;
+  display: grid;
+  gap: var(--spacing-2xs);
+}
+
+.my-journey-load-pending strong {
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+}
+
+.my-journey-load-pending span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+
 @media (min-width: 768px) {
   .my-journey-page {
     gap: var(--spacing-lg);

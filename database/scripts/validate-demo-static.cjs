@@ -37,8 +37,19 @@ try {
   assert(products.length === 72, 'Se esperaban 72 productos.');
   assert(clients.length === 48, 'Se esperaban 48 clientes.');
   assert(routes.length >= 100, 'Se esperaban al menos 100 rutas dirigidas.');
-  assert(journeys.length === 7, 'Se esperaban 7 jornadas demo.');
-  assert(dispatches.length === 30, 'Se esperaban 30 despachos demo.');
+  assert(journeys.length === 3, 'Se esperaban 3 jornadas históricas demo.');
+  assert(dispatches.length === 13, 'Se esperaban 13 despachos históricos demo.');
+  assert(
+    locations[0].latitud === -0.826658 && locations[0].longitud === -80.182109,
+    'Las coordenadas de la bodega central no coinciden con el dataset demo.',
+  );
+  const readyOrders = Array.from({ length: 72 }, (_, index) => index + 1)
+    .filter((orderId) => orderStateForId(orderId) === 'LISTO_PARA_DESPACHO');
+  assert(readyOrders.length === 33, 'Se esperaban 33 pedidos listos para despacho.');
+  assert(
+    journeys.every((journey) => !['PLANIFICADA', 'EN_RUTA'].includes(journey.state)),
+    'La base demo no debe incluir jornadas activas precreadas.',
+  );
 
   assertUnique(products, (item) => item.id, 'IDs de productos');
   assertUnique(products, (item) => item.codigo, 'códigos de productos');
@@ -89,8 +100,9 @@ try {
   console.log(`Rutas dirigidas: ${routes.length}`);
   console.log(`Productos: ${products.length}`);
   console.log(`Clientes: ${clients.length}`);
-  console.log(`Jornadas: ${journeys.length}`);
-  console.log(`Despachos: ${dispatches.length}`);
+  console.log(`Pedidos listos para despacho: ${readyOrders.length}`);
+  console.log(`Jornadas históricas: ${journeys.length}`);
+  console.log(`Despachos históricos: ${dispatches.length}`);
 } catch (error) {
   console.error('❌ Validación estática fallida:', error.message);
   process.exitCode = 1;

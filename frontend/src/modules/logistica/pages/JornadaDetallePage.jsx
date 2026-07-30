@@ -47,7 +47,6 @@ import JornadaMap from '../components/JornadaMap';
 
 import {
   asignarChoferJornada,
-  avanzarJornada,
   entregarDespacho,
   finalizarJornada,
   iniciarJornada,
@@ -442,54 +441,47 @@ function JornadaDetallePage() {
   const camion = jornada.camion ?? null;
   const chofer = jornada.chofer?.usuario ?? jornada.chofer ?? null;
   const driverName = [chofer?.nombre, chofer?.apellido].filter(Boolean).join(' ');
+  const loadConfirmed = Boolean(
+    jornada.carga_confirmada_en ?? jornada.carga_confirmada,
+  );
 
   const operationalActions = jornada.estado === 'PLANIFICADA' && canStartJourney ? (
+    loadConfirmed ? (
+      <div className="journey-sidebar-actions">
+        <Button
+          icon="bi bi-play-fill"
+          loading={actionLoading === 'start'}
+          loadingLabel="Iniciando"
+          disabled={Boolean(actionLoading)}
+          onClick={requestStart}
+        >
+          Iniciar jornada
+        </Button>
+      </div>
+    ) : (
+      <div className="journey-load-pending" role="status">
+        <i className="bi bi-box-seam" aria-hidden="true" />
+        <div>
+          <strong>Carga pendiente de confirmación</strong>
+          <span>
+            Bodega debe confirmar la carga completa antes de iniciar. Mientras tanto,
+            la jornada permanece en modo de consulta.
+          </span>
+        </div>
+      </div>
+    )
+  ) : canRenderFinishAction ? (
     <div className="journey-sidebar-actions">
       <Button
-        icon="bi bi-play-fill"
-        loading={actionLoading === 'start'}
-        loadingLabel="Iniciando"
+        tone="success"
+        icon="bi bi-check2-circle"
+        loading={actionLoading === 'finish'}
+        loadingLabel="Finalizando"
         disabled={Boolean(actionLoading)}
-        onClick={requestStart}
+        onClick={requestFinish}
       >
-        Iniciar jornada
+        Finalizar
       </Button>
-    </div>
-  ) : jornada.estado === 'EN_RUTA' && (
-    (canStartJourney && hasNextPoint) || canRenderFinishAction
-  ) ? (
-    <div className="journey-sidebar-actions">
-      {canStartJourney && hasNextPoint && (
-        <Button
-          tone="secondary"
-          icon="bi bi-arrow-right"
-          loading={actionLoading === 'advance'}
-          loadingLabel="Avanzando"
-          disabled={Boolean(actionLoading) || !currentPointClosed}
-          title={!currentPointClosed
-            ? 'Cierra todos los despachos del punto actual para avanzar.'
-            : undefined}
-          onClick={() => executeAction({
-            key: 'advance',
-            action: () => avanzarJornada(id),
-            successMessage: 'La jornada avanzó al siguiente punto.',
-          })}
-        >
-          Avanzar
-        </Button>
-      )}
-      {canRenderFinishAction && (
-        <Button
-          tone="success"
-          icon="bi bi-check2-circle"
-          loading={actionLoading === 'finish'}
-          loadingLabel="Finalizando"
-          disabled={Boolean(actionLoading)}
-          onClick={requestFinish}
-        >
-          Finalizar
-        </Button>
-      )}
     </div>
   ) : null;
 

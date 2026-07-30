@@ -209,6 +209,21 @@ const calcularEstimacionesPlan = ({
   };
 };
 
+const obtenerChoferBloqueado = async ({
+  choferId,
+  transaction,
+}) => Chofer.findByPk(choferId, {
+  include: [
+    {
+      model: Usuario,
+      as: 'usuario',
+      required: true,
+    },
+  ],
+  transaction,
+  lock: transaction.LOCK.UPDATE,
+});
+
 const validarChoferDisponible = (
   chofer,
 ) => {
@@ -864,12 +879,16 @@ export const generarJornadaReparto = async (
        * el mismo pedido a dos jornadas.
         */
         const pedidoIdsPlan = [];
-        const ordenesPlan = new Set();
+        const destinoPorOrden = new Map();
+        const ordenPorDestino = new Map();
 
         for (const entrega of plan.entregas) {
           const pedidoId = Number(entrega.pedido_id);
           const ordenEntrega = Number(
             entrega.orden_entrega,
+          );
+          const destinoId = Number(
+            entrega.ruta_parcial?.hasta?.id,
           );
 
           if (pedidosProcesados.has(pedidoId)) {
@@ -878,15 +897,52 @@ export const generarJornadaReparto = async (
             );
           }
 
-          if (ordenesPlan.has(ordenEntrega)) {
+          if (
+            !Number.isInteger(ordenEntrega) ||
+            ordenEntrega <= 0 ||
+            !Number.isInteger(destinoId) ||
+            destinoId <= 0
+          ) {
             throw new BusinessRuleError(
-              `La jornada del camión ${camionId} contiene órdenes de entrega duplicados`,
+              `La jornada del camión ${camionId} contiene una parada inválida`,
+              'ORDEN_ENTREGA_INVALIDO',
+            );
+          }
+
+          const destinoRegistrado =
+            destinoPorOrden.get(ordenEntrega);
+          const ordenRegistrado =
+            ordenPorDestino.get(destinoId);
+
+          if (
+            destinoRegistrado !== undefined &&
+            destinoRegistrado !== destinoId
+          ) {
+            throw new BusinessRuleError(
+              `La jornada del camión ${camionId} reutiliza el orden ${ordenEntrega} para destinos diferentes`,
               'ORDEN_ENTREGA_DUPLICADO',
             );
           }
 
+          if (
+            ordenRegistrado !== undefined &&
+            ordenRegistrado !== ordenEntrega
+          ) {
+            throw new BusinessRuleError(
+              `La jornada del camión ${camionId} asigna varios órdenes al mismo destino`,
+              'ORDEN_ENTREGA_INCONSISTENTE',
+            );
+          }
+
           pedidosProcesados.add(pedidoId);
-          ordenesPlan.add(ordenEntrega);
+          destinoPorOrden.set(
+            ordenEntrega,
+            destinoId,
+          );
+          ordenPorDestino.set(
+            destinoId,
+            ordenEntrega,
+          );
           pedidoIdsPlan.push(pedidoId);
         }
 
@@ -961,19 +1017,11 @@ export const generarJornadaReparto = async (
           );
         }
 
-        const chofer = await Chofer.findByPk(
-          choferAsignado.id,
-          {
-            include: [
-              {
-                model: Usuario,
-                as: 'usuario',
-              },
-            ],
+        const chofer =
+          await obtenerChoferBloqueado({
+            choferId: choferAsignado.id,
             transaction,
-            lock: transaction.LOCK.UPDATE,
-          },
-        );
+          });
 
         validarChoferDisponible(chofer);
 
@@ -1144,19 +1192,10 @@ export const iniciarJornada = async (
       }
 
       const chofer = jornada.chofer_id
-        ? await Chofer.findByPk(
-          jornada.chofer_id,
-          {
-            include: [
-              {
-                model: Usuario,
-                as: 'usuario',
-              },
-            ],
-            transaction,
-            lock: transaction.LOCK.UPDATE,
-          },
-        )
+        ? await obtenerChoferBloqueado({
+          choferId: jornada.chofer_id,
+          transaction,
+        })
         : null;
 
       if (!chofer) {
@@ -1642,19 +1681,11 @@ export const asignarChofer = async (
         );
       }
 
-      const chofer = await Chofer.findByPk(
-        choferId,
-        {
-          include: [
-            {
-              model: Usuario,
-              as: 'usuario',
-            },
-          ],
+      const chofer =
+        await obtenerChoferBloqueado({
+          choferId,
           transaction,
-          lock: transaction.LOCK.UPDATE,
-        },
-      );
+        });
 
       if (!chofer) {
         throw new NotFoundError(
@@ -1744,19 +1775,10 @@ export const finalizarJornada = async (
       }
 
       const chofer = jornada.chofer_id
-        ? await Chofer.findByPk(
-          jornada.chofer_id,
-          {
-            include: [
-              {
-                model: Usuario,
-                as: 'usuario',
-              },
-            ],
-            transaction,
-            lock: transaction.LOCK.UPDATE,
-          },
-        )
+        ? await obtenerChoferBloqueado({
+          choferId: jornada.chofer_id,
+          transaction,
+        })
         : null;
 
       assertChoferAsignado(
@@ -2483,12 +2505,11 @@ export const recalcularJornada = async (id) => {
 
       if (
         !Number.isInteger(ordenReferencia) ||
-        ordenReferencia <= 0 ||
-        ordenesUsadas.has(ordenReferencia)
+        ordenReferencia <= 0
       ) {
         throw new BusinessRuleError(
-          'La recalculación produciría un orden de entrega duplicado',
-          'ORDEN_ENTREGA_DUPLICADO',
+          'La recalculación encontró un orden de entrega inválido',
+          'ORDEN_ENTREGA_INVALIDO',
         );
       }
 
@@ -2500,7 +2521,6 @@ export const recalcularJornada = async (id) => {
         pedido,
         despachoReferencia,
       });
-      ordenesUsadas.add(ordenReferencia);
     } else {
       /*
        * Caso B:

@@ -165,6 +165,7 @@ class AcoConfigEntrada(BaseModel):
     evaporacion: float | None = None
     q: float | None = None
     semilla: int | None = None
+    max_segundos: float | None = None
 
     @field_validator(
         "num_hormigas",
@@ -179,7 +180,13 @@ class AcoConfigEntrada(BaseModel):
 
         return validar_entero_positivo(valor, info.field_name)
 
-    @field_validator("alfa", "beta", "q", mode="before")
+    @field_validator(
+        "alfa",
+        "beta",
+        "q",
+        "max_segundos",
+        mode="before",
+    )
     @classmethod
     def validar_positivos(cls, valor, info):
         if valor is None:
@@ -214,6 +221,9 @@ class SolicitudJornada(BaseModel):
     pedidos: list[PedidoJornadaEntrada]
     grafo: list[RutaEntrada]
     velocidad_kmh: float = 40
+    max_jornada_min: int = 600
+    tiempo_servicio_por_entrega_min: float = 10
+    margen_operativo_porcentaje: float = 15
     semilla: int | None = None
     benchmark: bool = False
     aco: AcoConfigEntrada | None = None
@@ -227,6 +237,51 @@ class SolicitudJornada(BaseModel):
             raise ValueError("velocidad_kmh debe ser mayor que cero")
 
         return velocidad
+
+
+    @field_validator("max_jornada_min", mode="before")
+    @classmethod
+    def validar_max_jornada(cls, valor):
+        return validar_entero_positivo(
+            valor,
+            "max_jornada_min",
+        )
+
+    @field_validator(
+        "tiempo_servicio_por_entrega_min",
+        mode="before",
+    )
+    @classmethod
+    def validar_tiempo_servicio(cls, valor):
+        numero = validar_numero_finito(
+            valor,
+            "tiempo_servicio_por_entrega_min",
+        )
+
+        if numero < 0:
+            raise ValueError(
+                "tiempo_servicio_por_entrega_min no puede ser negativo"
+            )
+
+        return numero
+
+    @field_validator(
+        "margen_operativo_porcentaje",
+        mode="before",
+    )
+    @classmethod
+    def validar_margen_operativo(cls, valor):
+        numero = validar_numero_finito(
+            valor,
+            "margen_operativo_porcentaje",
+        )
+
+        if numero < 0:
+            raise ValueError(
+                "margen_operativo_porcentaje no puede ser negativo"
+            )
+
+        return numero
 
     @field_validator("semilla", mode="before")
     @classmethod

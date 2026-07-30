@@ -6,6 +6,7 @@ export const generarPlanJornada = async ({
   camiones,
   bodega,
   rutas,
+  configuracionOperativa = {},
 }) => {
   const payloadPython = {
     bodega: {
@@ -40,6 +41,18 @@ export const generarPlanJornada = async ({
     })),
 
     velocidad_kmh: 40,
+    max_jornada_min: Number(
+      configuracionOperativa.minutosMaximosOperacionDia || 600,
+    ),
+    tiempo_servicio_por_entrega_min: Number(
+      configuracionOperativa.tiempoServicioPorEntregaMin || 10,
+    ),
+    margen_operativo_porcentaje: Number(
+      configuracionOperativa.margenOperativoPorcentaje || 15,
+    ),
+    aco: {
+      max_segundos: 0.25,
+    },
   };
 
   return await pythonService.generarJornadaMetaheuristica(

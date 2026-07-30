@@ -509,100 +509,40 @@ test('errorHandler traduce restricciones logísticas sin exponer nombres interno
   }
 });
 
-test('recalcular jornada rechaza pedido directo que reutiliza orden de entrega sin escrituras parciales', async (t) => {
-  const service = await import('../../src/services/jornadaReparto.service.js');
-  const { default: db } = await import('../../src/models/index.js');
-  const { default: sequelize } = await import('../../src/config/database.js');
-
-  const ubicacionActual = {
-    id: 30,
-    nombre: 'Cliente Norte',
-    latitud: -1,
-    longitud: -80,
-  };
-  const pedidoActual = {
-    id: 100,
-    cliente_id: 20,
-    cliente: {
-      nombre: 'Actual',
-      ubicacion: ubicacionActual,
-    },
-  };
-  const pedidoCandidato = {
-    id: 101,
-    cliente_id: 21,
-    estado: 'LISTO_PARA_DESPACHO',
-    cliente: {
-      nombre: 'Nuevo mismo destino',
-      ubicacion: ubicacionActual,
-    },
-  };
-  const jornada = modelInstance({
-    id: 500,
-    estado: 'PLANIFICADA',
-    distancia_total: 12,
-    camion: {
-      id: 10,
-      estado: 'EN_BODEGA',
-      capacidad: 2,
-    },
-    despachos: [
-      {
-        id: 800,
-        pedido_id: pedidoActual.id,
-        estado: 'PENDIENTE',
-        orden_entrega: 1,
-        pedido: pedidoActual,
-      },
-    ],
-  });
-
-  stubMethods(t, db.JornadaReparto, {
-    findByPk: async () => jornada,
-  });
-  stubMethods(t, db.Pedido, {
-    findAll: async () => [pedidoCandidato],
-  });
-  stubMethods(t, db.Despacho, {
-    create: async () => {
-      throw new Error('No debe crear despachos');
-    },
-    destroy: async () => {
-      throw new Error('No debe destruir despachos');
-    },
-  });
-  stubMethods(t, sequelize, {
-    transaction: async () => {
-      throw new Error('No debe abrir transacción');
-    },
-  });
-
-  await assert.rejects(
-    () => service.recalcularJornada(500),
-    (error) => {
-      assert.equal(
-        error.code,
-        'ORDEN_ENTREGA_DUPLICADO',
-      );
-      assert.match(
-        error.message,
-        /orden de entrega duplicado/,
-      );
-
-      return true;
-    },
+test('recalcular jornada permite compartir orden entre despachos del mismo destino', () => {
+  const source = read(
+    'src',
+    'services',
+    'jornadaReparto.service.js',
   );
 
-  assert.equal(
-    db.Despacho.create.mock.callCount(),
-    0,
+  assert.match(
+    source,
+    /incorporadosDirectos\.push\([\s\S]*?despachoReferencia/,
   );
-  assert.equal(
-    db.Despacho.destroy.mock.callCount(),
-    0,
+  assert.match(
+    source,
+    /orden_entrega:\s*despachoReferencia\.orden_entrega/,
   );
-  assert.equal(
-    sequelize.transaction.mock.callCount(),
-    0,
+  assert.doesNotMatch(
+    source,
+    /ordenesUsadas\.has\(ordenReferencia\)/,
+  );
+});
+
+test('migración posterior permite paradas compartidas sin quitar unicidad por pedido', () => {
+  const source = read(
+    'database',
+    'migrations',
+    '20260730000100-allow-shared-delivery-orders-per-destination.js',
+  );
+
+  assert.match(
+    source,
+    /DROP INDEX IF EXISTS "despachos_jornada_orden_unique"/,
+  );
+  assert.doesNotMatch(
+    source,
+    /despachos_jornada_pedido_unique/,
   );
 });

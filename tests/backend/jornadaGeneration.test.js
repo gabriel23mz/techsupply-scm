@@ -24,7 +24,7 @@ const service =
 
 axios.create = originalCreate;
 
-function pedido(id = 100) {
+function pedido(id = 100, ubicacionId = 3) {
   return {
     id,
     cliente_id: 20,
@@ -32,8 +32,8 @@ function pedido(id = 100) {
     cliente: {
       nombre: 'Cliente Demo',
       ubicacion: {
-        id: 3,
-        nombre: 'Sucursal Norte',
+        id: ubicacionId,
+        nombre: ubicacionId === 3 ? 'Sucursal Norte' : `Sucursal ${ubicacionId}`,
         latitud: -2.08,
         longitud: -79.88,
       },
@@ -167,6 +167,33 @@ test('generación de jornada revalida recursos y emite payload jornadaCreada rea
 
   assert.equal(payload.jornada.id, 500);
   assert.equal(payload.despachos[0].pedido_id, 100);
+});
+
+test('generación bloquea el chofer mediante INNER JOIN compatible con PostgreSQL', async (t) => {
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: db } = await import('../../src/models/index.js');
+  let lockOptions;
+
+  post.mock.mockImplementationOnce(async () => ({
+    data: planValido(),
+  }));
+
+  stubManagedTransaction(t, sequelize);
+  stubPreliminares(t, db);
+
+  db.Chofer.findByPk = async (id, options) => {
+    lockOptions = options;
+    return chofer(id);
+  };
+
+  await service.generarJornadaReparto();
+
+  const usuarioInclude = lockOptions.include.find(
+    (include) => include.as === 'usuario',
+  );
+
+  assert.equal(lockOptions.lock, 'UPDATE');
+  assert.equal(usuarioInclude.required, true);
 });
 
 test('generación diaria rechaza fechas fuera de la fecha operativa', async () => {
@@ -450,7 +477,7 @@ test('generación revierte si un pedido deja de estar disponible al revalidar', 
   const { default: db } = await import('../../src/models/index.js');
   const pedidos = [
     modelInstance(pedido(100)),
-    modelInstance(pedido(101)),
+    modelInstance(pedido(101, 4)),
   ];
   const despachos = [];
   const respuesta = structuredClone(respuestaJornadaValida);
@@ -458,6 +485,15 @@ test('generación revierte si un pedido deja de estar disponible al revalidar', 
     ...respuesta.jornadas[0].entregas[0],
     pedido_id: 101,
     orden_entrega: 2,
+    ruta_parcial: {
+      ...respuesta.jornadas[0].entregas[0].ruta_parcial,
+      hasta: {
+        id: 4,
+        nombre: 'Sucursal 4',
+        latitud: -2.12,
+        longitud: -79.84,
+      },
+    },
   });
 
   post.mock.mockImplementationOnce(async () => ({
@@ -532,13 +568,14 @@ test('generación rechaza dos planes con el mismo camión o el mismo pedido', as
   );
 });
 
-test('generación rechaza órdenes duplicadas dentro de una jornada antes de persistir', async (t) => {
+test('generación permite compartir orden entre despachos del mismo destino', async (t) => {
   const { default: sequelize } = await import('../../src/config/database.js');
   const { default: db } = await import('../../src/models/index.js');
   const pedidos = [
-    pedido(100),
-    pedido(101),
+    modelInstance(pedido(100)),
+    modelInstance(pedido(101)),
   ];
+  const despachos = [];
   const respuesta = structuredClone(respuestaJornadaValida);
   respuesta.jornadas[0].entregas.push({
     ...respuesta.jornadas[0].entregas[0],
@@ -552,14 +589,56 @@ test('generación rechaza órdenes duplicadas dentro de una jornada antes de per
 
   stubManagedTransaction(t, sequelize);
   stubPreliminares(t, db, { pedidos });
+  db.Despacho.create = async (datos) => {
+    const despacho = modelInstance({ id: 900 + despachos.length, ...datos });
+    despachos.push(despacho);
+    return despacho;
+  };
+
+  const resultado = await service.generarJornadaReparto();
+
+  assert.equal(resultado.total_pedidos_asignados, 2);
+  assert.equal(despachos.length, 2);
+  assert.deepEqual(
+    despachos.map((item) => item.orden_entrega),
+    [1, 1],
+  );
+});
+
+test('generación rechaza el mismo orden cuando apunta a destinos diferentes', async (t) => {
+  const { default: sequelize } = await import('../../src/config/database.js');
+  const { default: db } = await import('../../src/models/index.js');
+  const pedidos = [
+    pedido(100),
+    pedido(101, 4),
+  ];
+  const respuesta = structuredClone(respuestaJornadaValida);
+  respuesta.jornadas[0].entregas.push({
+    ...respuesta.jornadas[0].entregas[0],
+    pedido_id: 101,
+    orden_entrega: respuesta.jornadas[0].entregas[0].orden_entrega,
+    ruta_parcial: {
+      ...respuesta.jornadas[0].entregas[0].ruta_parcial,
+      hasta: {
+        id: 4,
+        nombre: 'Sucursal 4',
+        latitud: -2.12,
+        longitud: -79.84,
+      },
+    },
+  });
+
+  post.mock.mockImplementationOnce(async () => ({
+    data: respuesta,
+  }));
+
+  stubManagedTransaction(t, sequelize);
+  stubPreliminares(t, db, { pedidos });
 
   await assert.rejects(
     () => service.generarJornadaReparto(),
-    /órdenes de entrega duplicados/,
+    /reutiliza el orden 1 para destinos diferentes/,
   );
 
-  assert.equal(
-    db.JornadaReparto.create.mock.callCount(),
-    0,
-  );
+  assert.equal(db.JornadaReparto.create.mock.callCount(), 0);
 });

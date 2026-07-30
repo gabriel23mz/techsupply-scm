@@ -133,8 +133,8 @@ const locations = [
   {
     id: 1,
     nombre: 'Bodega Central ESPAM MFL',
-    latitud: -0.82726,
-    longitud: -80.18695,
+    latitud: -0.826658,
+    longitud: -80.182109,
   },
   { id: 2, nombre: 'Calceta Centro', latitud: -0.84582, longitud: -80.16389 },
   { id: 3, nombre: 'Tosagua', latitud: -0.78601, longitud: -80.23473 },
@@ -346,8 +346,7 @@ function clientLocationId(orderId) {
 function orderStateForId(id) {
   if (id <= 12) return 'PENDIENTE';
   if (id <= 24) return 'PREPARANDO';
-  if (id <= 52) return 'LISTO_PARA_DESPACHO';
-  if (id <= 57) return 'DESPACHADO';
+  if (id <= 57) return 'LISTO_PARA_DESPACHO';
   if (id <= 63) return 'ENTREGADO';
   if (id <= 67) return 'REPROGRAMADO';
   if (id <= 70) return 'ENTREGADO';
@@ -447,52 +446,10 @@ function calculateOperationalMinutes(travelMinutes, deliveryCount) {
 }
 
 function buildJourneyDefinitions() {
+  // La base demo conserva únicamente jornadas históricas.
+  // Las jornadas activas se generan desde la aplicación para probar el
+  // planificador multivehículo con los pedidos LISTO_PARA_DESPACHO.
   const basic = [
-    {
-      id: 1,
-      truck: 1,
-      driver: 1,
-      orderIds: [41, 42, 43, 44],
-      date: dateOnlyOffset(0),
-      startEstimated: atTimezoneOffset(0, 8, 30),
-      startReal: null,
-      endReal: null,
-      state: 'PLANIFICADA',
-      currentOrder: 0,
-      loadingUser: null,
-      loadingAt: null,
-      loadMode: 'PARTIAL',
-    },
-    {
-      id: 2,
-      truck: 2,
-      driver: 2,
-      orderIds: [45, 46, 47, 48],
-      date: dateOnlyOffset(0),
-      startEstimated: atTimezoneOffset(0, 9, 0),
-      startReal: null,
-      endReal: null,
-      state: 'PLANIFICADA',
-      currentOrder: 0,
-      loadingUser: 5,
-      loadingAt: atTimezoneOffset(0, 7, 45),
-      loadMode: 'COMPLETE',
-    },
-    {
-      id: 3,
-      truck: 3,
-      driver: 3,
-      orderIds: [53, 54, 55, 56, 57],
-      date: dateOnlyOffset(-1),
-      startEstimated: atTimezoneOffset(-1, 8, 0),
-      startReal: atTimezoneOffset(-1, 8, 20),
-      endReal: null,
-      state: 'EN_RUTA',
-      currentOrder: 1,
-      loadingUser: 6,
-      loadingAt: atTimezoneOffset(-1, 7, 15),
-      loadMode: 'COMPLETE',
-    },
     {
       id: 4,
       truck: 4,
@@ -538,33 +495,18 @@ function buildJourneyDefinitions() {
       loadingAt: null,
       loadMode: 'NONE',
     },
-    {
-      id: 7,
-      truck: 7,
-      driver: 6,
-      orderIds: [49, 50, 51, 52],
-      date: dateOnlyOffset(0),
-      startEstimated: atTimezoneOffset(0, 10, 0),
-      startReal: null,
-      endReal: null,
-      state: 'PLANIFICADA',
-      currentOrder: 0,
-      loadingUser: null,
-      loadingAt: null,
-      loadMode: 'NONE',
-    },
   ];
 
   return basic.map((definition) => {
     const metrics = definition.orderIds.length
       ? buildJourneyRoute(definition.orderIds)
       : {
-          route: null,
-          points: [],
-          segments: [],
-          totalDistance: 0,
-          totalTravelMinutes: 0,
-        };
+        route: null,
+        points: [],
+        segments: [],
+        totalDistance: 0,
+        totalTravelMinutes: 0,
+      };
     const operationalMinutes = calculateOperationalMinutes(
       metrics.totalTravelMinutes,
       definition.orderIds.length,
@@ -575,9 +517,9 @@ function buildJourneyDefinitions() {
     );
     const endReal = definition.state === 'FINALIZADA'
       ? addOperatingMinutes(
-          definition.startReal,
-          operationalMinutes + (definition.id === 4 ? 35 : -10),
-        )
+        definition.startReal,
+        operationalMinutes + (definition.id === 4 ? 35 : -10),
+      )
       : definition.endReal;
 
     return {

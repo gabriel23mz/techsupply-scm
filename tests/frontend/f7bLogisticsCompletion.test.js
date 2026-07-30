@@ -92,9 +92,37 @@ test('F7B implementa Mi Jornada con contratos propios y acciones operativas', as
   assert.match(page, /Punto actual/);
   assert.match(page, /Entregar/);
   assert.match(page, /No entregado/);
-  assert.match(page, /Siguiente punto/);
+  assert.doesNotMatch(page, /Siguiente punto/);
+  assert.doesNotMatch(page, /avanzarMiJornada/);
+  assert.match(page, /Esperando confirmación de Bodega/);
+  assert.match(page, /carga_confirmada_en/);
   assert.match(page, /Finalizar jornada/);
   assert.match(page, /ConfirmDialog/);
+});
+
+test('F7B cierre condiciona el inicio a la carga y conserva avance automático', async () => {
+  const adminDetail = await readSource(
+    'frontend/src/modules/logistica/pages/JornadaDetallePage.jsx',
+  );
+  const driverPage = await readSource(
+    'frontend/src/modules/chofer/pages/MiJornadaPage.jsx',
+  );
+  const adminCss = await readSource(
+    'frontend/src/modules/logistica/logistica.css',
+  );
+  const driverCss = await readSource(
+    'frontend/src/modules/chofer/mi-jornada.css',
+  );
+
+  assert.match(adminDetail, /carga_confirmada_en \?\? jornada\.carga_confirmada/);
+  assert.match(adminDetail, /Carga pendiente de confirmación/);
+  assert.doesNotMatch(adminDetail, /avanzarJornada/);
+  assert.doesNotMatch(adminDetail, />\s*Avanzar\s*</);
+  assert.match(driverPage, /Esperando confirmación de Bodega/);
+  assert.doesNotMatch(driverPage, /avanzarMiJornada/);
+  assert.doesNotMatch(driverPage, /Siguiente punto/);
+  assert.match(adminCss, /\.journey-load-pending/);
+  assert.match(driverCss, /\.my-journey-load-pending/);
 });
 
 test('F7B entrega una experiencia mobile-first con mapa y operación equilibrados', async () => {
@@ -156,7 +184,7 @@ test('F7B alinea el seguimiento administrativo y limita Finalizar al último pun
 
   assert.match(page, /const hasReachedLastPoint =[\s\S]*?currentOrder >= lastPointOrder/);
   assert.match(page, /const canRenderFinishAction =[\s\S]*?hasReachedLastPoint[\s\S]*?currentPointClosed[\s\S]*?allDispatchesClosed/);
-  assert.match(page, /\{canRenderFinishAction && \([\s\S]*?>\s*Finalizar\s*<\/Button>/);
+  assert.match(page, /canRenderFinishAction \? \([\s\S]*?>\s*Finalizar\s*<\/Button>/);
   assert.doesNotMatch(page, /footer=\{footer\}/);
   assert.match(
     page,
