@@ -1,8 +1,8 @@
 # 06 - Frontend
 
-## Tecnologia
+## Estado y tecnologia
 
-El frontend usa React, Vite, React Router, Axios, Bootstrap, Bootstrap Icons, React Toastify, Leaflet y React Leaflet.
+La capa frontend Outbound se encuentra cerrada para demostracion. Usa React, Vite, React Router, Axios, Bootstrap Icons, React Toastify, Leaflet y React Leaflet. La interfaz aplica una identidad visual comun, navegacion responsive, tema claro/oscuro, permisos por rol y experiencias especificas de escritorio y movil.
 
 ## Arquitectura modular
 
@@ -13,158 +13,112 @@ frontend/src/
 │   ├── Router.jsx
 │   ├── ProtectedRoute.jsx
 │   └── providers.jsx
-├── shared/
-│   ├── components/
-│   ├── constants/
-│   ├── contexts/
-│   ├── hooks/
-│   ├── layouts/
-│   ├── services/
-│   ├── styles/
-│   └── utils/
-└── modules/
-    ├── auth/
-    ├── clientes/
-    ├── dashboard/
-    ├── despachos/
-    ├── logistica/
-    ├── pedidos/
-    ├── rutas/
-    └── ubicaciones/
+├── modules/
+│   ├── auth/
+│   ├── bodega/
+│   ├── camiones/
+│   ├── chofer/
+│   ├── choferes/
+│   ├── clientes/
+│   ├── dashboard/
+│   ├── despachos/
+│   ├── help/
+│   ├── logistica/
+│   ├── pedidos/
+│   ├── rutas/
+│   ├── ubicaciones/
+│   └── usuarios/
+└── shared/
+    ├── components/
+    ├── constants/
+    ├── contexts/
+    ├── hooks/
+    ├── layouts/
+    ├── maps/
+    ├── routing/
+    ├── services/
+    ├── styles/
+    ├── ui/
+    └── utils/
 ```
 
-## Enrutamiento
+Los componentes compartidos concentran layouts, tablas, modales, drawers, formularios, metricas, paginacion, permisos y mapas. Los modulos de dominio no duplican reglas visuales cerradas.
 
-`Router.jsx` define `/login` y una zona protegida por `ProtectedRoute`. Las rutas visibles y ocultas se centralizan en `shared/constants/navigation.jsx`:
+## Autenticacion y acceso por rol
 
-- `/`
-- `/clientes`
-- `/pedidos`
-- `/ubicaciones`
-- `/rutas`
-- `/centro-logistico`
-- `/despachos`
-- `/pedidos/nuevo`
-- `/pedidos/:id/workspace`
-- `/centro-logistico/jornadas/:id`
+`ProtectedRoute` exige sesion y permiso. El frontend oculta rutas y acciones no autorizadas como medida de experiencia de usuario; el backend conserva la autoridad real de seguridad.
 
-La proteccion frontend exige sesion y tambien puede exigir permiso por ruta. El backend aplica autenticacion y autorizacion reales; el filtrado de cliente es solo UX.
+Experiencias implementadas:
 
-## Layout
+| Rol | Acceso principal |
+| --- | --- |
+| `ADMIN` | Vision transversal y administracion de usuarios |
+| `VENTAS` | Clientes, pedidos, nuevo pedido y workspace comercial |
+| `BODEGA` | Preparacion y carga de jornadas |
+| `LOGISTICA` | Jornadas, despachos, camiones, choferes, rutas y mapas |
+| `CHOFER` | Dashboard mobile-first y Mi Jornada |
+| `COMPRAS` | Dashboard y ayuda informativos porque Inbound queda fuera del alcance |
 
-El layout principal usa `MainLayout`, `Sidebar` y `Topbar`. Incluye navegacion, paneles de preferencias, notificaciones calculadas desde datos reales y confirmaciones para navegacion sensible.
+## Modulos cerrados
+
+- Dashboard adaptado a cada rol.
+- Centro de ayuda.
+- Clientes.
+- Pedidos y workspace comercial.
+- Ubicaciones.
+- Preparacion de Bodega.
+- Carga de Bodega.
+- Jornadas y mapa operativo.
+- Despachos.
+- Camiones.
+- Choferes.
+- Rutas.
+- Mi Jornada.
+- Usuarios, exclusivo de `ADMIN`.
+
+## Jornadas y operacion del chofer
+
+La planificacion muestra pedidos listos, jornadas registradas y posicionamiento de camiones. La vista general del mapa muestra los camiones; al seleccionar una jornada presenta su recorrido individual.
+
+La jornada solo muestra **Iniciar jornada** cuando Bodega confirmo la carga. Mientras la carga sigue pendiente aparece un bloque informativo de solo consulta.
+
+En una parada pueden existir varios despachos con el mismo `orden_entrega`. El chofer puede resolverlos en cualquier secuencia. El avance al siguiente punto es automatico cuando todos los despachos de la parada actual quedan en estado terminal; no se presenta un boton manual redundante de avance. La finalizacion solo se habilita al cerrar todos los puntos.
+
+## Mapas
+
+Los mapas compartidos usan Leaflet y OpenStreetMap. Las geometrías se consumen como `[latitud, longitud]` y representan:
+
+- Bodega central.
+- Camion actual.
+- Puntos de entrega.
+- Recorrido completado y pendiente.
+- Varias jornadas en el mapa operativo.
+
+El frontend usa OSRM como apoyo para el catalogo de rutas. La planificacion principal y las geometrías persistidas de jornadas provienen del motor Python y del backend.
 
 ## Servicios Axios
 
-`shared/services/api.js` crea un cliente Axios con:
+`shared/services/api.js` configura:
 
-- `baseURL`: `VITE_API_URL` o `http://localhost:3000/api`.
-- timeout de 90 segundos.
-- header `Content-Type: application/json`.
-- interceptor para agregar token desde `techsupply_session`.
-- interceptor para limpiar sesion en 401.
-- manejo de 403 como acceso denegado sin cerrar la sesion.
+- `VITE_API_URL` o `http://localhost:3000/api`.
+- Token de sesion.
+- Limpieza de sesion en `401`.
+- Acceso denegado sin cierre de sesion en `403`.
+- Timeout ampliado para operaciones de planificacion.
 
-Las respuestas con relaciones incluidas se consumen mediante aliases camelCase canonicos definidos en Sequelize: `cliente`, `ubicacion`, `categoria`, `producto`, `pedido`, `detalles`, `usuario`, `jornada`, `camion` y `despachos`. El frontend activo no depende de claves PascalCase autogeneradas por Sequelize.
+Las relaciones se consumen mediante aliases camelCase explicitos de Sequelize, por ejemplo `pedido.cliente`, `cliente.ubicacion`, `despacho.jornada`, `jornada.camion` y `jornada.despachos`.
 
-## Autenticacion frontend
+## Responsive y accesibilidad
 
-El modulo `auth` permite login, guarda sesion local y consulta `/auth/me`. La sesion conserva `user`, `token` y `permissions`; `AuthContext` expone `hasPermission`.
+- Tablas convertidas en tarjetas cuando corresponde.
+- Sidebars y topbars adaptados a movil.
+- Modales con altura basada en `100dvh`.
+- Bloqueo de scroll y retorno de foco.
+- Navegacion por teclado.
+- Estados loading, empty y error.
+- Respeto por `prefers-reduced-motion`.
+- Acciones ocultas o deshabilitadas segun permiso y estado.
 
-## Dashboard
+## Alcance no implementado
 
-El dashboard consulta pedidos, clientes, ubicaciones, rutas, despachos, jornadas, camiones y productos. Calcula metricas y alertas en cliente. Usa `Promise.allSettled`, por lo que puede cargar parcialmente si algun endpoint falla.
-
-## Pedidos
-
-El modulo de pedidos permite:
-
-- Listar pedidos.
-- Crear pedido.
-- Editar pedido en estados permitidos.
-- Enviar a preparacion.
-- Cancelar pedido.
-- Navegar al workspace de detalles.
-
-## Workspace de pedido
-
-El workspace gestiona productos asociados al pedido:
-
-- Agregar detalle.
-- Editar cantidad.
-- Eliminar detalle.
-- Ver resumen.
-- Enviar el pedido a preparacion.
-
-Ventas solo puede editar detalles y cancelar mientras el pedido esta `PENDIENTE`. Los estados `PREPARANDO` y posteriores se muestran en modo solo lectura. La finalizacion fisica de preparacion queda fuera del workspace de Ventas y pertenece a Bodega.
-
-## Centro de Operaciones Logisticas
-
-El centro logistico muestra pedidos disponibles, jornadas existentes y acciones para generar jornadas. Consume:
-
-- `/despachos/pedidos-disponibles`
-- `/jornadas-reparto`
-- `/jornadas-reparto/generar`
-- `/jornadas-reparto/:id/recalcular`
-
-Incluye modales de carga y resultado para la generacion.
-
-## Despachos
-
-El modulo de despachos lista entregas registradas, muestra metricas y permite consultar detalle. Las operaciones de entrega y no entrega se realizan principalmente desde vistas logisticas asociadas a jornadas.
-
-## Jornadas y mapas
-
-La pantalla de detalle de jornada permite:
-
-- Iniciar jornada.
-- Avanzar al siguiente punto.
-- Entregar despacho.
-- Marcar no entregado.
-- Finalizar jornada.
-- Visualizar mapa de la ruta.
-
-El backend exige chofer asignado y carga confirmada para iniciar una jornada; Logistica planifica y supervisa, pero no inicia fisicamente la ruta salvo permiso administrativo. El frontend ya no consume endpoints para iniciar o cancelar despachos individuales; las acciones vigentes de despacho son entrega y no entrega desde la jornada.
-
-`JornadaMap.jsx` usa `MapContainer`, `TileLayer`, `Marker`, `Polyline`, `Popup` y `Tooltip`. Normaliza geometria como `[latitud, longitud]`, agrupa marcadores por orden y representa bodega, camion y puntos de entrega.
-
-## Rutas y mapa general
-
-El modulo `rutas` combina:
-
-- Catalogo de rutas.
-- Calculo vial auxiliar desde OSRM en frontend.
-- Lista de camiones.
-- Mapa general de jornadas activas.
-
-`MapaGeneralJornadas.jsx` representa varias jornadas y maneja errores de tiles de OpenStreetMap.
-
-## Ubicaciones
-
-Ubicaciones incluye formularios y mapas para coordenadas. Las coordenadas son relevantes para OSRM, Leaflet y la generacion de geometria de jornadas.
-
-## Componentes compartidos
-
-Existen componentes compartidos para:
-
-- Layout.
-- Sidebar.
-- Topbar.
-- ConfirmDialog.
-- Paneles de configuracion.
-- Notificaciones.
-- Toast utilities.
-
-Tambien hay tablas, toolbars, metricas, paginacion y modales especificos por modulo.
-
-## Estados de carga y errores
-
-El frontend usa spinners, estados vacios, mensajes toast y confirmaciones. Las operaciones lentas de planificacion usan timeout ampliado y modales de progreso.
-
-## Pantallas pendientes o parciales
-
-- No existe modulo frontend dedicado a categorias/productos como CRUD completo independiente, aunque se consumen productos y categorias en backend.
-- No existe administracion de roles.
-- No existe aun interfaz completa de preparacion de Bodega, carga ni choferes.
-- No existe seguimiento GPS real.
-- No existe panel de n8n.
+No existen CRUD frontend independientes para Productos y Categorias ni interfaces operativas de los procesos Inbound: Proveedores, Ordenes de compra e Ingresos de inventario. Tampoco existe seguimiento GPS satelital ni un panel de administracion de n8n dentro de React; n8n opera como servicio externo local.

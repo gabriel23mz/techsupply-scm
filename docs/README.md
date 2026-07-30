@@ -1,6 +1,6 @@
 # Documentacion oficial de TechSupply SCM - Modulo Outbound
 
-Esta carpeta contiene la documentacion canonica del MVP academico **TechSupply SCM - Modulo Outbound**. Describe el sistema tal como esta implementado actualmente en el repositorio: backend Node.js, base PostgreSQL/Supabase, motor logistico Python/FastAPI, frontend React/Vite, mapas con Leaflet/OpenStreetMap y preparacion de automatizaciones con n8n.
+Esta carpeta contiene la documentacion canonica del MVP academico **TechSupply SCM - Modulo Outbound**. Describe el sistema tal como esta implementado actualmente en el repositorio: backend Node.js, base PostgreSQL/Supabase, motor logistico Python/FastAPI, frontend React/Vite, mapas con Leaflet/OpenStreetMap y automatizaciones reales mediante n8n.
 
 La fuente principal de verdad para mantener estos documentos es el codigo operativo actual. Si existe una contradiccion entre documentacion antigua y codigo, prevalecen servicios, modelos, rutas, controladores, frontend, Python, migraciones y configuraciones activas.
 
@@ -8,7 +8,7 @@ La fuente principal de verdad para mantener estos documentos es el codigo operat
 
 El proyecto es un MVP funcional para gestionar operaciones outbound de una distribuidora tecnologica. Permite registrar datos maestros, administrar pedidos, preparar detalles, generar jornadas de reparto con camiones automaticos, optimizar recorridos mediante Python, visualizar rutas en mapas y operar entregas por jornada.
 
-La integracion con n8n existe como servicio preparado, pero actualmente no ejecuta webhooks reales. Las rutas operativas del backend existen, pero no aplican autenticacion obligatoria salvo endpoints puntuales de autenticacion.
+La integracion con n8n ejecuta un Webhook local publicado para cinco eventos logisticos post-commit. Las rutas operativas del backend aplican autenticacion y autorizacion por permisos; el login permanece publico.
 
 ## Orden recomendado de lectura
 
@@ -41,7 +41,7 @@ La integracion con n8n existe como servicio preparado, pero actualmente no ejecu
 - Mantener esta carpeta compacta: no crear documentos nuevos salvo necesidad real.
 - Actualizar la documentacion cuando cambien modelos, rutas, contratos, estados o flujos.
 - No documentar funcionalidad pendiente como si ya estuviera implementada.
-- No presentar n8n como completado mientras `src/services/n8n.service.js` siga siendo un stub.
+- Documentar n8n como integracion local: requiere la instancia levantada, el workflow publicado y la URL de produccion configurada.
 - No presentar A* como unico algoritmo de jornadas: la generacion actual utiliza una metaheuristica ACO-CVRP y A* como camino minimo interno.
 - No presentar MySQL como base activa: el codigo actual usa PostgreSQL/Supabase.
 - No conservar documentos obsoletos por precaucion. Los documentos eliminados pueden consultarse mediante el historial de Git.

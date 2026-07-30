@@ -379,7 +379,7 @@ Mi Jornada permite:
 - Consultar el recorrido.
 - Iniciar la jornada.
 - Registrar entrega o no entrega.
-- Avanzar de punto.
+- Avanzar automáticamente cuando todos los despachos del punto actual quedan cerrados.
 - Finalizar cuando se cumplen las condiciones operativas.
 - Consultar progreso y mapa.
 
@@ -409,7 +409,6 @@ Este cierre no incorpora interfaces operativas para:
 ```text
 Productos
 Categorías
-Usuarios
 Órdenes de compra
 Proveedores
 Ingresos de inventario

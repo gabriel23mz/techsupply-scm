@@ -212,7 +212,15 @@ Si falla la actualizacion del pedido o de la jornada, el despacho no queda entre
 | `despacho.service.js` | Consulta, enriquecimiento y operacion de despachos |
 | `logistica.service.js` | Adaptador tecnico de planificacion: payload Python y notificaciones post-commit |
 | `python.service.js` | Cliente HTTP hacia FastAPI |
-| `n8n.service.js` | Stub de eventos logisticos |
+| `n8n.service.js` | Cliente HTTP de eventos logisticos hacia el Webhook publicado de n8n |
+
+## Notificaciones post-commit
+
+Los servicios de jornadas y despachos invocan n8n unicamente despues de confirmar la transaccion. `n8n.service.js` transforma los modelos en objetos planos y envia un contrato comun al Webhook configurado por `N8N_WEBHOOK_URL`.
+
+La generacion llama una vez por cada jornada persistida; el cliente n8n agrupa esa rafaga durante una ventana corta para emitir un solo resumen administrativo de planificacion. Inicio, entrega, no entrega y finalizacion se notifican de forma inmediata.
+
+La integracion tiene timeout configurable y puede deshabilitarse mediante `N8N_ENABLED=false`. Los errores se propagan al adaptador que los registra, pero no revierten pedidos, despachos ni jornadas porque el dominio ya fue confirmado.
 
 ## Rutas principales
 
@@ -253,7 +261,7 @@ Errores tipados activos:
 | `ConflictError` | 400 | Duplicados y conflictos de unicidad |
 | `BusinessRuleError` | 400 | Regla de negocio incumplida |
 | `UnauthorizedError` | 401 | Login, token o autenticacion |
-| `ForbiddenError` | 403 | Autorizacion futura |
+| `ForbiddenError` | 403 | Acceso denegado por permiso o propiedad |
 | `ExternalServiceError` | 502 | Python, timeout o contrato externo invalido |
 
 Tambien se normalizan `SequelizeValidationError`, `SequelizeUniqueConstraintError` y `SequelizeForeignKeyConstraintError`. En produccion, los errores internos inesperados responden `Error interno del servidor` sin exponer stack, SQL ni detalles de conexion.
@@ -303,7 +311,7 @@ La fase de cierre agrega una migracion no ejecutada con indices unicos parciales
 
 La unicidad de camion y chofer se evalua por `fecha` para jornadas activas del dia. Ademas, una jornada `EN_RUTA` bloquea fisicamente el recurso sin importar la fecha, porque cambiar de dia no libera camion ni chofer.
 
-Riesgo pendiente: estos indices parciales aun no se ejecutaron contra una base real. La migracion debe correr solo cuando las consultas diagnosticas no devuelvan conflictos historicos.
+Las restricciones e indices fueron verificados en la base demo local. Antes de aplicarlos a una base remota deben revisarse los diagnosticos y realizarse un respaldo.
 
 ## Seguridad actual
 

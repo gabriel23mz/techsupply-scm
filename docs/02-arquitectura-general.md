@@ -15,7 +15,7 @@ flowchart LR
   PY --> ASTAR[A* con heuristica nula]
   PY --> OSRM[OSRM publico o configurado]
   FE --> MAP[Leaflet + OpenStreetMap]
-  BE -. eventos preparados .-> N8N[n8n stub]
+  BE -->|eventos post-commit| N8N[n8n Webhook publicado]
 ```
 
 ## Componentes y responsabilidades
@@ -28,7 +28,7 @@ flowchart LR
 | Frontend React | Interfaz administrativa, consumo de API, mapas, formularios, tablas y seguimiento |
 | Leaflet/OpenStreetMap | Visualizacion geografica |
 | OSRM | Calculo de geometria vial y distancia vial auxiliar |
-| n8n | Integracion preparada para notificaciones/eventos; no activa aun |
+| n8n | Recibe cinco eventos logisticos, genera correos HTML y ejecuta el modo demostracion de destinatarios |
 
 ## Backend
 
@@ -136,6 +136,20 @@ El pedido permanece `LISTO_PARA_DESPACHO` al planificar. Solo pasa a `DESPACHADO
 
 Una jornada puede durar mas de un dia. `fecha` es el dia planificado de salida, `inicio_estimado_en` y `retorno_estimado_en` son previsiones, `fecha_salida` y `fecha_finalizacion` son eventos reales. El cambio de dia o el retorno estimado no liberan recursos; el camion vuelve a estar disponible cuando la jornada finaliza y retorna a `EN_BODEGA`.
 
+## Integracion n8n
+
+`src/services/n8n.service.js` normaliza las instancias de jornada, despacho, pedido y cliente antes de enviarlas al Webhook publicado. El contrato comun contiene `evento`, `fecha_evento`, `modo_demo` y `datos`.
+
+La planificacion crea varias jornadas dentro de una misma rafaga. El servicio agrupa esas llamadas durante una ventana corta y envia un unico resumen administrativo. Los demas eventos se envian inmediatamente despues del commit:
+
+- `JORNADA_CREADA`.
+- `JORNADA_INICIADA`.
+- `DESPACHO_ENTREGADO`.
+- `DESPACHO_NO_ENTREGADO`.
+- `JORNADA_FINALIZADA`.
+
+El workflow local enruta con `Switch`, prepara contenido HTML y usa SMTP. En modo demostracion el correo almacenado en Cliente se conserva como destinatario previsto dentro del mensaje, mientras la entrega real se dirige al buzon configurado en n8n.
+
 ## Separacion de responsabilidades
 
 - Frontend no calcula reglas logisticas; presenta datos y dispara acciones.
@@ -144,6 +158,6 @@ Una jornada puede durar mas de un dia. `fecha` es el dia planificado de salida, 
 - `logistica.service.js` queda limitado a construir payloads, llamar Python y emitir eventos tecnicos post-commit.
 - `jornadaReparto.service.js` conserva reglas, persistencia, asignacion automatica de chofer, disponibilidad fisica, estimaciones, estados y transacciones de jornadas.
 - `despacho.service.js` conserva consulta, entrega y no entrega de despachos asociados a jornadas.
-- n8n no debe bloquear la operacion principal cuando se active.
+- n8n se invoca despues del commit; su indisponibilidad no revierte la operacion principal.
 - La bodega central se identifica por `BODEGA_CENTRAL_ID = 1`.
 - Los errores operacionales del backend se representan con clases tipadas y se responden desde un unico middleware central.

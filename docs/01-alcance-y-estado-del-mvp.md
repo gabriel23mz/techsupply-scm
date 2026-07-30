@@ -39,24 +39,22 @@ El alcance actual incluye:
 - Vista de jornadas, mapa general y detalle de jornada.
 - Gestion de despachos y seguimiento de entregas.
 - Inicio, entrega, no entrega y finalizacion por chofer asignado o `ADMIN`.
-- Integracion n8n preparada como stub.
+- Integracion n8n real mediante Webhook publicado y correos HTML para cinco eventos logisticos post-commit.
 
 ## Funcionalidades parciales
 
-- Frontend de Bodega, carga, choferes y administracion visual de permisos: el backend ya expone los endpoints, pero las pantallas dedicadas quedan para una siguiente pasada.
-- n8n: existen funciones por evento, pero solo hacen `console.log`.
+- Los procesos Inbound de Compras permanecen informativos porque el alcance implementado es Outbound.
+- n8n funciona en una instancia local; el despliegue permanente, la idempotencia y la auditoria persistida quedan fuera del cierre academico.
 - Recalculo de jornada: implementado para jornadas `PLANIFICADA` con despachos `PENDIENTE`, con limite de desvio del 15% para nuevos destinos.
 - Estimaciones logisticas: inicio, retorno y entregas estimadas se calculan en Node con parametros tecnicos del MVP; las fechas reales solo se asignan al iniciar, entregar o finalizar.
 - Visualizacion geografica: implementada con mapas y geometria; no existe seguimiento GPS real.
 - Dashboard: consolida datos reales consultando varios endpoints, pero no usa agregaciones backend.
 
-## Funcionalidades pendientes para completar el MVP
+## Mejoras futuras fuera del cierre del MVP
 
-- Formalizar contratos Node-Python con pruebas.
-- Mantener auditado el payload de evento `jornadaCreada` antes de activar webhook real.
-- Incorporar pruebas de servicios, contratos y flujos logisticos.
-- Definir variables de entorno de ejemplo coherentes con PostgreSQL/Supabase.
-- Implementar n8n real solo cuando existan URL, payloads, timeouts, trazabilidad e idempotencia.
+- Incorporar pruebas end-to-end con navegador y PostgreSQL efimero.
+- Desplegar n8n de forma permanente y agregar idempotencia y trazabilidad persistida.
+- Ampliar los procesos Inbound solo mediante una nueva definicion formal de alcance.
 
 ## Fuera del alcance actual
 
@@ -78,12 +76,11 @@ El MVP esta en estado funcional para demostracion academica local. El flujo oper
 
 ## Limitaciones conocidas
 
-- La suite automatizada existe, pero no usa una base PostgreSQL efimera real.
-- Algunas restricciones definitivas de concurrencia siguen pendientes a nivel PostgreSQL.
-- La metaheuristica usa aleatoriedad sin semilla configurable.
+- La suite automatizada no usa una base PostgreSQL efimera real.
 - A* no usa heuristica geografica; con heuristica nula se comporta como Dijkstra.
-- n8n no esta integrado con webhooks reales.
-- `.env.example` conserva variables heredadas de MySQL y no representa completamente la configuracion activa PostgreSQL/Supabase.
+- n8n depende de una instancia local levantada y de un workflow publicado.
+- Las notificaciones usan modo demostracion: conservan el correo previsto del cliente, pero se entregan a un buzon real configurado en n8n.
+- No existe idempotencia ni auditoria persistida de eventos n8n.
 
 ## Decisiones que no conviene cambiar todavia
 
@@ -92,4 +89,4 @@ El MVP esta en estado funcional para demostracion academica local. El flujo oper
 - Mantener Sequelize porque modelos, migraciones y servicios ya estan alineados.
 - Mantener Python como motor logistico independiente.
 - Mantener `JornadaReparto` como entidad principal del proceso logistico.
-- Mantener n8n como integracion preparada hasta estabilizar contratos y pruebas.
+- Mantener n8n desacoplado y post-commit para que una falla de notificacion no revierta el dominio.

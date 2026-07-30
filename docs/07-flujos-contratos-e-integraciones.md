@@ -22,6 +22,7 @@ sequenceDiagram
   participant BE as Backend
   participant DB as PostgreSQL
   participant PY as Python
+  participant N8N as n8n
 
   FE->>BE: POST /api/jornadas-reparto/generar
   BE->>DB: Pedidos LISTO_PARA_DESPACHO
@@ -34,7 +35,7 @@ sequenceDiagram
   BE->>DB: Transaccion: revalidar y bloquear pedidos/camiones
   BE->>DB: Transaccion: jornada y despachos
   BE->>BE: Commit
-  BE-->>BE: n8n jornadaCreada stub post-commit
+  BE->>N8N: JORNADA_CREADA post-commit
   BE-->>FE: resumen de jornadas creadas
 ```
 
@@ -294,21 +295,71 @@ La jornada guarda `ruta_general`. El despacho guarda `ruta_parcial`. Ambas colum
 
 La geometria se expresa como arreglos `[latitud, longitud]`, formato usado por Leaflet.
 
-## Eventos n8n preparados
+## Integracion n8n
 
-Funciones existentes:
+El backend usa un unico Webhook publicado, configurable mediante `N8N_WEBHOOK_URL`. El contrato comun es:
 
-- `despachoEntregado`
-- `jornadaCreada`
-- `jornadaIniciada`
-- `despachoNoEntregado`
-- `jornadaFinalizada`
+```json
+{
+  "evento": "JORNADA_INICIADA",
+  "fecha_evento": "2026-07-30T19:00:00.000Z",
+  "modo_demo": true,
+  "datos": {}
+}
+```
 
-Estado real: stub con `console.log`. No hay URLs de webhook, reintentos, timeout propio, cola, idempotencia ni trazabilidad persistida.
+Eventos soportados:
 
-`jornadaCreada` se emite despues del commit con la instancia real de la jornada creada y los despachos creados en la transaccion. El resumen devuelto al frontend se mantiene sin cambios.
+- `JORNADA_CREADA`.
+- `JORNADA_INICIADA`.
+- `DESPACHO_ENTREGADO`.
+- `DESPACHO_NO_ENTREGADO`.
+- `JORNADA_FINALIZADA`.
 
-`despachoEntregado` y `despachoNoEntregado` tambien se ejecutan despues del commit en el servicio de despachos asociado a jornadas. Un fallo del stub n8n no revierte la entrega ni la no entrega confirmada.
+`n8n.service.js` convierte instancias Sequelize a objetos planos y limita el payload a jornada, camion, chofer, despachos, pedidos y clientes necesarios para construir la notificacion. No envia objetos completos ni credenciales.
+
+### Planificacion creada
+
+`jornadaReparto.service.js` persiste una jornada por camion y notifica despues del commit. El cliente n8n agrupa las llamadas de la misma rafaga durante una ventana corta y envia un unico evento con:
+
+```json
+{
+  "datos": {
+    "jornadas": [
+      {
+        "codigo": "JR-00015",
+        "total_pedidos": 7,
+        "total_puntos": 6,
+        "distancia_total": 248.94,
+        "tiempo_estimado": 373
+      }
+    ],
+    "resumen": {
+      "total_jornadas": 1,
+      "pedidos_asignados": 7,
+      "sin_asignar": 0
+    }
+  }
+}
+```
+
+### Inicio y entregas
+
+`JORNADA_INICIADA` incluye los despachos con `pedido.cliente.correo`. El workflow genera un correo administrativo y un correo simulado por cliente. `DESPACHO_ENTREGADO` y `DESPACHO_NO_ENTREGADO` incluyen el pedido y el cliente correspondiente. `JORNADA_FINALIZADA` incluye todos los despachos para resumir estados terminales.
+
+### Modo demostracion
+
+Los correos de clientes almacenados en la base demo son ficticios. n8n conserva cada direccion como `destinatario_previsto` y la muestra dentro del asunto y del HTML, pero entrega fisicamente el mensaje al buzon real configurado en el nodo SMTP.
+
+### Disponibilidad y errores
+
+- n8n se invoca despues del commit.
+- `N8N_ENABLED=false` deshabilita la integracion sin modificar el dominio.
+- `N8N_TIMEOUT_MS` limita la espera HTTP.
+- Un fallo de Webhook se registra y no revierte la planificacion, inicio, entrega, no entrega o finalizacion.
+- No existe idempotencia ni auditoria persistida de notificaciones en el cierre academico.
+
+La URL `/webhook-test/` solo funciona cuando el nodo escucha un evento de prueba. El backend debe usar la URL publicada `/webhook/techsupply-notificaciones`.
 
 ## Integracion OSRM
 

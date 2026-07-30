@@ -145,9 +145,9 @@ Los aliases pertenecen al mapeo ORM y no cambian tablas, columnas ni claves fora
 {
   "bodega": {
     "id": 1,
-    "nombre": "Bodega Central",
-    "latitud": -1.05458,
-    "longitud": -80.45445
+    "nombre": "Bodega Central ESPAM MFL",
+    "latitud": -0.826658,
+    "longitud": -80.182109
   },
   "puntos": [
     {
@@ -162,12 +162,12 @@ Los aliases pertenecen al mapeo ORM y no cambian tablas, columnas ni claves fora
       "estado": "PENDIENTE"
     }
   ],
-  "geometria": [[-1.05458, -80.45445], [-0.78601, -80.23473]],
+  "geometria": [[-0.826658, -80.182109], [-0.78601, -80.23473]],
   "tramos": [
     {
       "orden": 1,
       "tipo": "ENTREGA",
-      "desde": { "id": 1, "nombre": "Bodega Central" },
+      "desde": { "id": 1, "nombre": "Bodega Central ESPAM MFL" },
       "hasta": { "id": 2, "nombre": "Destino" },
       "desde_indice": 0,
       "hasta_indice": 1
@@ -182,9 +182,9 @@ Los aliases pertenecen al mapeo ORM y no cambian tablas, columnas ni claves fora
 {
   "desde": {
     "id": 1,
-    "nombre": "Bodega Central",
-    "latitud": -1.05458,
-    "longitud": -80.45445
+    "nombre": "Bodega Central ESPAM MFL",
+    "latitud": -0.826658,
+    "longitud": -80.182109
   },
   "hasta": {
     "id": 2,
@@ -193,7 +193,7 @@ Los aliases pertenecen al mapeo ORM y no cambian tablas, columnas ni claves fora
     "longitud": -80.23473
   },
   "ruta_nodos": [1, 2],
-  "geometria": [[-1.05458, -80.45445], [-0.78601, -80.23473]]
+  "geometria": [[-0.826658, -80.182109], [-0.78601, -80.23473]]
 }
 ```
 

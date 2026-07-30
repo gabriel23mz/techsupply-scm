@@ -129,17 +129,21 @@ function stubPreliminares(t, db, options = {}) {
   });
 }
 
-test('generación de jornada revalida recursos y emite payload jornadaCreada real después del commit', async (t) => {
+test('generación de jornada revalida recursos y emite un resumen n8n real después del commit', async (t) => {
   const { default: sequelize } = await import('../../src/config/database.js');
   const { default: db } = await import('../../src/models/index.js');
-  const eventos = [];
-  const originalLog = console.log;
+  const n8nService = await import('../../src/services/n8n.service.js');
+  const originalN8nPost = axios.post;
+  const originalN8nEnabled = process.env.N8N_ENABLED;
+  const webhookPost = mock.fn(async () => ({ status: 200 }));
 
-  console.log = (...args) => {
-    eventos.push(args);
-  };
-  t.after(() => {
-    console.log = originalLog;
+  axios.post = webhookPost;
+  process.env.N8N_ENABLED = 'true';
+
+  t.after(async () => {
+    await n8nService.flushJornadasCreadasPendientes();
+    axios.post = originalN8nPost;
+    process.env.N8N_ENABLED = originalN8nEnabled;
   });
 
   post.mock.mockImplementationOnce(async () => ({
@@ -155,18 +159,17 @@ test('generación de jornada revalida recursos y emite payload jornadaCreada rea
   assert.equal(resultado.total_jornadas, 1);
   assert.equal(resultado.total_pedidos_asignados, 1);
 
-  const payload = eventos
-    .flat()
-    .find(
-      (item) =>
-        item &&
-        typeof item === 'object' &&
-        'jornada' in item &&
-        'despachos' in item,
-    );
+  await n8nService.flushJornadasCreadasPendientes();
 
-  assert.equal(payload.jornada.id, 500);
-  assert.equal(payload.despachos[0].pedido_id, 100);
+  assert.equal(webhookPost.mock.calls.length, 1);
+
+  const payload = webhookPost.mock.calls[0].arguments[1];
+
+  assert.equal(payload.evento, 'JORNADA_CREADA');
+  assert.equal(payload.datos.resumen.total_jornadas, 1);
+  assert.equal(payload.datos.resumen.pedidos_asignados, 1);
+  assert.equal(payload.datos.jornadas[0].id, 500);
+  assert.equal(payload.datos.jornadas[0].total_pedidos, 1);
 });
 
 test('generación bloquea el chofer mediante INNER JOIN compatible con PostgreSQL', async (t) => {

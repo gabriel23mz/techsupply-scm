@@ -4,7 +4,7 @@ Sistema inteligente para la gestión comercial y logística de salida de una dis
 
 TechSupply SCM Outbound integra un backend Node.js, una base PostgreSQL, un motor de optimización logística en Python y una interfaz React. El flujo cubre la creación del pedido, preparación en bodega, planificación diaria de jornadas, carga de camiones, ejecución de entregas y cierre de la jornada.
 
-> Estado actual: backend, motor Python, migraciones y entorno demo reproducible estabilizados. El frontend está integrado con la API, pero requiere una reestructuración funcional y visual para representar completamente los permisos y flujos actuales por rol. n8n permanece como integración preparada mediante un stub local.
+> Estado actual: MVP Outbound funcional y cerrado para demostración. Backend, PostgreSQL, motor Python, frontend responsive por rol y automatizaciones n8n se encuentran integrados. La planificación multivehículo genera jornadas, Bodega confirma la carga, Chofer ejecuta las entregas y los eventos post-commit producen notificaciones HTML mediante un Webhook local publicado de n8n.
 
 ---
 
@@ -31,7 +31,7 @@ PostgreSQL         FastAPI / Python
                         ├── ACO-CVRP
                         └── OSRM
 
-Backend ── eventos post-commit ──> n8n stub
+Backend ── eventos post-commit ──> Webhook n8n ──> correos HTML
 ```
 
 ### Responsabilidades
@@ -40,7 +40,7 @@ Backend ── eventos post-commit ──> n8n stub
 - **Backend:** autentica, autoriza, valida, persiste y controla los estados del dominio.
 - **PostgreSQL:** almacena el modelo relacional, JSONB, enums, índices parciales y restricciones.
 - **Python:** calcula rutas y distribuye pedidos entre camiones; no accede a la base.
-- **n8n:** integración futura para notificaciones y automatizaciones.
+- **n8n:** recibe cinco eventos logísticos post-commit, genera correos HTML y opera en modo demostración con destinatarios de clientes trazables.
 
 La documentación técnica detallada se encuentra en [`docs/`](docs/README.md).
 
@@ -185,6 +185,7 @@ techsupply-outbound/
 - PostgreSQL 18 o compatible.
 - Un entorno virtual Python.
 - Acceso a internet para OSRM cuando se requiera geometría vial real.
+- n8n local para ejecutar el workflow publicado de notificaciones.
 
 Versiones verificadas durante la estabilización:
 
@@ -239,6 +240,12 @@ HORA_INICIO_OPERACION=08:00
 TIEMPO_SERVICIO_POR_ENTREGA_MIN=10
 MARGEN_OPERATIVO_PORCENTAJE=15
 MINUTOS_MAXIMOS_OPERACION_DIA=600
+
+N8N_ENABLED=true
+N8N_WEBHOOK_URL=http://localhost:5678/webhook/techsupply-notificaciones
+N8N_TIMEOUT_MS=3000
+N8N_BATCH_WINDOW_MS=150
+N8N_DEMO_MODE=true
 ```
 
 Configuración de conexión:
@@ -287,6 +294,7 @@ El historial actual incluye:
 6. Carga y asignación de chofer.
 7. Integridad logística e índices parciales.
 8. Estimaciones temporales.
+9. Paradas compartidas por destino dentro de una jornada.
 
 La reconstrucción completa fue validada desde una base vacía en PostgreSQL 18.
 
@@ -345,14 +353,14 @@ ALLOW_DEMO_RESET=false
 | Rutas dirigidas | 164 |
 | Pedidos | 72 |
 | Detalles de pedido | 214 |
-| Jornadas | 7 |
-| Despachos | 30 |
+| Jornadas históricas | 3 |
+| Despachos históricos | 13 |
 | Órdenes de compra | 10 |
 | Detalles de orden | 29 |
 | Ingresos de inventario | 4 |
 | Detalles de ingreso | 12 |
 
-La ubicación con ID `1` es la **Bodega Central ESPAM MFL**, utilizada como origen y retorno del flujo logístico demo.
+La ubicación con ID `1` es la **Bodega Central ESPAM MFL**, utilizada como origen y retorno del flujo logístico demo. La base inicia sin jornadas activas y con al menos 30 pedidos `LISTO_PARA_DESPACHO` para probar la planificación automática.
 
 ### Usuarios demo
 
@@ -382,6 +390,14 @@ Este comando ejecuta en paralelo:
 - Backend: `http://localhost:3000`.
 - Python: `http://127.0.0.1:8000`.
 - Frontend: `http://localhost:5173`.
+
+n8n se levanta en una terminal separada:
+
+```powershell
+npx n8n
+```
+
+El workflow **TechSupply SCM - Notificaciones Logísticas** debe estar publicado. El backend usa la URL de producción `/webhook/techsupply-notificaciones`; la URL `/webhook-test/` solo funciona mientras el nodo Webhook se encuentra escuchando manualmente.
 
 ### Ejecutar servicios por separado
 
@@ -437,15 +453,9 @@ npm run test:frontend
 npm run benchmark:python
 ```
 
-Línea base validada antes de la fase de frontend:
+La suite actual cubre backend, contratos Node-Python, planificación, integridad logística, seguridad, frontend por módulos y el cliente n8n. El build de Vite y ESLint forman parte de la validación de cierre.
 
-- Backend: 67 pruebas.
-- Python: 24 pruebas.
-- Frontend: 1 smoke test.
-- Total: 92 pruebas aprobadas.
-- Build de Vite aprobado.
-
-Las pruebas backend usan dobles y mocks para evitar conexiones accidentales a Supabase, Python, OSRM o n8n reales.
+Las pruebas backend usan dobles y mocks para evitar conexiones accidentales a PostgreSQL, Python, OSRM o n8n reales. La integración n8n se verifica interceptando la petición HTTP y validando los cinco contratos de evento.
 
 ---
 
@@ -490,18 +500,22 @@ Las pruebas backend usan dobles y mocks para evitar conexiones accidentales a Su
 
 ### n8n
 
-- Stub local desacoplado.
-- Webhooks reales, reintentos, idempotencia y trazabilidad pendientes.
+- Webhook local real publicado en `http://localhost:5678/webhook/techsupply-notificaciones`.
+- Eventos soportados: planificación creada, jornada iniciada, despacho entregado, despacho no entregado y jornada finalizada.
+- Payloads normalizados sin enviar instancias Sequelize completas.
+- Resumen único de planificación mediante agrupación breve de jornadas creadas.
+- Correos HTML con identidad visual TechSupply.
+- Modo demostración: el mensaje conserva el correo ficticio del cliente como destinatario previsto, pero se entrega al buzón real configurado en n8n.
+- Timeout configurable y desacoplamiento post-commit: un fallo de n8n no revierte la operación logística.
 
 ---
 
-## Trabajo pendiente priorizado
+## Trabajo pendiente fuera del cierre actual
 
-1. Mantener la validación visual y funcional de la capa frontend cerrada.
-2. Implementar Productos, Categorías y los flujos Inbound cuando se amplíe formalmente el alcance.
-3. Ampliar pruebas de renderizado y flujos end-to-end.
-4. Aplicar una estrategia controlada para Supabase cuando corresponda.
-5. Implementar n8n real después de estabilizar el despliegue integral.
+1. Implementar Productos, Categorías y flujos Inbound únicamente si el alcance se amplía formalmente.
+2. Añadir pruebas end-to-end con navegador y PostgreSQL efímero en una fase futura.
+3. Definir despliegue permanente de n8n; la entrega actual utiliza una instancia local.
+4. Incorporar idempotencia y trazabilidad persistida de notificaciones si el sistema evoluciona a producción.
 
 Fuera del alcance actual del MVP:
 

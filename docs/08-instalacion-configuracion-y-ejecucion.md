@@ -8,6 +8,7 @@
 - Entorno virtual Python recomendado.
 - PostgreSQL/Supabase accesible mediante `DATABASE_URL`.
 - Servicio OSRM publico o URL compatible si se usa calculo vial.
+- n8n local con el workflow de notificaciones publicado.
 
 Versiones observadas durante la auditoria:
 
@@ -26,11 +27,15 @@ PYTHON_TIMEOUT_MS=90000
 PYTHON_ROUTE_TIMEOUT_MS=15000
 PYTHON_JOURNEY_TIMEOUT_MS=90000
 AUTH_SECRET=valor-secreto
+
+N8N_ENABLED=true
+N8N_WEBHOOK_URL=http://localhost:5678/webhook/techsupply-notificaciones
+N8N_TIMEOUT_MS=3000
+N8N_BATCH_WINDOW_MS=150
+N8N_DEMO_MODE=true
 ```
 
 No se deben documentar ni copiar secretos reales. El archivo `.env` local no debe compartirse.
-
-Limitacion conocida: `.env.example` conserva variables heredadas de MySQL (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) y no representa por completo la configuracion PostgreSQL/Supabase activa.
 
 Variables backend de temporalidad logistica del MVP:
 
@@ -125,6 +130,39 @@ http://localhost:5173
 
 El backend CORS esta configurado para ese origen local.
 
+## n8n
+
+Levantar n8n en una terminal separada:
+
+```powershell
+npx n8n
+```
+
+Editor local:
+
+```text
+http://localhost:5678
+```
+
+El workflow **TechSupply SCM - Notificaciones Logisticas** debe estar publicado y contener:
+
+```text
+Webhook POST
+  -> Switch por evento
+  -> Code: Preparar notificaciones
+  -> Send Email mediante SMTP
+```
+
+La URL usada por Node debe ser la de produccion:
+
+```text
+http://localhost:5678/webhook/techsupply-notificaciones
+```
+
+La variante `/webhook-test/` solo funciona mientras el nodo Webhook esta en modo `Listen for test event`; no debe quedar configurada para la ejecucion normal del sistema.
+
+En modo demostracion, n8n envia fisicamente todos los correos al buzon real configurado en el nodo SMTP. El correo ficticio almacenado para cada cliente se conserva dentro del asunto y del HTML como destinatario previsto.
+
 ## Migraciones y seeders
 
 Scripts disponibles en `package.json`:
@@ -138,22 +176,23 @@ npm run db:seed:undo
 
 Tambien existen scripts de reset demo. Deben usarse con cuidado porque modifican la base de datos.
 
-Las migraciones creadas para rol `CHOFER`, tabla `choferes`, trazabilidad, preparacion, carga, asignacion de chofer, restricciones logisticas y estimaciones temporales no fueron ejecutadas contra una base real durante la implementacion. Tras revisar los cambios, el comando operativo seria:
+Las migraciones actuales incluyen choferes, trazabilidad, preparacion, carga, integridad logistica, temporalidad y paradas compartidas. Fueron verificadas en el entorno demo local. Para reconstruir o actualizar una base autorizada se usa:
 
 ```bash
 npm run db:migrate
 ```
 
-Debe ejecutarse solo contra una base aislada o real autorizada.
+Nunca debe ejecutarse contra una base remota sin respaldo y autorizacion.
 
 ## Orden recomendado de arranque
 
 1. Verificar `DATABASE_URL` y conexion a PostgreSQL/Supabase.
-2. Levantar Python/FastAPI en `127.0.0.1:8000`.
-3. Levantar backend en `localhost:3000`.
-4. Levantar frontend en `localhost:5173`.
-5. Iniciar sesion desde `/login`.
-6. Verificar dashboard y modulos.
+2. Levantar n8n en `localhost:5678` y comprobar que el workflow este publicado.
+3. Levantar Python/FastAPI en `127.0.0.1:8000`.
+4. Levantar backend en `localhost:3000`.
+5. Levantar frontend en `localhost:5173`.
+6. Iniciar sesion desde `/login`.
+7. Verificar dashboard, modulos y una notificacion real.
 
 Tambien existe script coordinado:
 
@@ -212,7 +251,7 @@ Componentes simulados o aislados:
 - Modelos Sequelize mediante dobles de metodos (`findAll`, `findOne`, `findByPk`, `create`, `update`, `destroy`).
 - Servicio Python desde Node mediante mock del cliente Axios.
 - OSRM en Python mediante `unittest.mock.patch`.
-- n8n como stub local, sin webhooks reales.
+- n8n mediante mock de `axios.post`, sin invocar la instancia local durante las pruebas.
 - Frontend mediante lectura estatica de configuracion y rutas principales.
 - Arquitectura Fase 4 mediante pruebas de `errorHandler` y busquedas estructurales de controladores.
 
@@ -223,7 +262,7 @@ Limitaciones:
 - No se prueba frontend con renderizado React.
 - Algunos riesgos se caracterizan con mocks para demostrar efectos parciales actuales sin corregirlos todavia.
 - Las pruebas de Node importan modulos que cargan `dotenv`; esto no implica conexion a la base ni envio de datos.
-- La linea base actual es 67 pruebas backend, 24 pruebas Python y 1 prueba frontend.
+- La cantidad de pruebas evoluciona con cada fase; el criterio de cierre es que `npm test`, build y lint finalicen sin errores.
 
 ## Benchmark logistico Python
 

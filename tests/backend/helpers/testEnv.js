@@ -4,6 +4,9 @@ process.env.DATABASE_URL ??=
   'postgres://techsupply_test:techsupply_test@127.0.0.1:5432/techsupply_test';
 process.env.AUTH_SECRET ??= 'techsupply-test-secret';
 process.env.PYTHON_API ??= 'http://python-service.test';
+process.env.N8N_ENABLED ??= 'false';
+process.env.N8N_WEBHOOK_URL ??=
+  'http://n8n-service.test/webhook/techsupply-notificaciones';
 
 export function stubMethods(t, target, methods) {
   const originals = new Map();

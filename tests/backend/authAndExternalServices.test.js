@@ -363,10 +363,221 @@ test('python.service acepta resultado de jornada válido y clasifica todos los p
   );
 });
 
-test('n8n service permanece como stub local y no requiere webhook real', async () => {
+test('n8n service envia contratos normalizados al webhook publicado', async (t) => {
+  const axios = await import('axios');
   const service = await import('../../src/services/n8n.service.js');
+  const originalPost = axios.default.post;
+  const originalEnabled = process.env.N8N_ENABLED;
+  const originalUrl = process.env.N8N_WEBHOOK_URL;
+  const post = mock.fn(async () => ({ status: 200 }));
 
-  assert.equal(await service.jornadaCreada({ id: 1 }, []), undefined);
-  assert.equal(await service.despachoEntregado({ id: 2 }), undefined);
-  assert.equal(await service.jornadaFinalizada({ id: 3 }), undefined);
+  axios.default.post = post;
+  process.env.N8N_ENABLED = 'true';
+  process.env.N8N_WEBHOOK_URL =
+    'http://n8n.test/webhook/techsupply-notificaciones';
+
+  t.after(() => {
+    axios.default.post = originalPost;
+    process.env.N8N_ENABLED = originalEnabled;
+    process.env.N8N_WEBHOOK_URL = originalUrl;
+  });
+
+  await service.despachoEntregado({
+    id: 2,
+    pedido_id: 41,
+    estado: 'ENTREGADO',
+    pedido: {
+      id: 41,
+      cliente: {
+        id: 8,
+        nombre: 'Cliente Demo',
+        correo: 'cliente8@demo.com',
+      },
+    },
+  });
+
+  assert.equal(post.mock.calls.length, 1);
+  assert.equal(
+    post.mock.calls[0].arguments[0],
+    'http://n8n.test/webhook/techsupply-notificaciones',
+  );
+
+  const payload = post.mock.calls[0].arguments[1];
+
+  assert.equal(payload.evento, 'DESPACHO_ENTREGADO');
+  assert.equal(payload.modo_demo, true);
+  assert.equal(
+    payload.datos.despacho.pedido.codigo,
+    'PED-00041',
+  );
+  assert.equal(
+    payload.datos.despacho.pedido.cliente.correo,
+    'cliente8@demo.com',
+  );
+  assert.equal(
+    post.mock.calls[0].arguments[2].timeout,
+    3000,
+  );
+});
+
+test('n8n service conserva jornada, despachos y correos de cliente en eventos operativos', async (t) => {
+  const axios = await import('axios');
+  const service = await import('../../src/services/n8n.service.js');
+  const originalPost = axios.default.post;
+  const originalEnabled = process.env.N8N_ENABLED;
+  const post = mock.fn(async () => ({ status: 200 }));
+  const jornada = {
+    id: 7,
+    camion_id: 3,
+    chofer_id: 5,
+    estado: 'EN_RUTA',
+    camion: {
+      id: 3,
+      codigo: 'CAM-003',
+      placa: 'MAB-2003',
+    },
+    despachos: [
+      {
+        id: 20,
+        pedido_id: 30,
+        orden_entrega: 1,
+        estado: 'EN_TRANSITO',
+        pedido: {
+          id: 30,
+          cliente: {
+            id: 9,
+            nombre: 'Cliente Costa',
+            correo: 'costa@demo.techsupply.ec',
+          },
+        },
+      },
+    ],
+  };
+
+  axios.default.post = post;
+  process.env.N8N_ENABLED = 'true';
+
+  t.after(() => {
+    axios.default.post = originalPost;
+    process.env.N8N_ENABLED = originalEnabled;
+  });
+
+  await service.jornadaIniciada(jornada);
+  await service.despachoNoEntregado({
+    ...jornada.despachos[0],
+    estado: 'NO_ENTREGADO',
+  });
+  await service.jornadaFinalizada({
+    ...jornada,
+    estado: 'FINALIZADA',
+    despachos: [
+      {
+        ...jornada.despachos[0],
+        estado: 'NO_ENTREGADO',
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    post.mock.calls.map((call) => call.arguments[1].evento),
+    [
+      'JORNADA_INICIADA',
+      'DESPACHO_NO_ENTREGADO',
+      'JORNADA_FINALIZADA',
+    ],
+  );
+
+  const inicio = post.mock.calls[0].arguments[1].datos;
+
+  assert.equal(inicio.jornada.codigo, 'JR-00007');
+  assert.equal(inicio.jornada.camion.codigo, 'CAM-003');
+  assert.equal(inicio.jornada.nombre_chofer, 'Chofer #5');
+  assert.equal(
+    inicio.despachos[0].pedido.cliente.correo,
+    'costa@demo.techsupply.ec',
+  );
+
+  const finalizacion = post.mock.calls[2].arguments[1].datos;
+
+  assert.equal(finalizacion.despachos[0].estado, 'NO_ENTREGADO');
+});
+
+test('n8n service agrupa jornadas creadas en un unico resumen administrativo', async (t) => {
+  const axios = await import('axios');
+  const service = await import('../../src/services/n8n.service.js');
+  const originalPost = axios.default.post;
+  const originalEnabled = process.env.N8N_ENABLED;
+  const post = mock.fn(async () => ({ status: 200 }));
+
+  axios.default.post = post;
+  process.env.N8N_ENABLED = 'true';
+
+  t.after(async () => {
+    await service.flushJornadasCreadasPendientes();
+    axios.default.post = originalPost;
+    process.env.N8N_ENABLED = originalEnabled;
+  });
+
+  await service.jornadaCreada(
+    {
+      id: 10,
+      camion_id: 3,
+      distancia_total: 120.5,
+      tiempo_estimado: 180,
+    },
+    [
+      { pedido_id: 1, orden_entrega: 1 },
+      { pedido_id: 2, orden_entrega: 1 },
+    ],
+  );
+
+  await service.jornadaCreada(
+    {
+      id: 11,
+      camion_id: 4,
+      distancia_total: 98.25,
+      tiempo_estimado: 145,
+    },
+    [
+      { pedido_id: 3, orden_entrega: 1 },
+      { pedido_id: 4, orden_entrega: 2 },
+      { pedido_id: 5, orden_entrega: 3 },
+    ],
+  );
+
+  assert.equal(post.mock.calls.length, 0);
+
+  await service.flushJornadasCreadasPendientes();
+
+  assert.equal(post.mock.calls.length, 1);
+
+  const payload = post.mock.calls[0].arguments[1];
+
+  assert.equal(payload.evento, 'JORNADA_CREADA');
+  assert.equal(payload.datos.resumen.total_jornadas, 2);
+  assert.equal(payload.datos.resumen.pedidos_asignados, 5);
+  assert.equal(payload.datos.jornadas[0].total_puntos, 1);
+  assert.equal(payload.datos.jornadas[1].total_puntos, 3);
+});
+
+test('n8n service puede deshabilitarse sin intentar conexiones externas', async (t) => {
+  const axios = await import('axios');
+  const service = await import('../../src/services/n8n.service.js');
+  const originalPost = axios.default.post;
+  const originalEnabled = process.env.N8N_ENABLED;
+  const post = mock.fn();
+
+  axios.default.post = post;
+  process.env.N8N_ENABLED = 'false';
+
+  t.after(() => {
+    axios.default.post = originalPost;
+    process.env.N8N_ENABLED = originalEnabled;
+  });
+
+  const resultado = await service.jornadaFinalizada({ id: 3 });
+
+  assert.equal(resultado.omitido, true);
+  assert.equal(resultado.motivo, 'N8N_DISABLED');
+  assert.equal(post.mock.calls.length, 0);
 });
