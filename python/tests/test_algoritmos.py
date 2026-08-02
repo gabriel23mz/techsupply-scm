@@ -8,6 +8,10 @@ from algoritmo.astar import calcular_ruta
 from algoritmo.colonia_hormigas_cvrp import (
     ant_colony_cvrp,
     agrupar_pedidos_por_destino,
+    aplicar_relocate_solucion,
+    aplicar_swap_solucion,
+    calcular_metricas_solucion,
+    mejorar_solucion_busqueda_local,
     seleccionar_elemento_ponderado,
 )
 from algoritmo.grafo import construir_grafo
@@ -512,6 +516,379 @@ class MetaheuristicaTests(unittest.TestCase):
             llamadas_osrm,
             len(resultado["jornadas"]),
         )
+
+    def test_no_usa_todos_los_camiones_si_uno_es_suficiente(self):
+        camiones = [
+            {
+                "id": 10 + indice,
+                "codigo": f"CAM-{indice}",
+                "placa": f"AAA-{indice}",
+                "capacidad": 6,
+            }
+            for indice in range(4)
+        ]
+
+        with patch(
+            "algoritmo.metaheuristica_jornada.obtener_geometria_osrm",
+            side_effect=lambda puntos: [
+                [punto["latitud"], punto["longitud"]]
+                for punto in puntos
+            ],
+        ):
+            resultado = generar_jornada(
+                {
+                    "bodega": self.bodega,
+                    "pedidos": [
+                        pedido(1, 2),
+                        pedido(2, 3),
+                        pedido(3, 2),
+                    ],
+                    "camiones": camiones,
+                    "velocidad_kmh": 40,
+                    "semilla": 42,
+                    "benchmark": True,
+                },
+                self.grafo,
+            )
+
+        self.assertEqual(len(resultado["jornadas"]), 1)
+        self.assertEqual(resultado["pedidos_no_asignados"], [])
+        self.assertEqual(
+            resultado["jornadas"][0]["capacidad_utilizada"],
+            3,
+        )
+
+    def test_estructura_node_se_preserva_en_jornada_generada(self):
+        with patch(
+            "algoritmo.metaheuristica_jornada.obtener_geometria_osrm",
+            side_effect=lambda puntos: [
+                [punto["latitud"], punto["longitud"]]
+                for punto in puntos
+            ],
+        ):
+            resultado = generar_jornada(
+                {
+                    "bodega": self.bodega,
+                    "pedidos": [pedido(1, 2)],
+                    "camiones": self.camiones,
+                    "velocidad_kmh": 40,
+                    "semilla": 42,
+                },
+                self.grafo,
+            )
+
+        self.assertEqual(
+            sorted(resultado.keys()),
+            [
+                "jornadas",
+                "pedidos_no_asignados",
+                "pedidos_no_asignados_detalle",
+            ],
+        )
+        jornada = resultado["jornadas"][0]
+        self.assertIn("ruta_general", jornada)
+        self.assertIn("entregas", jornada)
+        self.assertIn(
+            "fecha_estimada_entrega",
+            jornada["entregas"][0],
+        )
+
+    def test_busqueda_local_aplica_2opt_sin_cambiar_pedidos(self):
+        grafo = construir_grafo([
+            {"origen": 1, "destino": 2, "distancia": 10},
+            {"origen": 1, "destino": 3, "distancia": 10},
+            {"origen": 1, "destino": 4, "distancia": 10},
+            {"origen": 2, "destino": 3, "distancia": 100},
+            {"origen": 2, "destino": 4, "distancia": 1},
+            {"origen": 3, "destino": 4, "distancia": 1},
+        ])
+        solucion = {
+            "asignaciones": [
+                {
+                    "camion": {
+                        "id": 10,
+                        "codigo": "CAM",
+                        "placa": "AAA",
+                        "capacidad": 3,
+                    },
+                    "pedidos": [
+                        pedido(1, 2),
+                        pedido(2, 3),
+                        pedido(3, 4),
+                    ],
+                    "destinos_ordenados": [
+                        {
+                            "destino_id": 2,
+                            "ubicacion": "A",
+                            "latitud": -2.0,
+                            "longitud": -79.0,
+                        },
+                        {
+                            "destino_id": 3,
+                            "ubicacion": "B",
+                            "latitud": -2.1,
+                            "longitud": -79.1,
+                        },
+                        {
+                            "destino_id": 4,
+                            "ubicacion": "C",
+                            "latitud": -2.2,
+                            "longitud": -79.2,
+                        },
+                    ],
+                    "capacidad_utilizada": 3,
+                    "capacidad_disponible": 0,
+                },
+            ],
+            "pedidos_no_asignados": [],
+        }
+        antes = calcular_metricas_solucion(
+            solucion,
+            grafo,
+            1,
+            distancia_entre_stub,
+        )
+
+        mejorada, despues = mejorar_solucion_busqueda_local(
+            solucion,
+            grafo,
+            1,
+            distancia_entre_stub,
+            40,
+            600,
+            10,
+            15,
+        )
+
+        asignados = [
+            entrega["pedido_id"]
+            for asignacion in mejorada["asignaciones"]
+            for entrega in asignacion["pedidos"]
+        ]
+        self.assertEqual(set(asignados), {1, 2, 3})
+        self.assertLess(
+            despues["distancia_total"],
+            antes["distancia_total"],
+        )
+
+    def test_busqueda_local_relocate_reduce_vehiculo_vacio(self):
+        solucion = {
+            "asignaciones": [
+                {
+                    "camion": self.camiones[0],
+                    "pedidos": [pedido(1, 2)],
+                    "destinos_ordenados": [
+                        {
+                            "destino_id": 2,
+                            "ubicacion": "A",
+                            "latitud": -2,
+                            "longitud": -79,
+                        },
+                    ],
+                    "capacidad_utilizada": 1,
+                    "capacidad_disponible": 1,
+                },
+                {
+                    "camion": {
+                        "id": 11,
+                        "codigo": "CAM-011",
+                        "placa": "AAA-011",
+                        "capacidad": 2,
+                    },
+                    "pedidos": [pedido(2, 3)],
+                    "destinos_ordenados": [
+                        {
+                            "destino_id": 3,
+                            "ubicacion": "B",
+                            "latitud": -2.1,
+                            "longitud": -79.1,
+                        },
+                    ],
+                    "capacidad_utilizada": 1,
+                    "capacidad_disponible": 1,
+                },
+            ],
+            "pedidos_no_asignados": [],
+        }
+        metricas = calcular_metricas_solucion(
+            solucion,
+            self.grafo,
+            1,
+            distancia_entre_stub,
+        )
+        contexto = {
+            "deadline": None,
+            "validacion": {
+                "pedidos_base": {1, 2},
+                "no_asignados_base": set(),
+                "grafo": self.grafo,
+                "bodega_id": 1,
+                "distancia_entre": distancia_entre_stub,
+                "velocidad_kmh": 40,
+                "max_jornada_min": 600,
+                "tiempo_servicio_por_entrega_min": 10,
+                "margen_operativo_porcentaje": 15,
+            },
+        }
+
+        mejorada, _, aceptado = aplicar_relocate_solucion(
+            solucion,
+            metricas,
+            contexto,
+        )
+
+        self.assertTrue(aceptado)
+        self.assertEqual(len(mejorada["asignaciones"]), 1)
+        self.assertEqual(
+            mejorada["asignaciones"][0]["capacidad_utilizada"],
+            2,
+        )
+
+    def test_busqueda_local_swap_mejora_corredores(self):
+        grafo = construir_grafo([
+            {"origen": 1, "destino": 2, "distancia": 10},
+            {"origen": 1, "destino": 3, "distancia": 11},
+            {"origen": 1, "destino": 4, "distancia": 80},
+            {"origen": 1, "destino": 5, "distancia": 81},
+            {"origen": 2, "destino": 3, "distancia": 1},
+            {"origen": 4, "destino": 5, "distancia": 1},
+            {"origen": 2, "destino": 4, "distancia": 90},
+            {"origen": 2, "destino": 5, "distancia": 20},
+            {"origen": 3, "destino": 4, "distancia": 20},
+            {"origen": 3, "destino": 5, "distancia": 87},
+        ])
+        camion_a = {
+            "id": 10,
+            "codigo": "A",
+            "placa": "A",
+            "capacidad": 2,
+        }
+        camion_b = {
+            "id": 11,
+            "codigo": "B",
+            "placa": "B",
+            "capacidad": 2,
+        }
+        solucion = {
+            "asignaciones": [
+                {
+                    "camion": camion_a,
+                    "pedidos": [pedido(1, 2), pedido(2, 4)],
+                    "destinos_ordenados": [
+                        {
+                            "destino_id": 2,
+                            "ubicacion": "A",
+                            "latitud": 0,
+                            "longitud": 0,
+                        },
+                        {
+                            "destino_id": 4,
+                            "ubicacion": "C",
+                            "latitud": 0,
+                            "longitud": 0,
+                        },
+                    ],
+                    "capacidad_utilizada": 2,
+                    "capacidad_disponible": 0,
+                },
+                {
+                    "camion": camion_b,
+                    "pedidos": [pedido(3, 3), pedido(4, 5)],
+                    "destinos_ordenados": [
+                        {
+                            "destino_id": 3,
+                            "ubicacion": "B",
+                            "latitud": 0,
+                            "longitud": 0,
+                        },
+                        {
+                            "destino_id": 5,
+                            "ubicacion": "D",
+                            "latitud": 0,
+                            "longitud": 0,
+                        },
+                    ],
+                    "capacidad_utilizada": 2,
+                    "capacidad_disponible": 0,
+                },
+            ],
+            "pedidos_no_asignados": [],
+        }
+        metricas = calcular_metricas_solucion(
+            solucion,
+            grafo,
+            1,
+            distancia_entre_stub,
+        )
+        contexto = {
+            "deadline": None,
+            "validacion": {
+                "pedidos_base": {1, 2, 3, 4},
+                "no_asignados_base": set(),
+                "grafo": grafo,
+                "bodega_id": 1,
+                "distancia_entre": distancia_entre_stub,
+                "velocidad_kmh": 40,
+                "max_jornada_min": 600,
+                "tiempo_servicio_por_entrega_min": 10,
+                "margen_operativo_porcentaje": 15,
+            },
+        }
+
+        _, metricas_despues, aceptado = aplicar_swap_solucion(
+            solucion,
+            metricas,
+            contexto,
+        )
+
+        self.assertTrue(aceptado)
+        self.assertLess(
+            metricas_despues["distancia_total"],
+            metricas["distancia_total"],
+        )
+
+    def test_finaliza_dentro_del_presupuesto_temporal(self):
+        pedidos = [
+            pedido(indice, 2 + (indice % 2))
+            for indice in range(1, 7)
+        ]
+
+        with patch(
+            "algoritmo.metaheuristica_jornada.obtener_geometria_osrm",
+            side_effect=lambda puntos: [
+                [punto["latitud"], punto["longitud"]]
+                for punto in puntos
+            ],
+        ):
+            inicio = time.perf_counter()
+            resultado = generar_jornada(
+                {
+                    "bodega": self.bodega,
+                    "pedidos": pedidos,
+                    "camiones": [
+                        {
+                            "id": 10,
+                            "codigo": "CAM-010",
+                            "placa": "AAA-010",
+                            "capacidad": 6,
+                        },
+                        {
+                            "id": 11,
+                            "codigo": "CAM-011",
+                            "placa": "AAA-011",
+                            "capacidad": 6,
+                        },
+                    ],
+                    "velocidad_kmh": 40,
+                    "semilla": 99,
+                    "aco": {"max_segundos": 0.05},
+                },
+                self.grafo,
+            )
+            duracion = time.perf_counter() - inicio
+
+        self.assertLess(duracion, 0.50)
+        self.assertEqual(resultado["pedidos_no_asignados"], [])
 
 
 if __name__ == "__main__":
